@@ -60,6 +60,9 @@ func (r *AccountResource) Referral(ctx context.Context) (*ReferralInfo, error) {
 
 // TransferToPersonal переводит средства на личный кошелёк владельца. POST /v1/transfer/to-personal
 func (r *AccountResource) TransferToPersonal(ctx context.Context, params Params) (map[string]any, error) {
+	// Авто-ключ идемпотентности до цикла повторов, чтобы повтор дедуплицировался по order_id,
+	// а не пересобирал подпись на каждой попытке (иначе backend видит их как разные переводы).
+	ensureOrderID(params)
 	var out map[string]any
 	return out, r.c.request(ctx, "/v1/transfer/to-personal", params, &out)
 }

@@ -22,6 +22,11 @@ const (
 	defaultBaseURL = "https://api.oblodai.com"
 	defaultTimeout = 30 * time.Second
 
+	// maxRetryAfter — абсолютный потолок для серверного Retry-After. Заголовок уважается как есть
+	// (даже выше RetryConfig.MaxDelay), но не дольше 5 минут — иначе один ответ мог бы усыпить
+	// вызывающего надолго.
+	maxRetryAfter = 300 * time.Second
+
 	// Переменные окружения для NewFromEnv.
 	envPublicID = "OBLODAI_PUBLIC_ID"
 	envSecret   = "OBLODAI_SECRET"
@@ -252,9 +257,11 @@ func (c *Client) execute(ctx context.Context, method, path string, payload any, 
 		delay := c.backoff(attempt)
 		var apiErr *APIError
 		if errors.As(err, &apiErr) && apiErr.RetryAfter > 0 {
+			// Уважаем серверный Retry-After как есть (не зажимаем к MaxDelay), но не дольше
+			// абсолютного потолка maxRetryAfter, чтобы избежать чрезмерного ожидания.
 			delay = apiErr.RetryAfter
-			if c.retry != nil && delay > c.retry.MaxDelay {
-				delay = c.retry.MaxDelay
+			if delay > maxRetryAfter {
+				delay = maxRetryAfter
 			}
 		}
 		c.logf(slog.LevelWarn, "oblodai: retrying", "method", method, "path", path, "delay_ms", delay.Milliseconds(), "reason", retryReason(err), "next_attempt", attempt+1)

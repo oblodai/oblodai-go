@@ -1,6 +1,33 @@
 package oblodai
 
-import "context"
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+)
+
+// newIdempotencyKey генерирует стабильный ключ идемпотентности вида "idem-<32 hex>"
+// из 16 случайных байт (crypto/rand). Без внешних зависимостей.
+func newIdempotencyKey() string {
+	var b [16]byte
+	_, _ = rand.Read(b[:]) // rand.Read из crypto/rand не возвращает частичного чтения
+	return "idem-" + hex.EncodeToString(b[:])
+}
+
+// ensureOrderID гарантирует, что в params есть непустой order_id, вставляя сгенерированный
+// ключ идемпотентности, если его нет. Мутирует карту ОДИН раз, до цикла повторов, чтобы все
+// попытки слали ОДИН И ТОТ ЖЕ order_id и бэкенд дедуплицировал повтор неидемпотентного POST.
+func ensureOrderID(params Params) {
+	if params == nil {
+		return // в nil-карту вставить нельзя; вызывающий передал пустое тело
+	}
+	if v, ok := params["order_id"]; ok && v != nil {
+		if s, isStr := v.(string); !isStr || s != "" {
+			return // непустой order_id уже задан
+		}
+	}
+	params["order_id"] = newIdempotencyKey()
+}
 
 // lookup собирает тело запроса по uuid или order_id (нужен хотя бы один).
 func lookup(uuid, orderID string) Params {
@@ -21,6 +48,9 @@ type PaymentsResource struct{ c *Client }
 
 // Create создаёт платёжный счёт (инвойс). POST /v1/payment
 func (r *PaymentsResource) Create(ctx context.Context, params Params) (*Payment, error) {
+	// Авто-ключ идемпотентности: без непустого order_id повтор неидемпотентного POST создал бы
+	// второй платёж. Вставляем стабильный order_id до цикла повторов — бэкенд дедуплицирует по нему.
+	ensureOrderID(params)
 	var out Payment
 	return &out, r.c.request(ctx, "/v1/payment", params, &out)
 }
