@@ -7,9 +7,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -363,6 +365,117 @@ func Test429SurfacesMessageAndRetryAfter(t *testing.T) {
 	}
 	if apiErr.RetryAfter != 60*time.Second {
 		t.Fatalf("expected RetryAfter=60s, got %v", apiErr.RetryAfter)
+	}
+}
+
+// ──────────────────── Авто-идемпотентность (money-safety) ────────────────────
+
+// orderIDFromBody достаёт order_id из JSON-тела запроса.
+func orderIDFromBody(t *testing.T, body []byte) string {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal(body, &m); err != nil {
+		t.Fatalf("body not JSON: %v (%s)", err, body)
+	}
+	s, _ := m["order_id"].(string)
+	return s
+}
+
+func TestPaymentsCreateInjectsOrderID(t *testing.T) {
+	var gotBody []byte
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
+		}})
+	}, nil)
+	defer srv.Close()
+
+	// order_id НЕ задан — SDK обязан подставить непустой ключ идемпотентности.
+	if _, err := c.Payments.Create(context.Background(), Params{"amount": "10", "currency": "USD"}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if oid := orderIDFromBody(t, gotBody); oid == "" {
+		t.Fatalf("expected auto-injected order_id, body=%s", gotBody)
+	}
+}
+
+func TestPaymentsCreateSameOrderIDAcrossRetries(t *testing.T) {
+	var mu sync.Mutex
+	var bodies [][]byte
+	var calls int32
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		bodies = append(bodies, body)
+		mu.Unlock()
+		if atomic.AddInt32(&calls, 1) == 1 {
+			w.WriteHeader(503)
+			json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{"code": "x.unavailable", "message": "later"}})
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
+		}})
+	}, &RetryConfig{MaxAttempts: 3, InitialDelay: time.Millisecond, MaxDelay: 5 * time.Millisecond})
+	defer srv.Close()
+
+	if _, err := c.Payments.Create(context.Background(), Params{"amount": "10", "currency": "USD"}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(bodies) != 2 {
+		t.Fatalf("expected 2 attempts (503 then ok), got %d", len(bodies))
+	}
+	oid0 := orderIDFromBody(t, bodies[0])
+	oid1 := orderIDFromBody(t, bodies[1])
+	if oid0 == "" {
+		t.Fatalf("first attempt missing order_id")
+	}
+	if oid0 != oid1 {
+		t.Fatalf("order_id differs across retries: %q vs %q", oid0, oid1)
+	}
+}
+
+func TestTransferToPersonalInjectsOrderID(t *testing.T) {
+	var gotBody []byte
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{"ok": true}})
+	}, nil)
+	defer srv.Close()
+
+	if _, err := c.Account.TransferToPersonal(context.Background(), Params{"amount": "5", "currency": "USDT"}); err != nil {
+		t.Fatalf("TransferToPersonal: %v", err)
+	}
+	if oid := orderIDFromBody(t, gotBody); oid == "" {
+		t.Fatalf("expected auto-injected order_id, body=%s", gotBody)
+	}
+}
+
+func TestPaymentsCreateKeepsCallerOrderID(t *testing.T) {
+	var gotBody []byte
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
+		}})
+	}, nil)
+	defer srv.Close()
+
+	if _, err := c.Payments.Create(context.Background(), Params{"amount": "10", "currency": "USD", "order_id": "mine-1"}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if oid := orderIDFromBody(t, gotBody); oid != "mine-1" {
+		t.Fatalf("caller order_id overwritten: %q", oid)
+	}
+}
+
+func TestFundsMaturingNotRetriable(t *testing.T) {
+	e := &APIError{Code: "payout.funds_maturing", Status: 409}
+	if e.IsRetriable() {
+		t.Fatal("payout.funds_maturing must be terminal (not retriable)")
 	}
 }
 

@@ -32,9 +32,8 @@ func (e *APIError) IsRetriable() bool {
 	if e.Status == 429 {
 		return true
 	}
-	if e.Code == "payout.funds_maturing" {
-		return true
-	}
+	// payout.funds_maturing — терминальная: средства ещё дозревают, автоповтор с backoff почти
+	// наверняка получит ту же ошибку. Дождитесь зрелости и повторите вручную.
 	return false
 }
 
