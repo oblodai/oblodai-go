@@ -472,6 +472,140 @@ func TestPaymentsCreateKeepsCallerOrderID(t *testing.T) {
 	}
 }
 
+// (a) Create не мутирует карту вызывающего, но тело на проводе получает order_id.
+func TestPaymentsCreateDoesNotMutateCallerMap(t *testing.T) {
+	var gotBody []byte
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
+		}})
+	}, nil)
+	defer srv.Close()
+
+	m := Params{"amount": "10", "currency": "USD"}
+	if _, err := c.Payments.Create(context.Background(), m); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	// Карта вызывающего не должна получить order_id.
+	if _, ok := m["order_id"]; ok {
+		t.Fatalf("caller map was mutated: order_id leaked in %+v", m)
+	}
+	// Но тело на проводе — должно.
+	if oid := orderIDFromBody(t, gotBody); oid == "" {
+		t.Fatalf("expected auto-injected order_id on the wire, body=%s", gotBody)
+	}
+}
+
+// (b) Повторное использование одной карты в двух Create даёт ДВА РАЗНЫХ order_id на проводе.
+func TestPaymentsCreateReusedMapDistinctOrderIDs(t *testing.T) {
+	var mu sync.Mutex
+	var bodies [][]byte
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		bodies = append(bodies, body)
+		mu.Unlock()
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
+		}})
+	}, nil)
+	defer srv.Close()
+
+	m := Params{"amount": "10", "currency": "USD"} // одна и та же карта на оба вызова
+	if _, err := c.Payments.Create(context.Background(), m); err != nil {
+		t.Fatalf("Create #1: %v", err)
+	}
+	if _, err := c.Payments.Create(context.Background(), m); err != nil {
+		t.Fatalf("Create #2: %v", err)
+	}
+	if _, ok := m["order_id"]; ok {
+		t.Fatalf("caller map was mutated across reuse: %+v", m)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(bodies) != 2 {
+		t.Fatalf("expected 2 requests, got %d", len(bodies))
+	}
+	oid0 := orderIDFromBody(t, bodies[0])
+	oid1 := orderIDFromBody(t, bodies[1])
+	if oid0 == "" || oid1 == "" {
+		t.Fatalf("missing order_id: %q %q", oid0, oid1)
+	}
+	if oid0 == oid1 {
+		t.Fatalf("reused map produced same order_id on both calls: %q — two ops would dedupe into one", oid0)
+	}
+}
+
+// (c) order_id из одних пробелов считается отсутствующим и заменяется на проводе.
+func TestPaymentsCreateWhitespaceOrderIDReplaced(t *testing.T) {
+	var gotBody []byte
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
+		}})
+	}, nil)
+	defer srv.Close()
+
+	if _, err := c.Payments.Create(context.Background(), Params{"amount": "10", "currency": "USD", "order_id": "  "}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	oid := orderIDFromBody(t, gotBody)
+	if oid == "" || oid == "  " {
+		t.Fatalf("whitespace-only order_id must be replaced, got %q (body=%s)", oid, gotBody)
+	}
+}
+
+// (d) Отрицательный/огромный Retry-After не даёт отрицательной длительности и не паникует;
+// результат всегда зажат в [0, maxRetryAfter].
+func TestParseRetryAfterClampedNonNegative(t *testing.T) {
+	cases := []string{"", "abc", "-1", "-999999", "0", "60", "301", "99999999999999999", "9223372036854775807"}
+	for _, h := range cases {
+		d := parseRetryAfter(h)
+		if d < 0 {
+			t.Fatalf("Retry-After %q → negative duration %v (immediate busy-retry risk)", h, d)
+		}
+		if d > maxRetryAfter {
+			t.Fatalf("Retry-After %q → %v exceeds cap %v", h, d, maxRetryAfter)
+		}
+	}
+}
+
+// (d, продолжение) Огромный Retry-After ведёт к ОГРАНИЧЕННОЙ (не мгновенной) задержке: с коротким
+// контекстом повтор не крутится в busy-loop, а корректно упирается в дедлайн контекста.
+func TestHugeRetryAfterDoesNotBusyRetry(t *testing.T) {
+	var calls int32
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		w.Header().Set("Retry-After", "99999999999999999") // огромное значение
+		w.WriteHeader(429)
+		json.NewEncoder(w).Encode(map[string]any{"state": 1, "message": "rate limit exceeded"})
+	}, &RetryConfig{MaxAttempts: 5, InitialDelay: time.Millisecond, MaxDelay: 5 * time.Millisecond})
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	_, err := c.Account.Balance(ctx)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected error (context deadline during bounded retry wait)")
+	}
+	// Если задержка была отрицательной/мгновенной, повторы бы прокрутились быстро и сделали
+	// MaxAttempts вызовов. Ограниченная задержка (зажата к maxRetryAfter) + короткий контекст →
+	// ровно 1 вызов, затем упор в дедлайн.
+	if n := atomic.LoadInt32(&calls); n != 1 {
+		t.Fatalf("expected exactly 1 call (bounded wait, then ctx deadline), got %d — busy-retry?", n)
+	}
+	// Санити: не зависли надолго (context деконтит быстро).
+	if elapsed > 2*time.Second {
+		t.Fatalf("retry wait not bounded by context: %v", elapsed)
+	}
+}
+
 func TestFundsMaturingNotRetriable(t *testing.T) {
 	e := &APIError{Code: "payout.funds_maturing", Status: 409}
 	if e.IsRetriable() {

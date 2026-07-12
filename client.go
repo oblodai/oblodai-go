@@ -257,11 +257,16 @@ func (c *Client) execute(ctx context.Context, method, path string, payload any, 
 		delay := c.backoff(attempt)
 		var apiErr *APIError
 		if errors.As(err, &apiErr) && apiErr.RetryAfter > 0 {
-			// Уважаем серверный Retry-After как есть (не зажимаем к MaxDelay), но не дольше
-			// абсолютного потолка maxRetryAfter, чтобы избежать чрезмерного ожидания.
+			// Уважаем серверный Retry-After как есть (не зажимаем к MaxDelay), но зажимаем в
+			// диапазон [0, maxRetryAfter]: верхняя граница — против чрезмерного ожидания, нижняя —
+			// против отрицательной длительности (например, при переполнении time.Duration), из-за
+			// которой time.After сработал бы мгновенно и дал busy-retry.
 			delay = apiErr.RetryAfter
 			if delay > maxRetryAfter {
 				delay = maxRetryAfter
+			}
+			if delay < 0 {
+				delay = 0
 			}
 		}
 		c.logf(slog.LevelWarn, "oblodai: retrying", "method", method, "path", path, "delay_ms", delay.Milliseconds(), "reason", retryReason(err), "next_attempt", attempt+1)
@@ -326,6 +331,12 @@ func parseRetryAfter(header string) time.Duration {
 	secs, err := strconv.Atoi(strings.TrimSpace(header))
 	if err != nil || secs < 0 {
 		return 0
+	}
+	// Зажимаем к потолку ДО умножения: огромное значение секунд иначе переполнило бы time.Duration
+	// (int64 наносекунд) и могло дать отрицательную длительность → time.After сработал бы мгновенно
+	// (busy-retry). Результат всегда в диапазоне [0, maxRetryAfter].
+	if secs > int(maxRetryAfter/time.Second) {
+		return maxRetryAfter
 	}
 	return time.Duration(secs) * time.Second
 }

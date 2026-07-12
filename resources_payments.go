@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 )
 
 // newIdempotencyKey генерирует стабильный ключ идемпотентности вида "idem-<32 hex>"
@@ -14,19 +15,35 @@ func newIdempotencyKey() string {
 	return "idem-" + hex.EncodeToString(b[:])
 }
 
-// ensureOrderID гарантирует, что в params есть непустой order_id, вставляя сгенерированный
-// ключ идемпотентности, если его нет. Мутирует карту ОДИН раз, до цикла повторов, чтобы все
+// hasOrderID сообщает, задан ли в params «настоящий» order_id: значение должно быть строкой,
+// непустой после обрезки пробелов. Отсутствие, nil, "", "   " и любое не-строковое значение
+// считаются отсутствием (и приведут к вставке сгенерированного ключа).
+func hasOrderID(params Params) bool {
+	v, ok := params["order_id"]
+	if !ok {
+		return false
+	}
+	s, isStr := v.(string)
+	if !isStr {
+		return false
+	}
+	return strings.TrimSpace(s) != ""
+}
+
+// withOrderID возвращает ПОВЕРХНОСТНУЮ КОПИЮ params с гарантированным непустым order_id.
+// Исходную карту вызывающего НЕ мутируем: повторное использование одной карты в двух вызовах
+// Create/TransferToPersonal иначе протекло бы order_id из первого вызова во второй, и бэкенд
+// схлопнул бы две операции в одну по дедупу. Копию делаем ОДИН раз, до цикла повторов, чтобы все
 // попытки слали ОДИН И ТОТ ЖЕ order_id и бэкенд дедуплицировал повтор неидемпотентного POST.
-func ensureOrderID(params Params) {
-	if params == nil {
-		return // в nil-карту вставить нельзя; вызывающий передал пустое тело
+func withOrderID(params Params) Params {
+	out := make(Params, len(params)+1)
+	for k, v := range params {
+		out[k] = v
 	}
-	if v, ok := params["order_id"]; ok && v != nil {
-		if s, isStr := v.(string); !isStr || s != "" {
-			return // непустой order_id уже задан
-		}
+	if !hasOrderID(out) {
+		out["order_id"] = newIdempotencyKey()
 	}
-	params["order_id"] = newIdempotencyKey()
+	return out
 }
 
 // lookup собирает тело запроса по uuid или order_id (нужен хотя бы один).
@@ -49,10 +66,11 @@ type PaymentsResource struct{ c *Client }
 // Create создаёт платёжный счёт (инвойс). POST /v1/payment
 func (r *PaymentsResource) Create(ctx context.Context, params Params) (*Payment, error) {
 	// Авто-ключ идемпотентности: без непустого order_id повтор неидемпотентного POST создал бы
-	// второй платёж. Вставляем стабильный order_id до цикла повторов — бэкенд дедуплицирует по нему.
-	ensureOrderID(params)
+	// второй платёж. Вставляем стабильный order_id в КОПИЮ до цикла повторов (карту вызывающего не
+	// мутируем) — бэкенд дедуплицирует по нему.
+	body := withOrderID(params)
 	var out Payment
-	return &out, r.c.request(ctx, "/v1/payment", params, &out)
+	return &out, r.c.request(ctx, "/v1/payment", body, &out)
 }
 
 // Info возвращает информацию о счёте по uuid или order_id. POST /v1/payment/info

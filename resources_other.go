@@ -60,11 +60,12 @@ func (r *AccountResource) Referral(ctx context.Context) (*ReferralInfo, error) {
 
 // TransferToPersonal переводит средства на личный кошелёк владельца. POST /v1/transfer/to-personal
 func (r *AccountResource) TransferToPersonal(ctx context.Context, params Params) (map[string]any, error) {
-	// Авто-ключ идемпотентности до цикла повторов, чтобы повтор дедуплицировался по order_id,
-	// а не пересобирал подпись на каждой попытке (иначе backend видит их как разные переводы).
-	ensureOrderID(params)
+	// Авто-ключ идемпотентности в КОПИЮ до цикла повторов (карту вызывающего не мутируем), чтобы
+	// повтор дедуплицировался по order_id, а не пересобирал подпись на каждой попытке (иначе backend
+	// видит их как разные переводы).
+	body := withOrderID(params)
 	var out map[string]any
-	return out, r.c.request(ctx, "/v1/transfer/to-personal", params, &out)
+	return out, r.c.request(ctx, "/v1/transfer/to-personal", body, &out)
 }
 
 // VRCS включает/выключает VRCS. enabled nil — чтение. POST /v1/vrcs
