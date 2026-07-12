@@ -3,7 +3,7 @@
 This package (`github.com/oblodai/oblodai-go`) is published to **Go modules** by CI when a `v*` tag is pushed.
 
 ## Setup (one-time)
-**No secret needed.** Go modules are published by tag; consumers fetch via `go get`. (The repo is currently **private** — consumers must set `GOPRIVATE=github.com/oblodai/*` and have access.)
+**No secret needed.** Go modules are published by tag; consumers fetch via `go get github.com/oblodai/oblodai-go@vX.Y.Z`. The repository is public, so no extra configuration is required.
 
 ## Cut a release
 1. `git tag vX.Y.Z && git push origin vX.Y.Z`.
