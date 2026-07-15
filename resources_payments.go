@@ -1,50 +1,6 @@
 package oblodai
 
-import (
-	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"strings"
-)
-
-// newIdempotencyKey генерирует стабильный ключ идемпотентности вида "idem-<32 hex>"
-// из 16 случайных байт (crypto/rand). Без внешних зависимостей.
-func newIdempotencyKey() string {
-	var b [16]byte
-	_, _ = rand.Read(b[:]) // rand.Read из crypto/rand не возвращает частичного чтения
-	return "idem-" + hex.EncodeToString(b[:])
-}
-
-// hasOrderID сообщает, задан ли в params «настоящий» order_id: значение должно быть строкой,
-// непустой после обрезки пробелов. Отсутствие, nil, "", "   " и любое не-строковое значение
-// считаются отсутствием (и приведут к вставке сгенерированного ключа).
-func hasOrderID(params Params) bool {
-	v, ok := params["order_id"]
-	if !ok {
-		return false
-	}
-	s, isStr := v.(string)
-	if !isStr {
-		return false
-	}
-	return strings.TrimSpace(s) != ""
-}
-
-// withOrderID возвращает ПОВЕРХНОСТНУЮ КОПИЮ params с гарантированным непустым order_id.
-// Исходную карту вызывающего НЕ мутируем: повторное использование одной карты в двух вызовах
-// Create/TransferToPersonal иначе протекло бы order_id из первого вызова во второй, и бэкенд
-// схлопнул бы две операции в одну по дедупу. Копию делаем ОДИН раз, до цикла повторов, чтобы все
-// попытки слали ОДИН И ТОТ ЖЕ order_id и бэкенд дедуплицировал повтор неидемпотентного POST.
-func withOrderID(params Params) Params {
-	out := make(Params, len(params)+1)
-	for k, v := range params {
-		out[k] = v
-	}
-	if !hasOrderID(out) {
-		out["order_id"] = newIdempotencyKey()
-	}
-	return out
-}
+import "context"
 
 // lookup собирает тело запроса по uuid или order_id (нужен хотя бы один).
 func lookup(uuid, orderID string) Params {
@@ -64,13 +20,83 @@ func lookup(uuid, orderID string) Params {
 type PaymentsResource struct{ c *Client }
 
 // Create создаёт платёжный счёт (инвойс). POST /v1/payment
+//
+// Защита от дублей при повторах — заголовок Idempotency-Key: SDK генерирует UUID один раз до цикла
+// повторов, все ретраи шлют один и тот же ключ. order_id уходит КАК ЕСТЬ — SDK его не подставляет
+// и не переписывает (ломающее изменение v1.1.0: раньше при пустом order_id SDK вставлял свой).
+// Свой ключ идемпотентности можно передать полем params["idempotency_key"] — оно уйдёт в заголовок,
+// не в тело.
 func (r *PaymentsResource) Create(ctx context.Context, params Params) (*Payment, error) {
-	// Авто-ключ идемпотентности: без непустого order_id повтор неидемпотентного POST создал бы
-	// второй платёж. Вставляем стабильный order_id в КОПИЮ до цикла повторов (карту вызывающего не
-	// мутируем) — бэкенд дедуплицирует по нему.
-	body := withOrderID(params)
 	var out Payment
-	return &out, r.c.request(ctx, "/v1/payment", body, &out)
+	return &out, r.c.requestIdem(ctx, "/v1/payment", params, &out)
+}
+
+// CreateBatch ставит в обработку пачку платежей (до 5000) одним подписанным запросом.
+// POST /v1/payment/batch
+//
+// Каждый элемент — тело обычного Payments.Create; order_id ОБЯЗАТЕЛЕН на каждом элементе
+// (batch.order_id_required) и уникален внутри пачки. onError: "continue" (по умолчанию) или "stop".
+// Обработка фоновая: результаты по каждому элементу — через Batches.Info(batchID, ...).
+// Запрос идёт с заголовком Idempotency-Key (стабилен между повторами).
+func (r *PaymentsResource) CreateBatch(ctx context.Context, payments []Params, onError string) (*BatchSubmission, error) {
+	body := Params{"payments": payments}
+	if onError != "" {
+		body["on_error"] = onError
+	}
+	var out BatchSubmission
+	return &out, r.c.requestIdem(ctx, "/v1/payment/batch", body, &out)
+}
+
+// RefundBatch ставит в обработку пачку возвратов (до 5000). POST /v1/refund/batch
+//
+// Каждый элемент — тело обычного Payments.Refund; обязательны reference (batch.reference_required)
+// и uuid/order_id инвойса (batch.invoice_required); дедуп внутри пачки — по (инвойс, reference).
+// onError: "continue" (по умолчанию) или "stop". Требует PAYOUT-ключ. Запрос идёт с заголовком
+// Idempotency-Key (стабилен между повторами).
+func (r *PaymentsResource) RefundBatch(ctx context.Context, refunds []Params, onError string) (*BatchSubmission, error) {
+	body := Params{"refunds": refunds}
+	if onError != "" {
+		body["on_error"] = onError
+	}
+	var out BatchSubmission
+	return &out, r.c.requestIdem(ctx, "/v1/refund/batch", body, &out)
+}
+
+// SendEmail отправляет покупателю письмо-счёт с кнопкой «Оплатить». POST /v1/payment/send-email
+//
+// Платёж ищется по uuid или orderID (нужен хотя бы один). email — получатель; пустая строка —
+// использовать payer_email платежа (если и он пуст — email.no_recipient). Лимит шлюза: 10 писем/час
+// на адрес получателя (email.rate_limited).
+func (r *PaymentsResource) SendEmail(ctx context.Context, uuid, orderID, email string) (*SendEmailResult, error) {
+	body := lookup(uuid, orderID)
+	if email != "" {
+		body["email"] = email
+	}
+	var out SendEmailResult
+	return &out, r.c.request(ctx, "/v1/payment/send-email", body, &out)
+}
+
+// Resolve решает судьбу НЕДОПЛАЧЕННОГО платежа (статус wrong_amount). POST /v1/payment/resolve
+//
+// action: "accept" — оставить частичную оплату себе (глушит авто-возврат) или "refund" — вернуть
+// плательщику. Платёж ищется по uuid или orderID (нужен хотя бы один). Для refund в opts можно
+// передать "address" (по умолчанию — адрес плательщика), "network" (по умолчанию — сеть инвойса) и
+// "reference" (per-refund ключ дедупликации); opts может быть nil. Требует PAYOUT-ключ.
+// Запрос идёт с заголовком Idempotency-Key (стабилен между повторами).
+func (r *PaymentsResource) Resolve(ctx context.Context, uuid, orderID, action string, opts Params) (*Resolution, error) {
+	body := make(Params, len(opts)+3)
+	for k, v := range opts {
+		body[k] = v
+	}
+	if uuid != "" {
+		body["uuid"] = uuid
+	}
+	if orderID != "" {
+		body["order_id"] = orderID
+	}
+	body["action"] = action
+	var out Resolution
+	return &out, r.c.requestIdem(ctx, "/v1/payment/resolve", body, &out)
 }
 
 // Info возвращает информацию о счёте по uuid или order_id. POST /v1/payment/info
@@ -103,9 +129,12 @@ func (r *PaymentsResource) Resend(ctx context.Context, uuid, orderID string) err
 }
 
 // Refund выполняет возврат средств платежа. POST /v1/payment/refund
+//
+// Запрос идёт с заголовком Idempotency-Key (стабилен между повторами); свой ключ — в
+// params["idempotency_key"].
 func (r *PaymentsResource) Refund(ctx context.Context, params Params) (map[string]any, error) {
 	var out map[string]any
-	return out, r.c.request(ctx, "/v1/payment/refund", params, &out)
+	return out, r.c.requestIdem(ctx, "/v1/payment/refund", params, &out)
 }
 
 // ListAccepted возвращает набор принимаемых валют. POST /v1/payment/accepted/list
@@ -162,19 +191,39 @@ func (r *PaymentsResource) ListDiscounts(ctx context.Context) ([]map[string]any,
 type PayoutsResource struct{ c *Client }
 
 // Create создаёт выплату на внешний адрес. POST /v1/payout
+//
+// order_id обязателен (его задаёте вы — payout.order_id_required). Запрос идёт с заголовком
+// Idempotency-Key (стабилен между повторами); свой ключ — в params["idempotency_key"].
 func (r *PayoutsResource) Create(ctx context.Context, params Params) (*Payout, error) {
 	var out Payout
-	return &out, r.c.request(ctx, "/v1/payout", params, &out)
+	return &out, r.c.requestIdem(ctx, "/v1/payout", params, &out)
 }
 
 // CreateMass выполняет массовую выплату (до 100). POST /v1/payout/mass
+//
+// Запрос идёт с заголовком Idempotency-Key (стабилен между повторами).
 func (r *PayoutsResource) CreateMass(ctx context.Context, payouts []Params, source string) (*MassPayoutResult, error) {
 	body := Params{"payouts": payouts}
 	if source != "" {
 		body["source"] = source
 	}
 	var out MassPayoutResult
-	return &out, r.c.request(ctx, "/v1/payout/mass", body, &out)
+	return &out, r.c.requestIdem(ctx, "/v1/payout/mass", body, &out)
+}
+
+// CreateBatch ставит в обработку пачку выплат (до 5000) одним подписанным запросом.
+// POST /v1/payout/batch
+//
+// Каждый элемент — тело обычного Payouts.Create; order_id ОБЯЗАТЕЛЕН на каждом элементе и уникален
+// внутри пачки. onError: "continue" (по умолчанию) или "stop". Обработка фоновая: результаты —
+// через Batches.Info(batchID, ...). Требует PAYOUT-ключ. Запрос идёт с заголовком Idempotency-Key.
+func (r *PayoutsResource) CreateBatch(ctx context.Context, payouts []Params, onError string) (*BatchSubmission, error) {
+	body := Params{"payouts": payouts}
+	if onError != "" {
+		body["on_error"] = onError
+	}
+	var out BatchSubmission
+	return &out, r.c.requestIdem(ctx, "/v1/payout/batch", body, &out)
 }
 
 // Info возвращает информацию о выплате. POST /v1/payout/info
@@ -208,9 +257,12 @@ func (r *PayoutsResource) Approve(ctx context.Context, uuid string) (map[string]
 }
 
 // Refund выполняет возврат средств платежа (движок выплат). POST /v1/payment/refund
+//
+// Запрос идёт с заголовком Idempotency-Key (стабилен между повторами); свой ключ — в
+// params["idempotency_key"].
 func (r *PayoutsResource) Refund(ctx context.Context, params Params) (map[string]any, error) {
 	var out map[string]any
-	return out, r.c.request(ctx, "/v1/payment/refund", params, &out)
+	return out, r.c.requestIdem(ctx, "/v1/payment/refund", params, &out)
 }
 
 // GetFeeConfig читает, кто платит сетевую комиссию выплаты. POST /v1/payout/fee-config/get

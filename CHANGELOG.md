@@ -3,6 +3,42 @@
 Значимые изменения этого пакета. Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/),
 версии — [SemVer](https://semver.org/lang/ru/).
 
+## [1.1.0] — 2026-07-15
+
+### ЛОМАЮЩИЕ ИЗМЕНЕНИЯ
+- **Идемпотентность: заголовок `Idempotency-Key` вместо авто-`order_id`.** Создающие вызовы
+  (`Payments.Create` / `Refund` / `Resolve` / `CreateBatch` / `RefundBatch`, `Payouts.Create` /
+  `CreateMass` / `CreateBatch`, `Account.TransferToPersonal`) шлют заголовок `Idempotency-Key`
+  (UUID v4, генерируется ОДИН раз до цикла повторов — все ретраи с одним ключом; в подпись запроса
+  заголовок не входит). SDK **больше не подставляет** сгенерированный `order_id` в тело: `order_id`
+  уходит как есть (в v1.0.x при пустом `order_id` вставлялся `idem-…`). Если вы полагались на
+  авто-`order_id` в ответе — задавайте его явно. Свой ключ идемпотентности можно передать полем
+  `params["idempotency_key"]` — оно уйдёт в заголовок и будет вырезано из тела.
+- **`Retry: nil` теперь означает дефолтные повторы** (`DefaultRetry()`: до 4 попыток, backoff
+  500 мс → 30 с, учёт `Retry-After`), как и в остальных SDK Oblodai. В v1.0.x `nil` означал
+  «повторов нет». Отключить повторы — явно: `Retry: oblodai.NoRetry()` (новая функция).
+
+### Добавлено
+- **Массовые операции (батчи, до 5000 элементов одним запросом):** `Payments.CreateBatch`,
+  `Payments.RefundBatch`, `Payouts.CreateBatch` (постановка, режим `on_error: continue|stop`) и
+  `client.Batches.Info(batchID, limit, offset)` — прогресс и результат по каждому элементу
+  (типы `BatchSubmission`, `BatchInfo`, `BatchItem`).
+- **Платёжные ссылки:** `client.Links` — `Create` (типизированный `LinkParams`), `List`, `Info`,
+  `Toggle` + публичные (без подписи) `PublicGet` и `Checkout`.
+- **Сплит-платежи:** `client.Splits` — `CreateRule`, удобные `SplitToAddress` / `SplitToMerchant`,
+  `ListRules`, `DeleteRule`, `GetConfig` / `SetConfig(refundHoldHours)`.
+- **Payout-ссылки (крипто-чеки):** `client.PayoutLinks` — `Create`, `CreateBatch` (до 500), `List`,
+  `Info`, `Cancel` + публичные (без подписи, без ключей) `ClaimInfo(token)`, `Claim(token, address)`
+  и `ClaimWithMemo`. Тип `PayoutLink` со статусами `funded` / `claiming` / `claimed` / `expired` /
+  `cancelled` (константы `PayoutLinkStatus*`). Заголовок `Idempotency-Key` на payout-link-эндпоинты
+  НЕ шлётся (они не обёрнуты в идемпотентность на шлюзе) — защита от дублей: per-link `Reference`.
+  Задавайте `ExpiresInHours` явно: при 0 бэкенд клампит срок к минимуму — 1 час (диапазон 1–720).
+- **Счёт на e-mail:** `Payments.SendEmail(ctx, uuid, orderID, email)` — письмо покупателю с кнопкой
+  «Оплатить» (тип `SendEmailResult`).
+- **Судьба недоплаты:** `Payments.Resolve(ctx, uuid, orderID, action, opts)` — `accept` (оставить
+  частичную оплату, глушит авто-возврат) или `refund` (вернуть плательщику; opts: `address`,
+  `network`, `reference`). Тип `Resolution`.
+
 ## [1.0.2] — 2026-07-12
 
 ### Исправлено

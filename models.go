@@ -34,6 +34,10 @@ type Payment struct {
 	Confirmations         int    `json:"confirmations"`
 	RequiredConfirmations int    `json:"required_confirmations"`
 	TxID                  string `json:"txid"`
+	// v1.1.0:
+	PayerAddress string           `json:"payer_address,omitempty"` // адрес, с которого пришли деньги
+	RefundStatus string           `json:"refund_status,omitempty"` // "none" | "partial" | "full"
+	Refunds      []map[string]any `json:"refunds,omitempty"`       // выполненные возвраты по платежу
 }
 
 // Paginate — пагинация в списковых ответах.
@@ -222,6 +226,32 @@ type AutoWithdrawRule struct {
 	Network  string `json:"network"`
 	Address  string `json:"address"`
 	MinMinor string `json:"min_minor"`
+}
+
+// SendEmailResult — результат Payments.SendEmail.
+type SendEmailResult struct {
+	Sent  bool   `json:"sent"`
+	Email string `json:"email"`
+	UUID  string `json:"uuid"`
+}
+
+// Resolution — результат Payments.Resolve (решение по недоплаченному платежу).
+// При action=accept заполнены AmountKept/Currency; при action=refund — UUID (рефанд-выплата),
+// Amount, Address, Status, IsFinal.
+type Resolution struct {
+	PaymentUUID string `json:"payment_uuid"`
+	OrderID     string `json:"order_id,omitempty"`
+	Resolution  string `json:"resolution"` // "accepted" | "refunded"
+	// accept:
+	AmountKept string `json:"amount_kept,omitempty"`
+	// refund:
+	UUID    string `json:"uuid,omitempty"` // uuid рефанд-выплаты
+	Amount  string `json:"amount,omitempty"`
+	Address string `json:"address,omitempty"`
+	Status  string `json:"status,omitempty"` // словарь статусов выплат: check/process/paid/fail/cancel
+	IsFinal bool   `json:"is_final,omitempty"`
+	// общие:
+	Currency string `json:"currency,omitempty"`
 }
 
 // Params — универсальная карта параметров запроса для методов со свободным набором полей.
