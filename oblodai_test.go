@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -352,7 +351,7 @@ func Test429SurfacesMessageAndRetryAfter(t *testing.T) {
 		w.Header().Set("Retry-After", "60")
 		w.WriteHeader(429)
 		json.NewEncoder(w).Encode(map[string]any{"state": 1, "message": "rate limit exceeded"})
-	}, nil) // повторы выключены
+	}, NoRetry()) // повторы выключены явно (nil теперь означает DefaultRetry)
 	defer srv.Close()
 
 	_, err := c.Account.Balance(context.Background())
@@ -368,9 +367,9 @@ func Test429SurfacesMessageAndRetryAfter(t *testing.T) {
 	}
 }
 
-// ──────────────────── Авто-идемпотентность (money-safety) ────────────────────
+// ──────────────────── Идемпотентность v1.1.0 (Idempotency-Key) ────────────────────
 
-// orderIDFromBody достаёт order_id из JSON-тела запроса.
+// orderIDFromBody достаёт order_id из JSON-тела запроса ("" — поля нет).
 func orderIDFromBody(t *testing.T, body []byte) string {
 	t.Helper()
 	var m map[string]any
@@ -379,79 +378,6 @@ func orderIDFromBody(t *testing.T, body []byte) string {
 	}
 	s, _ := m["order_id"].(string)
 	return s
-}
-
-func TestPaymentsCreateInjectsOrderID(t *testing.T) {
-	var gotBody []byte
-	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		gotBody, _ = io.ReadAll(r.Body)
-		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
-			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
-		}})
-	}, nil)
-	defer srv.Close()
-
-	// order_id НЕ задан — SDK обязан подставить непустой ключ идемпотентности.
-	if _, err := c.Payments.Create(context.Background(), Params{"amount": "10", "currency": "USD"}); err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-	if oid := orderIDFromBody(t, gotBody); oid == "" {
-		t.Fatalf("expected auto-injected order_id, body=%s", gotBody)
-	}
-}
-
-func TestPaymentsCreateSameOrderIDAcrossRetries(t *testing.T) {
-	var mu sync.Mutex
-	var bodies [][]byte
-	var calls int32
-	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		mu.Lock()
-		bodies = append(bodies, body)
-		mu.Unlock()
-		if atomic.AddInt32(&calls, 1) == 1 {
-			w.WriteHeader(503)
-			json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{"code": "x.unavailable", "message": "later"}})
-			return
-		}
-		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
-			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
-		}})
-	}, &RetryConfig{MaxAttempts: 3, InitialDelay: time.Millisecond, MaxDelay: 5 * time.Millisecond})
-	defer srv.Close()
-
-	if _, err := c.Payments.Create(context.Background(), Params{"amount": "10", "currency": "USD"}); err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-	mu.Lock()
-	defer mu.Unlock()
-	if len(bodies) != 2 {
-		t.Fatalf("expected 2 attempts (503 then ok), got %d", len(bodies))
-	}
-	oid0 := orderIDFromBody(t, bodies[0])
-	oid1 := orderIDFromBody(t, bodies[1])
-	if oid0 == "" {
-		t.Fatalf("first attempt missing order_id")
-	}
-	if oid0 != oid1 {
-		t.Fatalf("order_id differs across retries: %q vs %q", oid0, oid1)
-	}
-}
-
-func TestTransferToPersonalInjectsOrderID(t *testing.T) {
-	var gotBody []byte
-	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		gotBody, _ = io.ReadAll(r.Body)
-		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{"ok": true}})
-	}, nil)
-	defer srv.Close()
-
-	if _, err := c.Account.TransferToPersonal(context.Background(), Params{"amount": "5", "currency": "USDT"}); err != nil {
-		t.Fatalf("TransferToPersonal: %v", err)
-	}
-	if oid := orderIDFromBody(t, gotBody); oid == "" {
-		t.Fatalf("expected auto-injected order_id, body=%s", gotBody)
-	}
 }
 
 func TestPaymentsCreateKeepsCallerOrderID(t *testing.T) {
@@ -469,91 +395,6 @@ func TestPaymentsCreateKeepsCallerOrderID(t *testing.T) {
 	}
 	if oid := orderIDFromBody(t, gotBody); oid != "mine-1" {
 		t.Fatalf("caller order_id overwritten: %q", oid)
-	}
-}
-
-// (a) Create не мутирует карту вызывающего, но тело на проводе получает order_id.
-func TestPaymentsCreateDoesNotMutateCallerMap(t *testing.T) {
-	var gotBody []byte
-	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		gotBody, _ = io.ReadAll(r.Body)
-		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
-			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
-		}})
-	}, nil)
-	defer srv.Close()
-
-	m := Params{"amount": "10", "currency": "USD"}
-	if _, err := c.Payments.Create(context.Background(), m); err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-	// Карта вызывающего не должна получить order_id.
-	if _, ok := m["order_id"]; ok {
-		t.Fatalf("caller map was mutated: order_id leaked in %+v", m)
-	}
-	// Но тело на проводе — должно.
-	if oid := orderIDFromBody(t, gotBody); oid == "" {
-		t.Fatalf("expected auto-injected order_id on the wire, body=%s", gotBody)
-	}
-}
-
-// (b) Повторное использование одной карты в двух Create даёт ДВА РАЗНЫХ order_id на проводе.
-func TestPaymentsCreateReusedMapDistinctOrderIDs(t *testing.T) {
-	var mu sync.Mutex
-	var bodies [][]byte
-	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		mu.Lock()
-		bodies = append(bodies, body)
-		mu.Unlock()
-		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
-			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
-		}})
-	}, nil)
-	defer srv.Close()
-
-	m := Params{"amount": "10", "currency": "USD"} // одна и та же карта на оба вызова
-	if _, err := c.Payments.Create(context.Background(), m); err != nil {
-		t.Fatalf("Create #1: %v", err)
-	}
-	if _, err := c.Payments.Create(context.Background(), m); err != nil {
-		t.Fatalf("Create #2: %v", err)
-	}
-	if _, ok := m["order_id"]; ok {
-		t.Fatalf("caller map was mutated across reuse: %+v", m)
-	}
-	mu.Lock()
-	defer mu.Unlock()
-	if len(bodies) != 2 {
-		t.Fatalf("expected 2 requests, got %d", len(bodies))
-	}
-	oid0 := orderIDFromBody(t, bodies[0])
-	oid1 := orderIDFromBody(t, bodies[1])
-	if oid0 == "" || oid1 == "" {
-		t.Fatalf("missing order_id: %q %q", oid0, oid1)
-	}
-	if oid0 == oid1 {
-		t.Fatalf("reused map produced same order_id on both calls: %q — two ops would dedupe into one", oid0)
-	}
-}
-
-// (c) order_id из одних пробелов считается отсутствующим и заменяется на проводе.
-func TestPaymentsCreateWhitespaceOrderIDReplaced(t *testing.T) {
-	var gotBody []byte
-	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		gotBody, _ = io.ReadAll(r.Body)
-		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
-			"uuid": "p1", "amount": "10.00", "currency": "USD", "payment_status": "check", "address": "T1",
-		}})
-	}, nil)
-	defer srv.Close()
-
-	if _, err := c.Payments.Create(context.Background(), Params{"amount": "10", "currency": "USD", "order_id": "  "}); err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-	oid := orderIDFromBody(t, gotBody)
-	if oid == "" || oid == "  " {
-		t.Fatalf("whitespace-only order_id must be replaced, got %q (body=%s)", oid, gotBody)
 	}
 }
 

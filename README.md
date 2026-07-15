@@ -1,8 +1,9 @@
 # Oblodai Go SDK
 
-Официальный Go SDK для платёжного шлюза **Oblodai**: приём платежей, выплаты, статические кошельки,
-вебхуки. Без внешних зависимостей — только стандартная библиотека. Автоподпись запросов, разбор
-ответов, типизированные ошибки и автоматические повторы.
+Официальный Go SDK для платёжного шлюза **Oblodai**: приём платежей, выплаты, массовые операции
+(батчи), платёжные ссылки, payout-ссылки (крипто-чеки), сплиты, статические кошельки, вебхуки.
+Без внешних зависимостей — только стандартная библиотека. Автоподпись запросов, разбор ответов,
+типизированные ошибки и автоматические повторы.
 
 > **Базовый URL.** По умолчанию — `https://api.oblodai.com`. При необходимости переопределите `BaseURL` и свои ключи при инициализации.
 
@@ -12,7 +13,7 @@
 go get github.com/oblodai/oblodai-go
 ```
 
-Требуется Go 1.21+.
+Требуется Go 1.22.2+.
 
 ## Учётные данные
 
@@ -26,7 +27,7 @@ export OBLODAI_SECRET=oblodai_live_...
 
 ```go
 // читает OBLODAI_PUBLIC_ID / OBLODAI_SECRET / OBLODAI_BASE_URL; поля Config перекрывают окружение
-client, err := oblodai.NewFromEnv(oblodai.Config{Retry: oblodai.DefaultRetry()})
+client, err := oblodai.NewFromEnv(oblodai.Config{})
 ```
 
 ## Быстрый старт
@@ -48,7 +49,7 @@ func main() {
 		PublicID: "oblodai_...",
 		Secret:   "oblodai_live_...",
 		BaseURL:  "https://api.oblodai.com", // необязательно
-		Retry:    oblodai.DefaultRetry(),        // nil — без повторов
+		// Retry: nil — дефолтные повторы; oblodai.NoRetry() — отключить
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -71,6 +72,22 @@ func main() {
 ```
 
 Каждый метод принимает `context.Context` первым аргументом — можно задавать таймауты и отмену.
+
+## Идемпотентность (изменилось в v1.1.0)
+
+Защита от дублей при повторах — заголовок **`Idempotency-Key`**: на создающих вызовах
+(`Payments.Create` / `Refund` / `Resolve` / `*Batch`, `Payouts.Create` / `CreateMass` / `CreateBatch`,
+`Account.TransferToPersonal`) SDK генерирует UUID **один раз до цикла повторов**, поэтому все
+внутренние ретраи шлют один и тот же ключ, и шлюз дедуплицирует повтор. Заголовок не входит в
+подпись запроса.
+
+- **`order_id` уходит как есть.** SDK его больше **не подставляет и не переписывает** (ломающее
+  изменение: в v1.0.x пустой `order_id` заменялся сгенерированным). `order_id` — ваш
+  бизнес-идентификатор для поиска через `Payments.Info`; для выплат он обязателен всегда.
+- **Свой ключ идемпотентности**: передайте `params["idempotency_key"]` — он уйдёт в заголовок
+  (и будет вырезан из тела).
+- **Payout-ссылки** (`client.PayoutLinks`) заголовок **не используют** — эти эндпоинты не обёрнуты
+  в идемпотентность на шлюзе; защита от дублей там — ваш per-link `Reference`.
 
 ## Проверка вебхуков
 
@@ -138,39 +155,92 @@ if errors.As(err, &apiErr) {
 | `*ConnectionError` | Сеть недоступна или таймаут. |
 | `*SignatureError` | Не прошла проверка подписи вебхука. |
 
-## Повторы (retry)
+## Повторы (retry) — включены по умолчанию (изменилось в v1.1.0)
 
 Временные ошибки (`5xx`, `429`, сетевые сбои) повторяются автоматически с экспоненциальным backoff
-и джиттером. Ошибки запроса (`4xx`) не повторяются. Заголовок `Retry-After` уважается как есть (до
-потолка в 5 минут).
+и джиттером (до 4 попыток, старт 500 мс, потолок 30 с). Ошибки запроса (`4xx`, кроме 429) не
+повторяются. Заголовок `Retry-After` уважается как есть (до потолка в 5 минут).
+
+`Retry: nil` теперь означает **дефолтные повторы** — как и в остальных SDK Oblodai (в v1.0.x `nil`
+означал «повторов нет»). Отключайте осознанно:
 
 ```go
 client, _ := oblodai.New(oblodai.Config{
 	PublicID: "...", Secret: "...",
-	Retry: &oblodai.RetryConfig{
-		MaxAttempts:  4,
-		InitialDelay: 500 * time.Millisecond,
-		MaxDelay:     30 * time.Second,
-	},
-	// Retry: nil — отключить повторы
+	Retry: oblodai.NoRetry(), // отключить повторы
+	// либо свои настройки:
+	// Retry: &oblodai.RetryConfig{MaxAttempts: 4, InitialDelay: 500 * time.Millisecond, MaxDelay: 30 * time.Second},
 })
 ```
 
-> **Важно про таймаут.** Таймаут не означает, что операция не прошла. Повтор безопасен благодаря
-> идемпотентности по `order_id`: если операция уже создана — вернётся она же, дубля не будет.
->
-> - **Платежи** (`Payments.Create`) и **перевод на личный кошелёк** (`Account.TransferToPersonal`):
->   если вы не задали `order_id`, SDK автоматически подставит стабильный ключ идемпотентности
->   (`idem-…`) *до* цикла повторов, поэтому все попытки шлют один и тот же `order_id`. Ключ
->   вставляется в копию — переданная вами `Params` не изменяется, и одну карту можно безопасно
->   переиспользовать для нескольких вызовов (каждый получит собственный `order_id`).
-> - **Выплаты** (`Payouts.Create` / `CreateMass`) требуют `order_id` — задавайте его сами.
+> **Важно про таймаут.** Таймаут не означает, что операция не прошла. Повтор безопасен: все
+> внутренние ретраи создающих вызовов идут с одним и тем же `Idempotency-Key`, поэтому дубля не
+> будет — если операция уже создана, шлюз вернёт её же.
+
+## Массовые операции (v1.1.0)
+
+До 5000 платежей / возвратов / выплат одним подписанным запросом — одна отметка rate-limit.
+Обработка фоновая: постановка возвращает `batch_id`, результаты — через `Batches.Info`.
+
+```go
+sub, err := client.Payments.CreateBatch(ctx, []oblodai.Params{
+	{"amount": "10", "currency": "USD", "order_id": "a-1", "to_currency": "USDT", "network": "tron"},
+	{"amount": "20", "currency": "EUR", "order_id": "a-2", "to_currency": "USDT", "network": "tron"},
+}, "continue") // "continue" (по умолчанию) или "stop"
+
+info, err := client.Batches.Info(ctx, sub.BatchID, 100, 0) // прогресс и результат по каждому элементу
+```
+
+`order_id` обязателен на каждом элементе платежей/выплат; для возвратов — `reference` +
+`uuid`/`order_id` инвойса.
+
+## Платёжные ссылки, сплиты, счёт на e-mail (v1.1.0)
+
+```go
+// Платёжная ссылка: платят многие, каждый платёж — свой инвойс. Принимает деньги без вашего бэкенда.
+link, err := client.Links.Create(ctx, oblodai.LinkParams{AmountMode: "open", Currency: "USD"})
+
+// Сплит: доля каждого входящего платежа автоматически уходит партнёру.
+rule, err := client.Splits.SplitToAddress(ctx, "T...", "tron", 10.0, "партнёр А")
+
+// Счёт на e-mail (письмо с кнопкой «Оплатить»).
+_, err = client.Payments.SendEmail(ctx, payment.UUID, "" /* orderID */, "buyer@example.com")
+
+// Судьба недоплаченного платежа: принять частичную оплату или вернуть плательщику.
+res, err := client.Payments.Resolve(ctx, payment.UUID, "", "accept", nil)
+```
+
+## Payout-ссылки — крипто-чеки (v1.1.0)
+
+Зарезервируйте средства, **не зная кошелька получателя**: получатель откроет `ClaimURL`, введёт свой
+адрес — и из резерва породится обычная выплата.
+
+```go
+link, err := client.PayoutLinks.Create(ctx, oblodai.PayoutLinkParams{
+	Currency: "USDT", Network: "tron", Amount: "25",
+	Reference:      "bonus-42", // ваш ключ дедупликации (Idempotency-Key здесь не используется)
+	ExpiresInHours: 168,        // ЗАДАВАЙТЕ ЯВНО: при 0 бэкенд клампит к минимуму — 1 час
+	Email:          "user@example.com", // необязательно: письмо со ссылкой claim
+})
+// link.ClaimToken / link.ClaimURL возвращаются ТОЛЬКО здесь — сохраните сразу.
+
+// Публичные методы для своей страницы claim (без ключей):
+info, err := client.PayoutLinks.ClaimInfo(ctx, token)          // GET /v1/claim/{token}
+claim, err := client.PayoutLinks.Claim(ctx, token, "T-адрес")  // POST /v1/claim/{token}
+```
+
+Статусы ссылки: `funded` → `claiming` → `claimed`; либо `expired` / `cancelled`
+(константы `oblodai.PayoutLinkStatus*`). До 500 ссылок за раз — `PayoutLinks.CreateBatch`.
 
 ## Обзор методов
 
 ```go
 // Платежи
 client.Payments.Create(ctx, params)
+client.Payments.CreateBatch(ctx, payments, onError)   // v1.1.0
+client.Payments.RefundBatch(ctx, refunds, onError)    // v1.1.0
+client.Payments.SendEmail(ctx, uuid, orderID, email)  // v1.1.0
+client.Payments.Resolve(ctx, uuid, orderID, action, opts) // v1.1.0
 client.Payments.Info(ctx, uuid, orderID)
 client.Payments.History(ctx, params)
 client.Payments.Services(ctx)
@@ -180,11 +250,12 @@ client.Payments.Refund(ctx, params)
 client.Payments.SetAccepted(ctx, methods) / ListAccepted(ctx)
 client.Payments.SetAccuracy(ctx, params) / GetAccuracy(ctx)
 client.Payments.SetAutorefund(ctx, params) / GetAutorefund(ctx)
-client.Payments.SetDiscount(ctx, params)
+client.Payments.SetDiscount(ctx, params) / ListDiscounts(ctx)
 
 // Выплаты
 client.Payouts.Create(ctx, params)
 client.Payouts.CreateMass(ctx, payouts, source)
+client.Payouts.CreateBatch(ctx, payouts, onError)     // v1.1.0
 client.Payouts.Info(ctx, uuid, orderID)
 client.Payouts.History(ctx, params)
 client.Payouts.Services(ctx)
@@ -193,6 +264,34 @@ client.Payouts.Approve(ctx, uuid)
 client.Payouts.Refund(ctx, params)
 client.Payouts.GetFeeConfig(ctx) / SetFeeConfig(ctx, bool)
 client.Payouts.GetRefundFeeConfig(ctx) / SetRefundFeeConfig(ctx, bool)
+
+// Пачки (v1.1.0)
+client.Batches.Info(ctx, batchID, limit, offset)
+
+// Платёжные ссылки (v1.1.0)
+client.Links.Create(ctx, linkParams)
+client.Links.List(ctx, limit, offset)
+client.Links.Info(ctx, linkID)
+client.Links.Toggle(ctx, linkID, active)
+client.Links.PublicGet(ctx, linkID)        // публичный, без подписи
+client.Links.Checkout(ctx, linkID, params) // публичный, без подписи
+
+// Сплиты (v1.1.0)
+client.Splits.CreateRule(ctx, params)
+client.Splits.SplitToAddress(ctx, address, network, percent, note)
+client.Splits.SplitToMerchant(ctx, merchantID, percent, note)
+client.Splits.ListRules(ctx) / DeleteRule(ctx, ruleID)
+client.Splits.GetConfig(ctx) / SetConfig(ctx, refundHoldHours)
+
+// Payout-ссылки — крипто-чеки (v1.1.0)
+client.PayoutLinks.Create(ctx, params)
+client.PayoutLinks.CreateBatch(ctx, links) // до 500
+client.PayoutLinks.List(ctx, limit, offset)
+client.PayoutLinks.Info(ctx, linkID)
+client.PayoutLinks.Cancel(ctx, linkID)
+client.PayoutLinks.ClaimInfo(ctx, token)                 // публичный, без подписи
+client.PayoutLinks.Claim(ctx, token, address)            // публичный, без подписи
+client.PayoutLinks.ClaimWithMemo(ctx, token, address, memo)
 
 // Кошельки
 client.Wallets.Create(ctx, params)
@@ -217,13 +316,20 @@ client.Settings.ListAllowlist(ctx) / AddAllowlist(ctx, cidr) / RemoveAllowlist(c
 
 // Курсы (публично, без ключа)
 client.Rates.List(ctx, "ETH")
+client.Rates.Currencies(ctx)
 ```
+
+## Логи и отладка
+
+Включаются переменной окружения (`export OBLODAI_LOG=debug`; уровни `debug`/`info`/`warn`/`error`)
+или своим логгером: `Config{Logger: slog-логгер}`. Секреты, подпись и тела запросов в лог не
+попадают никогда — только метод, путь, статус, номер попытки и задержка ретрая.
 
 ## Замечания
 
 - **Суммы — строки** в единицах валюты (`"25.00"`), не числа. Так сохраняется точность.
-- **`order_id`/`reference` — ваш ключ идемпотентности.** Обязателен для выплат; для платежей и
-  перевода на личный кошелёк SDK подставит его автоматически, если вы не задали.
+- **`order_id` — ваш бизнес-идентификатор**, обязателен для выплат; ключом идемпотентности он
+  больше не является (см. раздел «Идемпотентность»).
 - **Секрет — только на сервере.** SDK серверный; не встраивайте ключ в клиентские приложения.
 
 ## Лицензия

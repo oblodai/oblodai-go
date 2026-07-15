@@ -3,6 +3,8 @@ package oblodai
 import (
 	"bytes"
 	"context"
+	cryptorand "crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -79,8 +81,17 @@ type RetryConfig struct {
 }
 
 // DefaultRetry возвращает разумные настройки повторов по умолчанию.
+// С v1.1.0 передавать его не обязательно: nil в Config.Retry означает те же дефолтные повторы.
 func DefaultRetry() *RetryConfig {
 	return &RetryConfig{MaxAttempts: 4, InitialDelay: 500 * time.Millisecond, MaxDelay: 30 * time.Second}
+}
+
+// NoRetry отключает автоматические повторы (ровно одна попытка на вызов).
+//
+// С v1.1.0 повторы включены по умолчанию (Retry: nil == DefaultRetry()), как и в остальных SDK
+// Oblodai. Отключайте их осознанно: Config{Retry: oblodai.NoRetry()}.
+func NoRetry() *RetryConfig {
+	return &RetryConfig{MaxAttempts: 1}
 }
 
 // Config — конфигурация клиента.
@@ -89,7 +100,7 @@ type Config struct {
 	Secret     string        // secret для подписи запросов — обязателен
 	BaseURL    string        // базовый URL API (по умолчанию https://api.oblodai.com)
 	Timeout    time.Duration // таймаут запроса (по умолчанию 30с)
-	Retry      *RetryConfig  // настройки повторов; nil отключает повторы
+	Retry      *RetryConfig  // настройки повторов; nil = DefaultRetry(); отключить — NoRetry()
 	HTTPClient *http.Client  // кастомный HTTP-клиент (по умолчанию свой)
 	// Logger — необязательный slog-логгер. nil (по умолчанию) отключает логирование. Если nil, но
 	// задана переменная окружения OBLODAI_LOG (debug/info/warn/error), клиент создаёт text-логгер в
@@ -98,7 +109,7 @@ type Config struct {
 }
 
 // Client — клиент Oblodai API. Создаётся через New. Ресурсы доступны как поля:
-// Payments, Payouts, Wallets, Account, Webhooks, Settings, Rates.
+// Payments, Payouts, Batches, Links, Splits, PayoutLinks, Wallets, Account, Webhooks, Settings, Rates.
 type Client struct {
 	publicID string
 	secret   string
@@ -107,13 +118,17 @@ type Client struct {
 	hc       *http.Client
 	logger   *slog.Logger
 
-	Payments *PaymentsResource
-	Payouts  *PayoutsResource
-	Wallets  *WalletsResource
-	Account  *AccountResource
-	Webhooks *WebhooksResource
-	Settings *SettingsResource
-	Rates    *RatesResource
+	Payments    *PaymentsResource
+	Payouts     *PayoutsResource
+	Batches     *BatchesResource
+	Links       *LinksResource
+	Splits      *SplitsResource
+	PayoutLinks *PayoutLinksResource
+	Wallets     *WalletsResource
+	Account     *AccountResource
+	Webhooks    *WebhooksResource
+	Settings    *SettingsResource
+	Rates       *RatesResource
 }
 
 // New создаёт клиента. Возвращает ошибку, если не заданы обязательные поля конфигурации.
@@ -139,8 +154,11 @@ func New(cfg Config) (*Client, error) {
 		hc = &http.Client{Timeout: timeout}
 	}
 
+	// С v1.1.0 nil означает дефолтные повторы (как во всех SDK Oblodai). Отключить — NoRetry().
 	retry := cfg.Retry
-	// nil в конфиге означает «повторов нет». Чтобы получить дефолтные — вызовите DefaultRetry().
+	if retry == nil {
+		retry = DefaultRetry()
+	}
 
 	// Логгер: явный из конфига имеет приоритет; иначе — env-based opt-in (OBLODAI_LOG), разбираемый
 	// один раз. nil остаётся nil (логирование выключено).
@@ -159,6 +177,10 @@ func New(cfg Config) (*Client, error) {
 	}
 	c.Payments = &PaymentsResource{c}
 	c.Payouts = &PayoutsResource{c}
+	c.Batches = &BatchesResource{c}
+	c.Links = &LinksResource{c}
+	c.Splits = &SplitsResource{c}
+	c.PayoutLinks = &PayoutLinksResource{c}
 	c.Wallets = &WalletsResource{c}
 	c.Account = &AccountResource{c}
 	c.Webhooks = &WebhooksResource{c}
@@ -212,31 +234,73 @@ func retryReason(err error) string {
 	return "network"
 }
 
+// newIdempotencyKey генерирует UUID v4 (RFC 4122) из crypto/rand — ключ идемпотентности для
+// заголовка Idempotency-Key. Без внешних зависимостей.
+func newIdempotencyKey() string {
+	var b [16]byte
+	_, _ = cryptorand.Read(b[:]) // crypto/rand.Read не возвращает частичного чтения
+	b[6] = (b[6] & 0x0f) | 0x40  // версия 4
+	b[8] = (b[8] & 0x3f) | 0x80  // вариант RFC 4122
+	h := hex.EncodeToString(b[:])
+	return h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
+}
+
 // request выполняет подписанный POST-запрос и разбирает result из конверта в out.
 func (c *Client) request(ctx context.Context, path string, payload any, out any) error {
-	return c.execute(ctx, http.MethodPost, path, payload, true, out)
+	return c.execute(ctx, http.MethodPost, path, payload, true, "", out)
+}
+
+// requestIdem выполняет подписанный POST-запрос НА СОЗДАЮЩИЙ эндпоинт (обёрнутый бэкендом в
+// withIdempotency) с заголовком Idempotency-Key.
+//
+// Ключ генерируется ОДИН РАЗ, до цикла повторов, — все внутренние ретраи шлют один и тот же
+// заголовок, и шлюз дедуплицирует повтор неидемпотентного POST (без риска двойного платежа или
+// выплаты). Заголовок НЕ входит в подпись запроса (подписываются только timestamp/метод/путь/тело).
+//
+// Свой ключ можно передать полем body["idempotency_key"]: оно вырезается из тела (в копии — карта
+// вызывающего не мутируется) и уходит заголовком.
+func (c *Client) requestIdem(ctx context.Context, path string, body Params, out any) error {
+	key := ""
+	if v, ok := body["idempotency_key"]; ok {
+		if s, isStr := v.(string); isStr && strings.TrimSpace(s) != "" {
+			key = strings.TrimSpace(s)
+		}
+		// Служебное поле не должно уйти в тело — вырезаем его из ПОВЕРХНОСТНОЙ КОПИИ,
+		// исходную карту вызывающего не трогаем.
+		clean := make(Params, len(body))
+		for k, val := range body {
+			if k != "idempotency_key" {
+				clean[k] = val
+			}
+		}
+		body = clean
+	}
+	if key == "" {
+		key = newIdempotencyKey()
+	}
+	return c.execute(ctx, http.MethodPost, path, body, true, key, out)
 }
 
 // requestPublic выполняет запрос БЕЗ подписи (публичные эндпоинты).
 func (c *Client) requestPublic(ctx context.Context, path string, payload any, out any) error {
-	return c.execute(ctx, http.MethodPost, path, payload, false, out)
+	return c.execute(ctx, http.MethodPost, path, payload, false, "", out)
 }
 
 // requestPublicGET выполняет публичный GET-запрос без подписи (напр. GET /v1/currencies).
 func (c *Client) requestPublicGET(ctx context.Context, path string, out any) error {
-	return c.execute(ctx, http.MethodGet, path, nil, false, out)
+	return c.execute(ctx, http.MethodGet, path, nil, false, "", out)
 }
 
-func (c *Client) execute(ctx context.Context, method, path string, payload any, signed bool, out any) error {
+func (c *Client) execute(ctx context.Context, method, path string, payload any, signed bool, idemKey string, out any) error {
 	attempts := 1
-	if c.retry != nil {
+	if c.retry != nil && c.retry.MaxAttempts > 1 {
 		attempts = c.retry.MaxAttempts
 	}
 
 	var lastErr error
 	for attempt := 1; attempt <= attempts; attempt++ {
 		c.logf(slog.LevelDebug, "oblodai: request", "method", method, "path", path, "attempt", attempt, "attempts", attempts)
-		result, err := c.once(ctx, method, path, payload, signed)
+		result, err := c.once(ctx, method, path, payload, signed, idemKey)
 		if err == nil {
 			if out != nil && len(result) > 0 {
 				if jsonErr := json.Unmarshal(result, out); jsonErr != nil {
@@ -280,7 +344,7 @@ func (c *Client) execute(ctx context.Context, method, path string, payload any, 
 }
 
 // once делает один HTTP-запрос и возвращает сырой result (или ошибку).
-func (c *Client) once(ctx context.Context, method, path string, payload any, signed bool) ([]byte, error) {
+func (c *Client) once(ctx context.Context, method, path string, payload any, signed bool, idemKey string) ([]byte, error) {
 	var bodyBytes []byte
 	if method != http.MethodGet {
 		if payload == nil {
@@ -298,6 +362,11 @@ func (c *Client) once(ctx context.Context, method, path string, payload any, sig
 		return nil, &ConnectionError{Message: "не удалось создать запрос", Cause: err}
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if idemKey != "" {
+		// Ключ идемпотентности стабилен между повторами (сгенерирован до цикла в requestIdem)
+		// и НЕ входит в подпись — подписываются только timestamp/метод/путь/тело.
+		req.Header.Set("Idempotency-Key", idemKey)
+	}
 
 	if signed && bodyBytes != nil {
 		ts, sig := signRequest(c.secret, method, path, string(bodyBytes), "")
