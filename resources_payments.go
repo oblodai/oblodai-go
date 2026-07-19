@@ -81,6 +81,11 @@ func (r *PaymentsResource) SendEmail(ctx context.Context, uuid, orderID, email s
 
 // Resolve решает судьбу НЕДОПЛАЧЕННОГО платежа (статус wrong_amount). POST /v1/payment/resolve
 //
+// РАЗРЕШЁН ТОЛЬКО НА ЗАКРЫВШЕМСЯ СЧЁТЕ. Пока счёт в wrong_amount_waiting (недоплата увидена, но
+// срок ещё не вышел — покупатель может доплатить), шлюз отвечает 409 resolution.not_underpaid.
+// Это не ошибка вашей интеграции: дождитесь перехода в wrong_amount и повторите. Тот же 409
+// приходит на paid/paid_over/cancel — решать там нечего.
+//
 // action: "accept" — оставить частичную оплату себе (глушит авто-возврат) или "refund" — вернуть
 // плательщику. Платёж ищется по uuid или orderID (нужен хотя бы один). Для refund в opts можно
 // передать "address" (по умолчанию — адрес плательщика), "network" (по умолчанию — сеть инвойса) и

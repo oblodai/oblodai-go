@@ -12,7 +12,9 @@ import (
 	"log/slog"
 	"math"
 	"math/rand"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -109,8 +111,8 @@ type Config struct {
 }
 
 // Client — клиент Oblodai API. Создаётся через New. Ресурсы доступны как поля:
-// Payments, Payouts, Batches, Links, Splits, PayoutLinks, Wallets, Account, Webhooks, Settings,
-// Rates, Sandbox.
+// Payments, Payouts, Batches, PaymentLinks (алиас Links), Splits, PayoutLinks, Wallets, Account,
+// Webhooks, Settings, Rates, Sandbox.
 type Client struct {
 	publicID string
 	secret   string
@@ -119,9 +121,15 @@ type Client struct {
 	hc       *http.Client
 	logger   *slog.Logger
 
-	Payments    *PaymentsResource
-	Payouts     *PayoutsResource
-	Batches     *BatchesResource
+	Payments *PaymentsResource
+	Payouts  *PayoutsResource
+	Batches  *BatchesResource
+	// PaymentLinks — переиспользуемые платёжные ссылки. Каноническое имя ресурса, единое во всех
+	// SDK Oblodai (payment_links / paymentLinks / PaymentLinks), — переносите код между языками
+	// без переименований.
+	PaymentLinks *LinksResource
+	// Links — задокументированный алиас PaymentLinks: тот же самый объект ресурса (сравнение
+	// c.Links == c.PaymentLinks истинно). Оставлен навсегда ради обратной совместимости.
 	Links       *LinksResource
 	Splits      *SplitsResource
 	PayoutLinks *PayoutLinksResource
@@ -133,7 +141,45 @@ type Client struct {
 	Sandbox     *SandboxResource
 }
 
-// New создаёт клиента. Возвращает ошибку, если не заданы обязательные поля конфигурации.
+// isLoopbackHost сообщает, что хост — локальная петля (localhost, 127.0.0.0/8, ::1). Порт должен
+// быть уже отрезан.
+func isLoopbackHost(host string) bool {
+	host = strings.Trim(host, "[]") // ::1 приходит в скобках
+	if strings.EqualFold(host, "localhost") || strings.HasSuffix(strings.ToLower(host), ".localhost") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
+}
+
+// validateBaseURL запрещает передавать подпись запроса (X-Signature) по незашифрованному каналу.
+//
+// Схема обязана быть https. Единственное исключение — http на локальную петлю (localhost,
+// 127.0.0.1, ::1): по ней работают локальные стенды шлюза, там перехватывать нечего.
+func validateBaseURL(baseURL string) error {
+	u, err := url.Parse(baseURL)
+	if err != nil || u.Host == "" {
+		return fmt.Errorf("oblodai: некорректный Config.BaseURL %q — ожидается абсолютный URL вида https://api.oblodai.com", baseURL)
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "https":
+		return nil
+	case "http":
+		if isLoopbackHost(u.Hostname()) {
+			return nil // локальный стенд, например http://localhost:8095
+		}
+		return fmt.Errorf(
+			"oblodai: небезопасный Config.BaseURL %q — по http подпись запроса (X-Signature) и заголовки уходят открытым текстом. "+
+				"Используйте https://; http допустим только для локального стенда на localhost / 127.0.0.1 / [::1]", baseURL)
+	default:
+		return fmt.Errorf("oblodai: неподдерживаемая схема в Config.BaseURL %q — ожидается https:// (или http:// для локального стенда)", baseURL)
+	}
+}
+
+// New создаёт клиента. Возвращает ошибку, если не заданы обязательные поля конфигурации либо
+// BaseURL небезопасен (не-https на внешний хост — см. validateBaseURL).
 func New(cfg Config) (*Client, error) {
 	if cfg.PublicID == "" {
 		return nil, errors.New("oblodai: Config.PublicID обязателен")
@@ -146,6 +192,9 @@ func New(cfg Config) (*Client, error) {
 		baseURL = defaultBaseURL
 	}
 	baseURL = strings.TrimRight(baseURL, "/")
+	if err := validateBaseURL(baseURL); err != nil {
+		return nil, err
+	}
 
 	hc := cfg.HTTPClient
 	if hc == nil {
@@ -180,7 +229,8 @@ func New(cfg Config) (*Client, error) {
 	c.Payments = &PaymentsResource{c}
 	c.Payouts = &PayoutsResource{c}
 	c.Batches = &BatchesResource{c}
-	c.Links = &LinksResource{c}
+	c.PaymentLinks = &LinksResource{c}
+	c.Links = c.PaymentLinks // алиас: тот же объект, не копия
 	c.Splits = &SplitsResource{c}
 	c.PayoutLinks = &PayoutLinksResource{c}
 	c.Wallets = &WalletsResource{c}

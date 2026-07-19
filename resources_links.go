@@ -26,17 +26,23 @@ type LinkParams struct {
 // PaymentLinkCreated — результат создания платёжной ссылки.
 type PaymentLinkCreated struct {
 	LinkID string `json:"link_id"`
-	URL    string `json:"url"` // публичная страница ссылки
+	// URL — публичная страница ссылки. Шлюз собирает её из своего публичного базового URL
+	// (GATEWAY_PUBLIC_BASE_URL) как `{base}/link/{link_id}`. На локальном стенде без этой
+	// переменной приходит ПУСТАЯ строка — стройте ссылку сами из LinkID. В проде шлюз без неё
+	// не стартует, поэтому там URL всегда есть.
+	URL string `json:"url"`
 }
 
 // PaymentLink — платёжная ссылка (linkView).
 type PaymentLink struct {
-	LinkID         string `json:"link_id"`
-	Title          string `json:"title"`
-	Description    string `json:"description"`
-	AmountMode     string `json:"amount_mode"`
-	Currency       string `json:"currency"`
-	Active         bool   `json:"active"`
+	LinkID      string `json:"link_id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	AmountMode  string `json:"amount_mode"`
+	Currency    string `json:"currency"`
+	Active      bool   `json:"active"`
+	// URL — публичная страница ссылки, собирается шлюзом из GATEWAY_PUBLIC_BASE_URL. На локальном
+	// стенде без этой переменной — пустая строка (см. PaymentLinkCreated.URL).
 	URL            string `json:"url"`
 	CreatedAt      string `json:"created_at"`
 	AmountFixed    string `json:"amount_fixed,omitempty"`
@@ -70,8 +76,13 @@ type PaymentLinkToggle struct {
 }
 
 // LinksResource — переиспользуемые платёжные ссылки: по одной ссылке платят много людей, каждый
-// платёж — отдельный инвойс. Management-методы (Create/List/Info/Toggle) подписываются платёжным
-// ключом; PublicGet/Checkout — публичные (без подписи), их зовёт страница оплаты.
+// платёж — отдельный инвойс.
+//
+// Доступен под двумя именами: `client.PaymentLinks` (каноническое, совпадает с остальными SDK
+// Oblodai) и `client.Links` (алиас, тот же объект).
+//
+// Management-методы (Create/List/Info/Toggle) подписываются платёжным ключом; PublicGet/Checkout —
+// публичные (без подписи), их зовёт страница оплаты.
 type LinksResource struct{ c *Client }
 
 // Create создаёт платёжную ссылку. POST /v1/payment/link
