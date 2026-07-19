@@ -3,6 +3,27 @@
 Значимые изменения этого пакета. Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/),
 версии — [SemVer](https://semver.org/lang/ru/).
 
+## [1.2.0] — 2026-07-19
+
+### Добавлено
+- **Песочница разработчика (`client.Sandbox`).** Бизнес-эндпоинты для тестовых ключей
+  (`test_…` / `oblodai_test_…`) не меняются — меняется только ключ. Новое — пять test-only
+  помощников (в проде их нет; живой ключ получает `403 sandbox.live_key`):
+  - `Sandbox.SimulateDeposit(ctx, SandboxDepositParams)` — симуляция он-чейн депозита в инвойс
+    (`POST /v1/sandbox/deposit`): точная оплата / недоплата / переплата (`Amount`), неглубокие
+    подтверждения и углубление повтором того же `TxID` (`Confirmations`), идемпотентность по `TxID`.
+  - `Sandbox.Faucet(ctx, asset, amount)` / `FaucetWithKey(…, key)` — «кран» тестового баланса
+    (`POST /v1/sandbox/faucet`, потолок 1000000 за вызов; ключ идемпотентности — полем тела).
+  - `Sandbox.Reset(ctx)` — отмена открытых инвойсов и обнуление балансов (`POST /v1/sandbox/reset`).
+  - `Sandbox.ListWebhooks(ctx)` — последние ≤50 доставок вебхуков с сырым `Payload`
+    (`GET /v1/sandbox/webhooks`, тип `SandboxDelivery`).
+  - `Sandbox.ReplayWebhook(ctx, deliveryID)` — повторная постановка доставки в очередь
+    (`POST /v1/sandbox/webhooks/replay`).
+- **`oblodai.IsTestKey(publicID)`** — проверка, что public_id тестовый (префикс `test_`).
+- **Подписанный GET.** HTTP-слой умеет подписывать GET-запросы с пустым телом — та же каноническая
+  строка `{ts}\nGET\n{path}\n{пустое тело}` (нужно для `GET /v1/sandbox/webhooks`; поведение
+  остальных эндпоинтов не изменилось).
+
 ## [1.1.0] — 2026-07-15
 
 ### ЛОМАЮЩИЕ ИЗМЕНЕНИЯ

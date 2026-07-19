@@ -232,6 +232,64 @@ claim, err := client.PayoutLinks.Claim(ctx, token, "T-адрес")  // POST /v1/
 Статусы ссылки: `funded` → `claiming` → `claimed`; либо `expired` / `cancelled`
 (константы `oblodai.PayoutLinkStatus*`). До 500 ссылок за раз — `PayoutLinks.CreateBatch`.
 
+## Песочница и тестирование (v1.2.0)
+
+У шлюза есть песочница разработчика. **Бизнес-эндпоинты и код интеграции одинаковы** для теста и
+прода — меняется только ключ: тестовый `public_id` начинается с `test_…`, тестовый секрет — с
+`oblodai_test_…`. Переключение тест ↔ прод = замена пары ключей, ни строчки кода.
+
+Новое — пять test-only помощников (`client.Sandbox`), которых в проде нет: они заменяют
+«покупатель оплатил в сети». **Только для тестового кода** — не зовите их из продовой интеграции:
+живой ключ получает на них HTTP 403 с кодом `sandbox.live_key`. Проверить ключ можно хелпером
+`oblodai.IsTestKey(publicID)`.
+
+```go
+client, _ := oblodai.New(oblodai.Config{
+	PublicID: "test_...",         // тестовый ключ — всё остальное как в проде
+	Secret:   "oblodai_test_...",
+})
+
+// 1. Создаём инвойс — ровно тем же кодом, что и в проде.
+payment, _ := client.Payments.Create(ctx, oblodai.Params{
+	"amount": "10", "currency": "USD", "order_id": "order-1",
+	"to_currency": "USDT", "network": "tron",
+})
+
+// 2. «Оплачиваем» его: в проде это делает покупатель он-чейн, в песочнице — вы.
+dep, _ := client.Sandbox.SimulateDeposit(ctx, oblodai.SandboxDepositParams{
+	InvoiceID: payment.UUID, // Amount пустой = оплатить ровно сумму инвойса
+})
+_ = dep.TxID // повторите тот же TxID с бОльшим Confirmations, чтобы углубить депозит
+
+// 3. Дожидаемся paid как обычно — вебхуком или поллингом.
+info, _ := client.Payments.Info(ctx, payment.UUID, "")
+
+// 4. Баланс для выплат «чеканится» краном (потолок 1000000 за вызов)…
+_, _ = client.Sandbox.Faucet(ctx, "USDT", "1000")
+
+// 5. …и выплата снова обычным продовым кодом.
+_, _ = client.Payouts.Create(ctx, oblodai.Params{
+	"amount": "25", "currency": "USDT", "network": "tron",
+	"address": "T...", "order_id": "payout-1",
+})
+```
+
+Остальные помощники: `Sandbox.Reset` (отменить открытые инвойсы, обнулить балансы),
+`Sandbox.ListWebhooks` (последние ≤50 доставок вебхуков, новые первыми, с сырым `Payload`) и
+`Sandbox.ReplayWebhook(deliveryID)` (повторно поставить доставку в очередь) — удобно отлаживать
+свой обработчик вебхуков.
+
+**Нюансы:**
+
+- **Недоплата/переплата** — передайте `Amount` меньше/больше суммы инвойса; недоплату дальше
+  решает `Payments.Resolve` (`accept`/`refund`), как в проде.
+- **Неглубокие подтверждения дозревают сами (~10 минут)** — либо повторите `SimulateDeposit` с тем
+  же `TxID` и бОльшим `Confirmations`, чтобы подтвердить депозит немедленно.
+- **UTXO-сети (Bitcoin и т.п.)** ведут себя как в проде: **нет** авто-возврата переплаты и **нет**
+  адреса плательщика (`payer_address`).
+- `Sandbox.ListWebhooks` — единственный подписанный `GET` в API: подпись по той же канонической
+  строке `{ts}\nGET\n{path}\n` с пустым телом (SDK делает это сам).
+
 ## Обзор методов
 
 ```go
@@ -317,6 +375,14 @@ client.Settings.ListAllowlist(ctx) / AddAllowlist(ctx, cidr) / RemoveAllowlist(c
 // Курсы (публично, без ключа)
 client.Rates.List(ctx, "ETH")
 client.Rates.Currencies(ctx)
+
+// Песочница — ТОЛЬКО тестовые ключи (v1.2.0)
+client.Sandbox.SimulateDeposit(ctx, params)
+client.Sandbox.Faucet(ctx, asset, amount) / FaucetWithKey(ctx, asset, amount, key)
+client.Sandbox.Reset(ctx)
+client.Sandbox.ListWebhooks(ctx)           // подписанный GET
+client.Sandbox.ReplayWebhook(ctx, deliveryID)
+oblodai.IsTestKey(publicID)                // "test_…" → true
 ```
 
 ## Логи и отладка
