@@ -5,7 +5,7 @@
 Без внешних зависимостей — только стандартная библиотека. Автоподпись запросов, разбор ответов,
 типизированные ошибки и автоматические повторы.
 
-> **Базовый URL.** По умолчанию — `https://api.oblodai.com`. При необходимости переопределите `BaseURL` и свои ключи при инициализации.
+> **Базовый URL.** По умолчанию — `https://api.oblodai.com`. При необходимости переопределите `BaseURL` и свои ключи при инициализации. Схема обязана быть `https://` — исключение только для локального стенда на петле (`http://localhost:8095`).
 
 ## Установка
 
@@ -15,13 +15,31 @@ go get github.com/oblodai/oblodai-go
 
 Требуется Go 1.22.2+.
 
+## Где взять ключи
+
+Ключи выдаются в **кабинете Oblodai** (<https://oblodai.com>) — в разделе API-ключей. Ключ состоит
+из пары:
+
+- **`public_id`** — несекретный идентификатор ключа, уходит в заголовке каждого запроса;
+- **`secret`** — секрет, которым SDK подписывает запросы. **Показывается один раз, в момент
+  создания ключа** — сохраните его сразу в свой секрет-хранилище. Потерянный секрет не
+  восстанавливается: выпускается новый ключ.
+
+Для разработки берите **тестовый ключ**: его `public_id` начинается с `test_…`, а секрет — с
+`oblodai_test_…`. Тестовый ключ работает против песочницы, где ничего не стоит денег, — начните с
+неё (см. раздел «Песочница и тестирование»). Боевой ключ отличается только префиксом секрета
+(`oblodai_live_…`); код интеграции при переходе не меняется.
+
+Секрет — это доступ к деньгам: держите его на сервере, в переменных окружения или секрет-хранилище,
+и никогда не кладите в браузерный код, мобильное приложение или git.
+
 ## Учётные данные
 
 Храните ключи в переменных окружения (см. `.env.example`):
 
 ```bash
-export OBLODAI_PUBLIC_ID=oblodai_...
-export OBLODAI_SECRET=oblodai_live_...
+export OBLODAI_PUBLIC_ID=test_...
+export OBLODAI_SECRET=oblodai_test_...
 # необязательно: export OBLODAI_BASE_URL=https://api.oblodai.com
 ```
 
@@ -46,9 +64,9 @@ import (
 func main() {
 	// либо явно (эквивалент NewFromEnv выше):
 	client, err := oblodai.New(oblodai.Config{
-		PublicID: "oblodai_...",
-		Secret:   "oblodai_live_...",
-		BaseURL:  "https://api.oblodai.com", // необязательно
+		PublicID: "test_...",         // тестовый ключ — начните с песочницы
+		Secret:   "oblodai_test_...", // боевой ключ подставляется сюда же, код не меняется
+		BaseURL:  "https://api.oblodai.com", // необязательно; схема обязана быть https
 		// Retry: nil — дефолтные повторы; oblodai.NoRetry() — отключить
 	})
 	if err != nil {
@@ -66,12 +84,94 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(payment.Address) // адрес для оплаты
-	fmt.Println(payment.URL)     // hosted-страница оплаты
+	fmt.Println(payment.Address)       // адрес для оплаты
+	fmt.Println(payment.PaymentStatus) // "check" — оплаты ещё не видели (см. раздел «Статусы»)
+	fmt.Println(payment.URL)           // hosted-страница оплаты; на локальном стенде пуста — см. ниже
 }
 ```
 
 Каждый метод принимает `context.Context` первым аргументом — можно задавать таймауты и отмену.
+
+**Тот же самый код работает с боевым ключом — меняется только пара ключей, ни строчки кода.**
+Поэтому имеет смысл сначала пройти весь сценарий на песочнице (следующий раздел), а боевые ключи
+подключать, когда интеграция уже работает.
+
+**`BaseURL` обязан быть `https://`.** По http подпись запроса (`X-Signature`) и заголовки ушли бы
+открытым текстом, поэтому `New` вернёт ошибку. Единственное исключение — локальный стенд на петле
+(`http://localhost:8095`, `http://127.0.0.1:…`, `http://[::1]:…`).
+
+## Песочница и тестирование (v1.2.0)
+
+У шлюза есть песочница разработчика. **Бизнес-эндпоинты и код интеграции одинаковы** для теста и
+прода — меняется только ключ: тестовый `public_id` начинается с `test_…`, тестовый секрет — с
+`oblodai_test_…`. Переключение тест ↔ прод = замена пары ключей, ни строчки кода.
+
+Новое — пять test-only помощников (`client.Sandbox`), которых в проде нет: они заменяют
+«покупатель оплатил в сети». **Только для тестового кода** — не зовите их из продовой интеграции:
+живой ключ получает на них HTTP 403 с кодом `sandbox.live_key`. Проверить ключ можно хелпером
+`oblodai.IsTestKey(publicID)`.
+
+```go
+client, _ := oblodai.New(oblodai.Config{
+	PublicID: "test_...",         // тестовый ключ — всё остальное как в проде
+	Secret:   "oblodai_test_...",
+})
+
+// 1. Создаём инвойс — ровно тем же кодом, что и в проде.
+payment, _ := client.Payments.Create(ctx, oblodai.Params{
+	"amount": "10", "currency": "USD", "order_id": "order-1",
+	"to_currency": "USDT", "network": "tron",
+})
+
+// 2. «Оплачиваем» его: в проде это делает покупатель он-чейн, в песочнице — вы.
+dep, _ := client.Sandbox.SimulateDeposit(ctx, oblodai.SandboxDepositParams{
+	InvoiceID: payment.UUID, // Amount пустой = оплатить ровно сумму инвойса
+})
+_ = dep.TxID // повторите тот же TxID с бОльшим Confirmations, чтобы углубить депозит
+
+// 3. Дожидаемся paid как обычно — вебхуком или поллингом.
+info, _ := client.Payments.Info(ctx, payment.UUID, "")
+
+// 4. Баланс для выплат «чеканится» краном (потолок 1000000 за вызов)…
+_, _ = client.Sandbox.Faucet(ctx, "USDT", "1000")
+
+// 5. …и выплата снова обычным продовым кодом.
+_, _ = client.Payouts.Create(ctx, oblodai.Params{
+	"amount": "25", "currency": "USDT", "network": "tron",
+	"address": "T...", "order_id": "payout-1",
+})
+```
+
+Остальные помощники: `Sandbox.Reset` (обнулить балансы и отменить ещё не оплачивавшиеся инвойсы —
+см. оговорку ниже), `Sandbox.ListWebhooks` (последние ≤50 доставок вебхуков, новые первыми, с сырым `Payload`) и
+`Sandbox.ReplayWebhook(deliveryID)` (повторно поставить доставку в очередь) — удобно отлаживать
+свой обработчик вебхуков.
+
+**Нюансы:**
+
+- **Недоплата/переплата** — передайте `Amount` меньше/больше суммы инвойса. Недоплату дальше решает
+  `Payments.Resolve` (`accept`/`refund`), как в проде — но **только после закрытия счёта**: пока он
+  в `wrong_amount_waiting`, `Resolve` отдаёт 409 `resolution.not_underpaid` (см. раздел «Статусы»).
+- **`Sandbox.Reset` — это не «чистый лист».** Он обнуляет балансы (компенсирующей проводкой: леджер
+  append-only, ничего не удаляется) и отменяет инвойсы **только** в статусах `check` и `select`.
+  Инвойс, по которому депозит **уже виден** (`confirm_check`, `wrong_amount_waiting`), сознательно
+  **не трогается**: отмена дала бы этому депозиту подтвердиться в отменённый счёт. То же правило
+  действует в проде, и песочница его не обходит. Такие инвойсы досидят до своего срока (или доведите
+  их до терминального статуса сами) — баланс при этом всё равно обнуляется. История экспериментов
+  остаётся в журнале и после сброса читается.
+- **Неглубокие подтверждения сами НЕ дозревают.** У симулированного депозита нет цепочки: его никто
+  не переэмитит, курсор для него не двигается — инвойс с `confirmations` меньше требуемых висит в
+  `confirm_check` сколь угодно долго. Довести его до `paid` можно ровно одним способом: повторить
+  `SimulateDeposit` с **тем же `TxID`** и бОльшим `Confirmations` (повтор того же `TxID`
+  идемпотентен — сумма не удваивается).
+- **~10 минут — это про другое.** Десятиминутное ожидание относится к maturity-**холду на выплате**
+  (ошибка `payout.funds_maturing`): в песочнице холд снимает по возрасту фоновый джоб, по умолчанию
+  через 10 минут (`GATEWAY_SANDBOX_MATURITY_MINUTES`). Это доступность средств к выводу, а не
+  подтверждения инвойса — на статус инвойса джоб не влияет.
+- **UTXO-сети (Bitcoin и т.п.)** ведут себя как в проде: **нет** авто-возврата переплаты и **нет**
+  адреса плательщика (`payer_address`).
+- `Sandbox.ListWebhooks` — единственный подписанный `GET` в API: подпись по той же канонической
+  строке `{ts}\nGET\n{path}\n` с пустым телом (SDK делает это сам).
 
 ## Идемпотентность (изменилось в v1.1.0)
 
@@ -135,8 +235,28 @@ func main() {
 Подпись вебхука отличается от подписи запроса — SDK делает и то, и другое. Для входящих вебхуков
 берите **сырое тело** и заголовки `X-Webhook-Timestamp` / `X-Webhook-Signature`.
 
+> **⚠ Секрет вебхука — ЭТО НЕ `Config.Secret`.** Вебхуки подписываются **отдельным секретом
+> эндпоинта**, который возвращает `client.Webhooks.Register(ctx, url).Secret`. Секрет API-ключа
+> (`Config.Secret`, `OBLODAI_SECRET`) подписывает ваши **исходящие** запросы и к вебхукам отношения
+> не имеет. Подставите его в `ConstructEvent` — отвергнете **100%** вебхуков, подпись не сойдётся
+> никогда. Сохраните секрет эндпоинта при регистрации (например, в `OBLODAI_WEBHOOK_SECRET`):
+> повторно шлюз отдаёт его только тем же вызовом `Register`.
+
 ```go
-func handleWebhook(secret string) http.HandlerFunc {
+reg, err := client.Webhooks.Register(ctx, "https://example.com/hooks/oblodai")
+// reg.Secret — ЕГО и только его передавать в ConstructEvent/VerifyWebhook
+```
+
+> **⚠ `Register` — это upsert ЕДИНСТВЕННОГО эндпоинта на проект, а не «добавить ещё один».**
+> Повторный вызов с **другим** URL не создаёт второй эндпоинт — он **перенаправляет доставки**:
+> возвращается тот же `EndpointID`, а старый URL молча перестаёт что-либо получать. Фан-аут на
+> несколько адресов шлюзом не поддерживается — разводите события по потребителям сами, за одним
+> URL. **Секрет при смене URL сохраняется** и возвращается прежний: доставки подписываются секретом
+> на момент постановки в очередь, и новый секрет осиротил бы всё уже стоящее в очереди (401 →
+> ретраи → dead-letter, то есть потерянные события `paid`/`payout`).
+
+```go
+func handleWebhook(endpointSecret string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body) // СЫРОЕ тело — не пересериализовывать
 
@@ -149,7 +269,8 @@ func handleWebhook(secret string) http.HandlerFunc {
 		}
 
 		var event map[string]any
-		err := oblodai.ConstructEvent(secret, raw, oblodai.WebhookHeadersFromRequest(r), nil, &event)
+		// endpointSecret = Webhooks.Register(...).Secret, НЕ Config.Secret вашего API-ключа
+		err := oblodai.ConstructEvent(endpointSecret, raw, oblodai.WebhookHeadersFromRequest(r), nil, &event)
 		if err != nil {
 			w.WriteHeader(403) // *SignatureError
 			return
@@ -163,8 +284,100 @@ func handleWebhook(secret string) http.HandlerFunc {
 }
 ```
 
-`ConstructEvent` / `VerifyWebhook` по умолчанию проверяют свежесть в окне 5 минут. Передайте
-`&VerifyOptions{MaxAgeSeconds: 0}`, чтобы отключить replay-защиту.
+### Replay-защита (окно свежести)
+
+`ConstructEvent` / `VerifyWebhook` проверяют свежесть вебхука в окне **300 секунд**. Окно действует
+**всегда**, если вы явно не отключили его:
+
+| `VerifyOptions` | Окно |
+| --- | --- |
+| `nil` | 300 с (`DefaultWebhookMaxAgeSeconds`) |
+| `&VerifyOptions{Now: t}` — поле `MaxAgeSeconds` не задано | 300 с |
+| `&VerifyOptions{MaxAgeSeconds: 900}` | 900 с |
+| `&VerifyOptions{MaxAgeSeconds: oblodai.DisableWebhookMaxAge}` (`-1`) | выключено |
+
+**Нулевое значение `MaxAgeSeconds` означает дефолт, а не «выключено»** (исправлено в v1.2.0):
+иначе `&VerifyOptions{Now: t}` — единственный способ подставить часы в тестах — молча снимал бы
+replay-защиту в проде. Отключить окно можно только сентинелом `oblodai.DisableWebhookMaxAge`, и
+делать это стоит осознанно: без окна перехваченный когда-то вебхук с валидной подписью можно
+переиграть в любой момент.
+
+## Статусы
+
+Поля статусов в моделях — обычные `string` (`Payment.PaymentStatus`, `Payout.Status` и т.д.), как и
+раньше: ваш код с ними ничего не меняет. Рядом лежит **словарь именованных констант** —
+`oblodai.PaymentStatus` и `oblodai.PayoutStatus` (файл `statuses.go`), чтобы не набирать строки
+руками:
+
+```go
+if p.PaymentStatus == string(oblodai.PaymentStatusPaid) { /* оплачен */ }
+
+// терминальность, когда на руках только строка (в ответах шлюза есть и готовое поле IsFinal):
+if oblodai.PaymentStatus(p.PaymentStatus).IsFinal() { /* больше переходов не будет */ }
+```
+
+Значения констант — ровно те строки, что приходят в JSON, поэтому сравнение с литералом
+(`p.PaymentStatus == "paid"`) тоже продолжает работать.
+
+### Статусы платежа (`Payment.PaymentStatus`)
+
+| Значение | Константа | Терминальный | Смысл |
+| --- | --- | :---: | --- |
+| `check` | `PaymentStatusCheck` | нет | счёт создан, оплаты ещё не видели |
+| `confirm_check` | `PaymentStatusConfirmCheck` | нет | оплата увидена, ждём подтверждений сети |
+| `wrong_amount_waiting` | `PaymentStatusWrongAmountWaiting` | **нет** | увидели **частичную** оплату, ждём доплату |
+| `wrong_amount` | `PaymentStatusWrongAmount` | да | счёт **закрылся** недоплаченным |
+| `paid` | `PaymentStatusPaid` | да | оплачен полностью |
+| `paid_over` | `PaymentStatusPaidOver` | да | переплачен |
+| `cancel` | `PaymentStatusCancel` | да | истёк или отменён |
+| `select` | `PaymentStatusSelect` | нет | валюто-агностичный счёт: покупатель ещё не выбрал валюту |
+
+**`wrong_amount_waiting` vs `wrong_amount` — это два разных момента, не синонимы.**
+
+- `wrong_amount_waiting` — недоплата **в процессе**: денег пришло меньше, чем нужно, но счёт ещё
+  жив, и поздняя доплата может довести его до `paid`. Решать тут нечего, и шлюз это запрещает:
+  `Payments.Resolve` отвечает **409 `resolution.not_underpaid`**. Не считайте этот 409 багом
+  интеграции и не ретрайте его — просто дождитесь закрытия счёта.
+- `wrong_amount` — счёт **закрылся** недоплаченным, доплаты уже не будет. **Вот теперь**
+  `Payments.Resolve` работает: `accept` (оставить частичную оплату себе, глушит авто-возврат) или
+  `refund` (вернуть плательщику).
+
+Отдавать товар стоит по `paid` / `paid_over` (и по `wrong_amount` + `accept`, если так решили);
+`confirm_check` и `wrong_amount_waiting` — «ещё не деньги».
+
+`paid_over` — переплата: излишек уходит в авто-возврат, если он включён
+(`Payments.SetAutorefund`) и сеть его поддерживает (в UTXO-сетях авто-возврата нет).
+
+### Статусы выплаты (`Payout.Status`)
+
+| Значение | Константа | Терминальный | Смысл |
+| --- | --- | :---: | --- |
+| `check` | `PayoutStatusCheck` | нет | создана, ждёт одобрения (`Payouts.Approve`, см. `ApprovalRequired`) |
+| `process` | `PayoutStatusProcess` | нет | одобрена и уходит/ушла в сеть |
+| `paid` | `PayoutStatusPaid` | да | подтверждена сетью |
+| `fail` | `PayoutStatusFail` | да | не удалась |
+| `cancel` | `PayoutStatusCancel` | да | отменена |
+
+Статусы payout-**ссылок** — отдельный словарь: `oblodai.PayoutLinkStatus*` (см. раздел
+«Payout-ссылки»).
+
+## Ссылки на локальном стенде (`url`, `claim_url`)
+
+Все публичные ссылки шлюз **собирает из своего публичного базового URL**
+(`GATEWAY_PUBLIC_BASE_URL`). Таких полей три:
+
+| Поле | Откуда | Что собирается |
+| --- | --- | --- |
+| `Payment.URL` | `Payments.Create` / `Info` | `{base}/pay/{uuid}` — hosted-страница оплаты |
+| `PayoutLink.ClaimURL` | `PayoutLinks.Create` | `{base}/claim/{token}` — страница получения чека |
+| `PaymentLinkCreated.URL` / `PaymentLink.URL` | `PaymentLinks.Create` / `List` / `Info` | `{base}/link/{link_id}` — страница платёжной ссылки |
+
+На локальном стенде эта переменная обычно не задана — и все три поля приходят **пустой строкой**.
+Это не баг SDK и не баг шлюза: в проде шлюз без `GATEWAY_PUBLIC_BASE_URL` просто не стартует, так
+что там поля всегда заполнены. Но код, который вы отлаживаете локально, не должен на них опираться —
+собирайте ссылку сами из идентификатора: `payment.UUID`, `link.ClaimToken` (токен приходит всегда, и
+`PayoutLinks.ClaimInfo` / `Claim` работают именно по нему) или `link.LinkID`
+(`PaymentLinks.PublicGet` / `Checkout` работают по нему).
 
 ## Обработка ошибок
 
@@ -243,9 +456,15 @@ info, err := client.Batches.Info(ctx, sub.BatchID, 100, 0) // прогресс �
 
 ## Платёжные ссылки, сплиты, счёт на e-mail (v1.1.0)
 
+Ресурс платёжных ссылок доступен под **двумя именами**: `client.PaymentLinks` — каноническое, оно
+же `payment_links` / `paymentLinks` в остальных SDK Oblodai (переносите код между языками без
+переименований), и `client.Links` — задокументированный алиас на **тот же самый объект**
+(`client.Links == client.PaymentLinks`). Оба остаются навсегда, выбирайте любое.
+
 ```go
 // Платёжная ссылка: платят многие, каждый платёж — свой инвойс. Принимает деньги без вашего бэкенда.
-link, err := client.Links.Create(ctx, oblodai.LinkParams{AmountMode: "open", Currency: "USD"})
+link, err := client.PaymentLinks.Create(ctx, oblodai.LinkParams{AmountMode: "open", Currency: "USD"})
+// то же самое через алиас: client.Links.Create(...)
 
 // Сплит: доля каждого входящего платежа автоматически уходит партнёру.
 rule, err := client.Splits.SplitToAddress(ctx, "T...", "tron", 10.0, "партнёр А")
@@ -279,72 +498,12 @@ claim, err := client.PayoutLinks.Claim(ctx, token, "T-адрес")  // POST /v1/
 ```
 
 Статусы ссылки: `funded` → `claiming` → `claimed`; либо `expired` / `cancelled`
-(константы `oblodai.PayoutLinkStatus*`). До 500 ссылок за раз — `PayoutLinks.CreateBatch`.
+(константы `oblodai.PayoutLinkStatus*` — это **отдельный** словарь, не путать со статусами выплаты
+`PayoutStatus*`). До 500 ссылок за раз — `PayoutLinks.CreateBatch`.
 
-## Песочница и тестирование (v1.2.0)
-
-У шлюза есть песочница разработчика. **Бизнес-эндпоинты и код интеграции одинаковы** для теста и
-прода — меняется только ключ: тестовый `public_id` начинается с `test_…`, тестовый секрет — с
-`oblodai_test_…`. Переключение тест ↔ прод = замена пары ключей, ни строчки кода.
-
-Новое — пять test-only помощников (`client.Sandbox`), которых в проде нет: они заменяют
-«покупатель оплатил в сети». **Только для тестового кода** — не зовите их из продовой интеграции:
-живой ключ получает на них HTTP 403 с кодом `sandbox.live_key`. Проверить ключ можно хелпером
-`oblodai.IsTestKey(publicID)`.
-
-```go
-client, _ := oblodai.New(oblodai.Config{
-	PublicID: "test_...",         // тестовый ключ — всё остальное как в проде
-	Secret:   "oblodai_test_...",
-})
-
-// 1. Создаём инвойс — ровно тем же кодом, что и в проде.
-payment, _ := client.Payments.Create(ctx, oblodai.Params{
-	"amount": "10", "currency": "USD", "order_id": "order-1",
-	"to_currency": "USDT", "network": "tron",
-})
-
-// 2. «Оплачиваем» его: в проде это делает покупатель он-чейн, в песочнице — вы.
-dep, _ := client.Sandbox.SimulateDeposit(ctx, oblodai.SandboxDepositParams{
-	InvoiceID: payment.UUID, // Amount пустой = оплатить ровно сумму инвойса
-})
-_ = dep.TxID // повторите тот же TxID с бОльшим Confirmations, чтобы углубить депозит
-
-// 3. Дожидаемся paid как обычно — вебхуком или поллингом.
-info, _ := client.Payments.Info(ctx, payment.UUID, "")
-
-// 4. Баланс для выплат «чеканится» краном (потолок 1000000 за вызов)…
-_, _ = client.Sandbox.Faucet(ctx, "USDT", "1000")
-
-// 5. …и выплата снова обычным продовым кодом.
-_, _ = client.Payouts.Create(ctx, oblodai.Params{
-	"amount": "25", "currency": "USDT", "network": "tron",
-	"address": "T...", "order_id": "payout-1",
-})
-```
-
-Остальные помощники: `Sandbox.Reset` (отменить открытые инвойсы, обнулить балансы),
-`Sandbox.ListWebhooks` (последние ≤50 доставок вебхуков, новые первыми, с сырым `Payload`) и
-`Sandbox.ReplayWebhook(deliveryID)` (повторно поставить доставку в очередь) — удобно отлаживать
-свой обработчик вебхуков.
-
-**Нюансы:**
-
-- **Недоплата/переплата** — передайте `Amount` меньше/больше суммы инвойса; недоплату дальше
-  решает `Payments.Resolve` (`accept`/`refund`), как в проде.
-- **Неглубокие подтверждения сами НЕ дозревают.** У симулированного депозита нет цепочки: его никто
-  не переэмитит, курсор для него не двигается — инвойс с `confirmations` меньше требуемых висит в
-  `confirm_check` сколь угодно долго. Довести его до `paid` можно ровно одним способом: повторить
-  `SimulateDeposit` с **тем же `TxID`** и бОльшим `Confirmations` (повтор того же `TxID`
-  идемпотентен — сумма не удваивается).
-- **~10 минут — это про другое.** Десятиминутное ожидание относится к maturity-**холду на выплате**
-  (ошибка `payout.funds_maturing`): в песочнице холд снимает по возрасту фоновый джоб, по умолчанию
-  через 10 минут (`GATEWAY_SANDBOX_MATURITY_MINUTES`). Это доступность средств к выводу, а не
-  подтверждения инвойса — на статус инвойса джоб не влияет.
-- **UTXO-сети (Bitcoin и т.п.)** ведут себя как в проде: **нет** авто-возврата переплаты и **нет**
-  адреса плательщика (`payer_address`).
-- `Sandbox.ListWebhooks` — единственный подписанный `GET` в API: подпись по той же канонической
-  строке `{ts}\nGET\n{path}\n` с пустым телом (SDK делает это сам).
+`ClaimURL` шлюз собирает из своего публичного базового URL — на локальном стенде без
+`GATEWAY_PUBLIC_BASE_URL` она приходит пустой; стройте ссылку из `ClaimToken` (см. раздел «Ссылки
+на локальном стенде»).
 
 ## Внутренние переводы пользователям платформы (v1.2.0)
 
@@ -425,13 +584,13 @@ client.Payouts.GetRefundFeeConfig(ctx) / SetRefundFeeConfig(ctx, bool)
 // Пачки (v1.1.0)
 client.Batches.Info(ctx, batchID, limit, offset)
 
-// Платёжные ссылки (v1.1.0)
-client.Links.Create(ctx, linkParams)
-client.Links.List(ctx, limit, offset)
-client.Links.Info(ctx, linkID)
-client.Links.Toggle(ctx, linkID, active)
-client.Links.PublicGet(ctx, linkID)        // публичный, без подписи
-client.Links.Checkout(ctx, linkID, params) // публичный, без подписи
+// Платёжные ссылки (v1.1.0). client.PaymentLinks — каноническое имя, client.Links — алиас на тот же объект
+client.PaymentLinks.Create(ctx, linkParams)
+client.PaymentLinks.List(ctx, limit, offset)
+client.PaymentLinks.Info(ctx, linkID)
+client.PaymentLinks.Toggle(ctx, linkID, active)
+client.PaymentLinks.PublicGet(ctx, linkID)        // публичный, без подписи
+client.PaymentLinks.Checkout(ctx, linkID, params) // публичный, без подписи
 
 // Сплиты (v1.1.0)
 client.Splits.CreateRule(ctx, params)
@@ -465,7 +624,8 @@ client.Account.TransferBatch(ctx, transfers, onError)  // v1.2.0, до 5000, р�
 client.Account.VRCS(ctx, enabled)
 
 // Вебхуки
-client.Webhooks.Register(ctx, url)
+client.Webhooks.Register(ctx, url) // UPSERT единственного эндпоинта проекта; .Secret — ОТДЕЛЬНЫЙ
+                                   // секрет подписи вебхуков, не Config.Secret
 client.Webhooks.Deliveries(ctx)
 client.Webhooks.TestPayment(ctx, params)
 
@@ -498,6 +658,8 @@ oblodai.IsTestKey(publicID)                // "test_…" → true
 - **`order_id` — ваш бизнес-идентификатор**, обязателен для выплат; ключом идемпотентности он
   больше не является (см. раздел «Идемпотентность»).
 - **Секрет — только на сервере.** SDK серверный; не встраивайте ключ в клиентские приложения.
+- **Секретов два.** `Config.Secret` подписывает исходящие запросы; секрет из
+  `Webhooks.Register(...).Secret` проверяет входящие вебхуки. Они не взаимозаменяемы.
 
 ## Лицензия
 

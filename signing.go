@@ -26,10 +26,11 @@ func signRequest(secret, method, path, body, ts string) (timestamp, signature st
 
 // ComputeWebhookSignature считает ожидаемую подпись вебхука для заданных timestamp и сырого тела.
 //
-// ВНИМАНИЕ: подпись вебхука — другой алгоритм, чем подпись запроса. Здесь подписанная строка это
-// "{timestamp}." + сырое_тело (точка-разделитель, без метода и пути).
-func ComputeWebhookSignature(secret, timestamp string, rawBody []byte) string {
-	mac := hmac.New(sha256.New, []byte(secret))
+// ВНИМАНИЕ: подпись вебхука — другой алгоритм, чем подпись запроса, И ДРУГОЙ СЕКРЕТ. Здесь
+// подписанная строка это "{timestamp}." + сырое_тело (точка-разделитель, без метода и пути), а
+// endpointSecret — секрет эндпоинта вебхуков из Webhooks.Register, а не секрет API-ключа.
+func ComputeWebhookSignature(endpointSecret, timestamp string, rawBody []byte) string {
+	mac := hmac.New(sha256.New, []byte(endpointSecret))
 	mac.Write([]byte(timestamp + "."))
 	mac.Write(rawBody)
 	return hex.EncodeToString(mac.Sum(nil))

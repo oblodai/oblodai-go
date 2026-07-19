@@ -58,7 +58,11 @@ type PayoutLink struct {
 	ClaimAddress string `json:"claim_address,omitempty"` // после claim
 	BatchID      string `json:"batch_id,omitempty"`      // общий id вызова CreateBatch
 	ClaimToken   string `json:"claim_token,omitempty"`   // только в ответе create
-	ClaimURL     string `json:"claim_url,omitempty"`     // только в ответе create
+	// ClaimURL — только в ответе create. Шлюз собирает её как {публичный базовый URL}/claim/{token}
+	// из своего GATEWAY_PUBLIC_BASE_URL. На локальном стенде без этой переменной приходит ПУСТАЯ
+	// строка (в проде шлюз без неё не стартует) — на локальном стенде стройте ссылку сами из
+	// ClaimToken. Сам ClaimToken приходит всегда, и Claim/ClaimInfo работают по нему.
+	ClaimURL string `json:"claim_url,omitempty"`
 }
 
 // PayoutLinkBatchItem — результат одного элемента CreateBatch (index-aligned с запросом).

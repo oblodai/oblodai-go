@@ -142,7 +142,20 @@ func (r *AccountResource) VRCS(ctx context.Context, enabled *bool) (map[string]a
 // Проверка ВХОДЯЩИХ вебхуков — функции VerifyWebhook / ConstructEvent.
 type WebhooksResource struct{ c *Client }
 
-// Register регистрирует URL для вебхуков и возвращает секрет. POST /v1/webhooks
+// Register задаёт URL вебхуков проекта и возвращает секрет подписи. POST /v1/webhooks
+//
+// ЭТО UPSERT ЕДИНСТВЕННОГО ЭНДПОИНТА НА ПРОЕКТ, а не добавление ещё одного. Повторный вызов с
+// ДРУГИМ URL не создаёт второй эндпоинт: он ПЕРЕНАПРАВЛЯЕТ доставки — возвращается тот же
+// EndpointID, а старый URL молча перестаёт что-либо получать. Фан-аут на несколько адресов
+// шлюзом не поддерживается: разводите события по своим потребителям сами, за одним URL.
+//
+// Секрет при смене URL СОХРАНЯЕТСЯ и возвращается прежний — это намеренно: доставки подписываются
+// секретом на момент постановки в очередь, и новый секрет осиротил бы всё уже стоящее в очереди
+// (401 → ретраи → dead-letter, то есть потерянные события paid/payout) у мерчанта, который всего
+// лишь сменил адрес.
+//
+// Возвращаемый WebhookRegistration.Secret — ОТДЕЛЬНЫЙ секрет, НЕ равный Config.Secret вашего
+// API-ключа. Именно его передавайте в VerifyWebhook / ConstructEvent.
 func (r *WebhooksResource) Register(ctx context.Context, url string) (*WebhookRegistration, error) {
 	var out WebhookRegistration
 	return &out, r.c.request(ctx, "/v1/webhooks", Params{"url": url}, &out)

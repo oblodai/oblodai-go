@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -45,6 +46,40 @@ func TestSignRequestAutoTimestamp(t *testing.T) {
 	}
 }
 
+// ─────────────────────────────── Статусы ───────────────────────────────
+
+// Константы статусов обязаны совпадать со строками из JSON шлюза — иначе типизация только вредит.
+func TestStatusConstantsMatchWire(t *testing.T) {
+	var p Payment
+	if err := json.Unmarshal([]byte(`{"payment_status":"wrong_amount_waiting"}`), &p); err != nil {
+		t.Fatal(err)
+	}
+	// Поле модели — string (типы полей НЕ ломались), словарь — отдельные именованные константы.
+	if p.PaymentStatus != string(PaymentStatusWrongAmountWaiting) {
+		t.Fatalf("payment_status: %q", p.PaymentStatus)
+	}
+	// Ключевая пара: ждём доплату — НЕ терминально; счёт закрылся недоплаченным — терминально.
+	if PaymentStatus(p.PaymentStatus).IsFinal() {
+		t.Fatal("wrong_amount_waiting не терминален: возможна доплата")
+	}
+	if !PaymentStatusWrongAmount.IsFinal() {
+		t.Fatal("wrong_amount терминален")
+	}
+
+	var out Payout
+	if err := json.Unmarshal([]byte(`{"status":"process"}`), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Status != string(PayoutStatusProcess) || PayoutStatus(out.Status).IsFinal() {
+		t.Fatalf("status: %q", out.Status)
+	}
+	for _, s := range []PayoutStatus{PayoutStatusPaid, PayoutStatusFail, PayoutStatusCancel} {
+		if !s.IsFinal() {
+			t.Fatalf("%q терминален", s)
+		}
+	}
+}
+
 // ─────────────────────────────── Вебхуки ───────────────────────────────
 
 func TestVerifyWebhook(t *testing.T) {
@@ -67,6 +102,28 @@ func TestVerifyWebhookBadSignature(t *testing.T) {
 	}
 }
 
+// Регрессия на блокер в доках: секрет API-ключа НЕ проверяет вебхуки. Подпись считается секретом
+// ЭНДПОИНТА (Webhooks.Register(...).Secret), и подстановка Config.Secret обязана отвергнуть вебхук,
+// а не «почти сработать».
+func TestVerifyWebhookRejectsAPIKeySecret(t *testing.T) {
+	endpointSecret := "wh_endpoint_secret" // то, что вернул Register
+	apiKeySecret := "oblodai_live_apikey"  // Config.Secret — НЕ подходит для вебхуков
+
+	body := []byte(`{"type":"payment","status":"paid"}`)
+	ts := strconv.FormatInt(time.Now().Unix(), 10)
+	sig := ComputeWebhookSignature(endpointSecret, ts, body)
+
+	if err := VerifyWebhook(endpointSecret, body, WebhookHeaders{ts, sig}, nil); err != nil {
+		t.Fatalf("секрет эндпоинта должен проходить: %v", err)
+	}
+
+	err := VerifyWebhook(apiKeySecret, body, WebhookHeaders{ts, sig}, nil)
+	var sigErr *SignatureError
+	if !errors.As(err, &sigErr) {
+		t.Fatalf("секрет API-ключа обязан быть отвергнут, получили: %v", err)
+	}
+}
+
 func TestVerifyWebhookReplay(t *testing.T) {
 	secret := "wh"
 	body := []byte(`{"status":"paid"}`)
@@ -79,9 +136,67 @@ func TestVerifyWebhookReplay(t *testing.T) {
 		t.Fatalf("expected replay rejection, got %v", err)
 	}
 
-	// с отключённой проверкой свежести — проходит
-	if err := VerifyWebhook(secret, body, WebhookHeaders{old, sig}, &VerifyOptions{MaxAgeSeconds: 0}); err != nil {
-		t.Fatalf("should pass with MaxAgeSeconds=0: %v", err)
+	// с ЯВНО отключённой проверкой свежести — проходит
+	if err := VerifyWebhook(secret, body, WebhookHeaders{old, sig}, &VerifyOptions{MaxAgeSeconds: DisableWebhookMaxAge}); err != nil {
+		t.Fatalf("should pass with MaxAgeSeconds=DisableWebhookMaxAge: %v", err)
+	}
+}
+
+// Регрессия на дыру в replay-защите: нулевое значение MaxAgeSeconds (структура передана ради Now
+// или любого другого поля) обязано означать ДЕФОЛТ 300, а не «проверка выключена».
+func TestVerifyWebhookMaxAgeZeroValueMeansDefault(t *testing.T) {
+	secret := "wh"
+	body := []byte(`{"status":"paid"}`)
+	now := time.Unix(1_700_000_000, 0)
+
+	sign := func(ageSeconds int64) WebhookHeaders {
+		ts := strconv.FormatInt(now.Unix()-ageSeconds, 10)
+		return WebhookHeaders{ts, ComputeWebhookSignature(secret, ts, body)}
+	}
+	isRejected := func(err error) bool {
+		var sigErr *SignatureError
+		return errors.As(err, &sigErr)
+	}
+
+	// 1. Не задано (только Now) → дефолтные 300 секунд, окно РАБОТАЕТ.
+	if err := VerifyWebhook(secret, body, sign(3600), &VerifyOptions{Now: now}); !isRejected(err) {
+		t.Fatalf("MaxAgeSeconds не задан → должен действовать дефолт %d с; получили: %v",
+			DefaultWebhookMaxAgeSeconds, err)
+	}
+	if err := VerifyWebhook(secret, body, sign(10), &VerifyOptions{Now: now}); err != nil {
+		t.Fatalf("свежий вебхук внутри дефолтного окна отвергнут: %v", err)
+	}
+	// Граница дефолта: 299 с внутри окна, 301 с — уже нет.
+	if err := VerifyWebhook(secret, body, sign(DefaultWebhookMaxAgeSeconds-1), &VerifyOptions{Now: now}); err != nil {
+		t.Fatalf("299 с должно проходить при дефолтном окне: %v", err)
+	}
+	if err := VerifyWebhook(secret, body, sign(DefaultWebhookMaxAgeSeconds+1), &VerifyOptions{Now: now}); !isRejected(err) {
+		t.Fatalf("301 с должно отвергаться при дефолтном окне, получили: %v", err)
+	}
+
+	// 2. Сентинел -1 → окно ВЫКЛЮЧЕНО, сколь угодно старый подписанный вебхук проходит.
+	if err := VerifyWebhook(secret, body, sign(10*365*24*3600),
+		&VerifyOptions{Now: now, MaxAgeSeconds: DisableWebhookMaxAge}); err != nil {
+		t.Fatalf("DisableWebhookMaxAge обязан отключать окно: %v", err)
+	}
+
+	// 3. Положительное значение → ровно оно, а не дефолт.
+	opts := &VerifyOptions{Now: now, MaxAgeSeconds: 60}
+	if err := VerifyWebhook(secret, body, sign(59), opts); err != nil {
+		t.Fatalf("59 с должно проходить при окне 60 с: %v", err)
+	}
+	if err := VerifyWebhook(secret, body, sign(61), opts); !isRejected(err) {
+		t.Fatalf("61 с должно отвергаться при окне 60 с, получили: %v", err)
+	}
+	// …и заданное окно шире дефолта тоже уважается.
+	if err := VerifyWebhook(secret, body, sign(600), &VerifyOptions{Now: now, MaxAgeSeconds: 900}); err != nil {
+		t.Fatalf("600 с должно проходить при окне 900 с: %v", err)
+	}
+
+	// 4. И без opts вовсе окно остаётся включённым.
+	old := strconv.FormatInt(time.Now().Unix()-3600, 10)
+	if err := VerifyWebhook(secret, body, WebhookHeaders{old, ComputeWebhookSignature(secret, old, body)}, nil); !isRejected(err) {
+		t.Fatalf("opts == nil → дефолтное окно, получили: %v", err)
 	}
 }
 
@@ -472,5 +587,102 @@ func Test429HonorsRetryAfter(t *testing.T) {
 	}
 	if atomic.LoadInt32(&calls) != 2 {
 		t.Fatalf("expected 2 calls (429 then ok), got %d", calls)
+	}
+}
+
+// ───────────────────────── Базовый URL: только https (+ loopback) ─────────────────────────
+
+// Подпись запроса (X-Signature) не должна уезжать по открытому каналу: не-https базовый URL
+// отвергается на этапе создания клиента. Единственное исключение — локальная петля, на которой
+// живут локальные стенды шлюза (в том числе http://localhost:8095).
+func TestNewRejectsInsecureBaseURL(t *testing.T) {
+	insecure := []string{
+		"http://api.oblodai.com",
+		"http://api.oblodai.com:8095",
+		"http://198.51.100.7:8095",  // внешний IP — не петля
+		"http://localhost.evil.com", // хост лишь НАЧИНАЕТСЯ на localhost
+		"http://notlocalhost",       // и не заканчивается на .localhost
+		"ftp://api.oblodai.com",     // чужая схема
+		"api.oblodai.com",           // без схемы
+	}
+	for _, base := range insecure {
+		if _, err := New(Config{PublicID: "p", Secret: "s", BaseURL: base}); err == nil {
+			t.Fatalf("BaseURL %q обязан быть отвергнут", base)
+		}
+	}
+
+	secure := []string{
+		"https://api.oblodai.com",
+		"https://api.oblodai.com/",
+		"https://localhost:8095",
+		"http://localhost:8095", // наш локальный стенд
+		"http://localhost",
+		"http://127.0.0.1:8095",
+		"http://127.1.2.3:8095", // вся 127.0.0.0/8 — петля
+		"http://[::1]:8095",
+		"http://api.localhost:8095", // *.localhost резолвится в петлю
+	}
+	for _, base := range secure {
+		if _, err := New(Config{PublicID: "p", Secret: "s", BaseURL: base}); err != nil {
+			t.Fatalf("BaseURL %q обязан приниматься: %v", base, err)
+		}
+	}
+
+	// Пустой BaseURL → дефолт https://api.oblodai.com.
+	c, err := New(Config{PublicID: "p", Secret: "s"})
+	if err != nil {
+		t.Fatalf("дефолтный BaseURL: %v", err)
+	}
+	if c.baseURL != defaultBaseURL {
+		t.Fatalf("baseURL: %q", c.baseURL)
+	}
+
+	// Текст ошибки обязан объяснять причину, а не просто «invalid url».
+	_, err = New(Config{PublicID: "p", Secret: "s", BaseURL: "http://api.oblodai.com"})
+	if err == nil || !strings.Contains(err.Error(), "https") {
+		t.Fatalf("ошибка должна упоминать https, получили: %v", err)
+	}
+}
+
+// ───────────────────────── Имена ресурсов ─────────────────────────
+
+// PaymentLinks — каноническое имя, Links — задокументированный алиас на ТОТ ЖЕ объект.
+func TestPaymentLinksAlias(t *testing.T) {
+	c, err := New(Config{PublicID: "p", Secret: "s"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.PaymentLinks == nil || c.Links == nil {
+		t.Fatal("оба имени ресурса должны быть заполнены")
+	}
+	if c.PaymentLinks != c.Links {
+		t.Fatal("Links обязан быть алиасом PaymentLinks (тот же объект), а не второй копией")
+	}
+}
+
+// ───────────────────────── Совместимость типов полей ─────────────────────────
+
+// Регрессия: типы экспортированных полей статусов должны оставаться string — иначе минорный
+// релиз ломает чужой код вида strings.ToUpper(p.Status) или map[string]T[p.PaymentStatus].
+// Именованные типы PaymentStatus/PayoutStatus остаются АДДИТИВНЫМ словарём констант.
+func TestStatusFieldsStayString(t *testing.T) {
+	var (
+		_ string = Payment{}.PaymentStatus
+		_ string = Payout{}.Status
+		_ string = MassPayoutItem{}.Status
+		_ string = Resolution{}.Status
+	)
+	// Типовой пользовательский код, который ломался бы при смене типа поля:
+	p := Payment{PaymentStatus: "paid"}
+	if strings.ToUpper(p.PaymentStatus) != "PAID" {
+		t.Fatal("поле статуса обязано работать как обычная string")
+	}
+	handlers := map[string]int{"paid": 1}
+	if handlers[p.PaymentStatus] != 1 {
+		t.Fatal("статус обязан индексировать map[string]T без приведения")
+	}
+	// А словарь констант при этом доступен и полезен.
+	if !PaymentStatus(p.PaymentStatus).IsFinal() {
+		t.Fatal("paid терминален")
 	}
 }

@@ -7,20 +7,27 @@ package oblodai
 
 // Payment — объект платежа (инвойса).
 type Payment struct {
-	UUID                  string `json:"uuid"`
-	OrderID               string `json:"order_id"`
-	Amount                string `json:"amount"`
-	PaymentAmount         string `json:"payment_amount"`
-	AmountPaid            string `json:"amount_paid"`
-	AmountRemaining       string `json:"amount_remaining"`
-	PayerAmount           string `json:"payer_amount"`
-	PayerCurrency         string `json:"payer_currency"`
-	Currency              string `json:"currency"`
-	Network               string `json:"network"`
-	Address               string `json:"address"`
-	AddressQRCode         string `json:"address_qr_code"`
-	PaymentStatus         string `json:"payment_status"`
-	IsMulti               bool   `json:"is_multi"`
+	UUID            string `json:"uuid"`
+	OrderID         string `json:"order_id"`
+	Amount          string `json:"amount"`
+	PaymentAmount   string `json:"payment_amount"`
+	AmountPaid      string `json:"amount_paid"`
+	AmountRemaining string `json:"amount_remaining"`
+	PayerAmount     string `json:"payer_amount"`
+	PayerCurrency   string `json:"payer_currency"`
+	Currency        string `json:"currency"`
+	Network         string `json:"network"`
+	Address         string `json:"address"`
+	AddressQRCode   string `json:"address_qr_code"`
+	// PaymentStatus — статус счёта. Тип — string, чтобы не ломать существующий код; словарь
+	// значений и хелпер терминальности — в statuses.go: сравнивайте с константами
+	// (`p.PaymentStatus == string(oblodai.PaymentStatusPaid)`) или приводите к типу ради IsFinal:
+	// `oblodai.PaymentStatus(p.PaymentStatus).IsFinal()`. Готовое поле IsFinal тоже приходит с шлюза.
+	PaymentStatus string `json:"payment_status"`
+	IsMulti       bool   `json:"is_multi"`
+	// URL — hosted-страница оплаты. Шлюз собирает её из своего публичного базового URL
+	// (GATEWAY_PUBLIC_BASE_URL). На локальном стенде без этой переменной приходит ПУСТАЯ строка —
+	// собирайте ссылку сами из UUID. В проде шлюз без неё не стартует, поэтому там URL всегда есть.
 	URL                   string `json:"url"`
 	ExpiredAt             int64  `json:"expired_at"`
 	IsFinal               bool   `json:"is_final"`
@@ -118,13 +125,15 @@ type PayoutConvert struct {
 
 // Payout — объект выплаты.
 type Payout struct {
-	UUID             string         `json:"uuid"`
-	OrderID          string         `json:"order_id"`
-	Amount           string         `json:"amount"`
-	Currency         string         `json:"currency"`
-	Network          string         `json:"network"`
-	Address          string         `json:"address"`
-	TxID             string         `json:"txid"`
+	UUID     string `json:"uuid"`
+	OrderID  string `json:"order_id"`
+	Amount   string `json:"amount"`
+	Currency string `json:"currency"`
+	Network  string `json:"network"`
+	Address  string `json:"address"`
+	TxID     string `json:"txid"`
+	// Status — статус выплаты (string; словарь значений — константы PayoutStatus* в statuses.go,
+	// терминальность — `oblodai.PayoutStatus(p.Status).IsFinal()` либо поле IsFinal ниже).
 	Status           string         `json:"status"`
 	IsFinal          bool           `json:"is_final"`
 	ApprovalRequired bool           `json:"approval_required"`
@@ -139,7 +148,7 @@ type MassPayoutItem struct {
 	OrderID          string `json:"order_id"`
 	Success          bool   `json:"success"`
 	UUID             string `json:"uuid,omitempty"`
-	Status           string `json:"status,omitempty"`
+	Status           string `json:"status,omitempty"` // словарь: константы PayoutStatus*
 	IsFinal          bool   `json:"is_final,omitempty"`
 	ApprovalRequired bool   `json:"approval_required,omitempty"`
 	Message          string `json:"message,omitempty"`
@@ -199,7 +208,11 @@ type Currency struct {
 type WebhookRegistration struct {
 	EndpointID string `json:"endpoint_id"`
 	URL        string `json:"url"`
-	Secret     string `json:"secret"`
+	// Secret — СЕКРЕТ ПОДПИСИ ЭНДПОИНТА. Это ОТДЕЛЬНЫЙ секрет, он НЕ равен Config.Secret (секрету
+	// API-ключа): именно его, и только его, надо передавать в VerifyWebhook / ConstructEvent.
+	// Подставив секрет API-ключа, вы отвергнете 100% вебхуков. Сохраните его при регистрации —
+	// повторно шлюз его отдаёт только этим же вызовом Register.
+	Secret string `json:"secret"`
 }
 
 // Delivery — запись журнала доставок.
@@ -248,7 +261,7 @@ type Resolution struct {
 	UUID    string `json:"uuid,omitempty"` // uuid рефанд-выплаты
 	Amount  string `json:"amount,omitempty"`
 	Address string `json:"address,omitempty"`
-	Status  string `json:"status,omitempty"` // словарь статусов выплат: check/process/paid/fail/cancel
+	Status  string `json:"status,omitempty"` // словарь статусов выплат: константы PayoutStatus*
 	IsFinal bool   `json:"is_final,omitempty"`
 	// общие:
 	Currency string `json:"currency,omitempty"`

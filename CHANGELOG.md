@@ -14,7 +14,9 @@
     подтверждения и углубление повтором того же `TxID` (`Confirmations`), идемпотентность по `TxID`.
   - `Sandbox.Faucet(ctx, asset, amount)` / `FaucetWithKey(…, key)` — «кран» тестового баланса
     (`POST /v1/sandbox/faucet`, потолок 1000000 за вызов; ключ идемпотентности — полем тела).
-  - `Sandbox.Reset(ctx)` — отмена открытых инвойсов и обнуление балансов (`POST /v1/sandbox/reset`).
+  - `Sandbox.Reset(ctx)` — обнуление балансов и отмена инвойсов, по которым ещё не видели оплату
+    (`POST /v1/sandbox/reset`); инвойсы в `confirm_check` / `wrong_amount_waiting` сознательно не
+    трогаются — см. «Уточнена формулировка `Sandbox.Reset`» ниже.
   - `Sandbox.ListWebhooks(ctx)` — последние ≤50 доставок вебхуков с сырым `Payload`
     (`GET /v1/sandbox/webhooks`, тип `SandboxDelivery`).
   - `Sandbox.ReplayWebhook(ctx, deliveryID)` — повторная постановка доставки в очередь
@@ -60,8 +62,73 @@
   НОВЫМ ключом), а ответ больше 256 КБ шлюз не кэширует — поэтому на батчах проставляйте
   per-item `Reference`.
 
+- **Типизированные константы статусов** (`statuses.go`): `oblodai.PaymentStatus` со значениями
+  `PaymentStatusCheck` / `ConfirmCheck` / `WrongAmountWaiting` / `WrongAmount` / `Paid` /
+  `PaidOver` / `Cancel` / `Select` и `oblodai.PayoutStatus` со значениями `PayoutStatusCheck` /
+  `Process` / `Paid` / `Fail` / `Cancel`. У обоих типов — метод `IsFinal()`.
+  Изменение **чисто аддитивное**: типы полей моделей (`Payment.PaymentStatus`, `Payout.Status`,
+  `MassPayoutItem.Status`, `Resolution.Status`) остались **`string`**, существующий код
+  (`strings.ToUpper(p.Status)`, `map[string]T[p.PaymentStatus]`) продолжает компилироваться
+  без единой правки. Значения констант — те же строки из JSON: сравнивайте как
+  `p.PaymentStatus == string(oblodai.PaymentStatusPaid)`, терминальность —
+  `oblodai.PaymentStatus(p.PaymentStatus).IsFinal()`. Статусы payout-ссылок
+  (`PayoutLinkStatus*`) — отдельный словарь и не изменились.
+- **Раздел «Статусы» в README** — обе таблицы (платёж, выплата) с пометкой терминальности.
+- **`client.PaymentLinks`** — каноническое имя ресурса платёжных ссылок, единое во всех SDK Oblodai
+  (`payment_links` / `paymentLinks` / `PaymentLinks`): код переносится между языками без
+  переименований. Прежнее `client.Links` остаётся **задокументированным алиасом на тот же самый
+  объект** (`client.Links == client.PaymentLinks`) и никуда не денется — ничего переписывать не
+  нужно.
+- **`oblodai.DefaultWebhookMaxAgeSeconds` (300) и `oblodai.DisableWebhookMaxAge` (-1)** —
+  именованные значения окна свежести вебхука (см. исправление replay-защиты ниже).
+
 ### Исправлено
 
+- **БЕЗОПАСНОСТЬ: replay-защита вебхуков молча отключалась.** В `VerifyOptions.MaxAgeSeconds`
+  нулевое значение (то есть **незаполненное поле**) трактовалось как «окно свежести не проверять».
+  А `Now` — единственный способ подставить часы — задаётся той же структурой, поэтому любой
+  `&VerifyOptions{Now: t}` (и вообще любая передача опций без явного `MaxAgeSeconds`) снимал
+  replay-защиту: сколь угодно старый перехваченный вебхук с валидной подписью принимался как
+  свежий. В остальных четырёх SDK Oblodai дефолт 300 срабатывал всегда.
+  Теперь **0 (zero value) = дефолт `DefaultWebhookMaxAgeSeconds` (300)**, отключение — только
+  явным сентинелом `MaxAgeSeconds: oblodai.DisableWebhookMaxAge` (`-1`).
+  ⚠ Если вы **намеренно** отключали окно через `MaxAgeSeconds: 0` — замените на
+  `oblodai.DisableWebhookMaxAge`, иначе начнёт действовать окно 300 с.
+- **БЕЗОПАСНОСТЬ: не-`https` базовый URL принимался молча.** `New` / `NewFromEnv` брали любой
+  `BaseURL`, включая `http://` на внешний хост, — и подпись запроса (`X-Signature`), `public_id` и
+  тело уходили открытым текстом, где их можно перехватить и переиграть. Теперь схема обязана быть
+  `https://`, иначе создание клиента возвращает ошибку с объяснением причины. **Исключение —
+  локальная петля**: `http://localhost:…` (и `*.localhost`), `http://127.0.0.0/8`, `http://[::1]:…`
+  принимаются как раньше, локальные стенды (в т.ч. `http://localhost:8095`) не ломаются. Чужие
+  схемы (`ftp://`) и строки без схемы тоже отвергаются.
+- **БЛОКЕР: в примере проверки вебхуков в README передавался не тот секрет.** Параметр назывался
+  `secret`, а во всём остальном README «секрет» — это `Config.Secret` (секрет API-ключа), так что
+  интегратор закономерно подставлял его в `ConstructEvent` и **отвергал 100% вебхуков**: вебхуки
+  подписываются **отдельным секретом эндпоинта**, который возвращает `Webhooks.Register(...).Secret`.
+  Параметр переименован в `endpointSecret` (и в примере, и в сигнатурах `VerifyWebhook`,
+  `ConstructEvent`, `ComputeWebhookSignature`), добавлено явное предупреждение в README, в
+  доккомментарии этих функций и в поле `WebhookRegistration.Secret`.
+- **Задокументирован upsert при регистрации вебхука** (README + доккоммент `Webhooks.Register`).
+  Register — это upsert **единственного** эндпоинта на проект (`ON CONFLICT (project_id) DO UPDATE`
+  в ядре), а не добавление ещё одного: повторный вызов с ДРУГИМ URL возвращает тот же `endpoint_id`
+  и **перенаправляет** доставки, а старый URL молча замолкает. Фан-аута на несколько адресов нет.
+  Секрет при этом сохраняется — иначе смена URL осиротила бы уже стоящие в очереди доставки
+  (они подписаны секретом на момент постановки) и потеряла события `paid`/`payout`.
+- **Разъяснено `wrong_amount_waiting` vs `wrong_amount`** (README + доккоммент `Payments.Resolve`).
+  Это два разных момента: `wrong_amount_waiting` — недоплата в процессе, счёт ещё жив и может
+  стать `paid` доплатой, и `Resolve` там отвечает **409 `resolution.not_underpaid`** (не баг
+  интеграции, ретраить бессмысленно); решать судьбу недоплаты можно только после закрытия счёта, в
+  `wrong_amount`.
+- **Оговорка про пустые `url` и `claim_url` на локальном стенде** (README + доккомментарии
+  `Payment.URL`, `PayoutLink.ClaimURL`, `PaymentLinkCreated.URL` и `PaymentLink.URL`). Шлюз собирает
+  все три ссылки из `GATEWAY_PUBLIC_BASE_URL` (`{base}/pay/{uuid}`, `{base}/claim/{token}`,
+  `{base}/link/{link_id}`); локально переменной обычно нет — поля приходят пустой строкой. В проде
+  шлюз без неё не стартует. Локально стройте ссылку сами из `UUID` / `ClaimToken` / `LinkID`.
+- **Уточнена формулировка `Sandbox.Reset`** (README + доккоммент). «Отменяет открытые инвойсы» и
+  «чистый лист» вводили в заблуждение: отменяются **только** инвойсы в статусах `check` и `select`.
+  Инвойс, по которому депозит уже виден (`confirm_check`, `wrong_amount_waiting`), сознательно не
+  трогается — отмена дала бы депозиту подтвердиться в отменённый счёт. Балансы обнуляются в любом
+  случае.
 - **Убрано ложное утверждение «заголовок на payout-ссылках сегодня игнорируется»** (README,
   доккомменты `PayoutLinksResource`, `PayoutLinkParams.Reference` / `.IdempotencyKey`,
   `PayoutLinks.Create` / `CreateBatch`, CHANGELOG — семь мест). `/v1/payout/link` и

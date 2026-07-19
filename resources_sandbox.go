@@ -128,8 +128,17 @@ func (r *SandboxResource) faucet(ctx context.Context, asset, amount, idempotency
 	return &out, r.c.request(ctx, "/v1/sandbox/faucet", body, &out)
 }
 
-// Reset сбрасывает песочницу: отменяет открытые инвойсы и обнуляет балансы (компенсирующая
-// проводка). POST /v1/sandbox/reset
+// Reset откатывает песочницу к нулю по деньгам: обнуляет балансы (компенсирующей проводкой — леджер
+// append-only, ничего не удаляется) и отменяет ЕЩЁ НЕ ОПЛАЧИВАВШИЕСЯ инвойсы. POST /v1/sandbox/reset
+//
+// Это НЕ «чистый лист»: отменяются только инвойсы в статусах check (created) и select. Инвойс, по
+// которому уже виден депозит — confirm_check или wrong_amount_waiting, — сознательно НЕ трогается:
+// отмена дала бы этому депозиту подтвердиться в отменённый счёт. То же правило действует и в проде,
+// песочница его не обходит. Такие инвойсы досидят до своего срока (или доведите их до терминального
+// статуса сами) — при этом их баланс всё равно обнулится.
+//
+// История экспериментов остаётся читаемой: журнал никуда не девается, поэтому «почему у меня было 3»
+// после сброса ответить можно.
 func (r *SandboxResource) Reset(ctx context.Context) (*SandboxResetResult, error) {
 	var out SandboxResetResult
 	return &out, r.c.request(ctx, "/v1/sandbox/reset", Params{}, &out)
