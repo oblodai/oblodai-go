@@ -81,9 +81,17 @@ type SandboxResource struct{ c *Client }
 
 // SimulateDeposit симулирует он-чейн депозит в инвойс. POST /v1/sandbox/deposit
 //
-// Пустой Amount — оплатить ровно сумму инвойса; Confirmations 0 — сразу подтверждён. Депозит с
-// малым числом подтверждений дозревает сам (~10 минут) — либо повторите тот же TxID с бОльшим
-// Confirmations, чтобы углубить его немедленно.
+// Пустой Amount — оплатить ровно сумму инвойса; Confirmations 0 — сразу подтверждён.
+//
+// Депозит с недобором подтверждений САМ НЕ ДОЗРЕЕТ: у симулированного депозита нет цепочки, его
+// никто не переэмитит и курсор для него не двигается — инвойс останется в confirm_check сколь
+// угодно долго. Единственный способ довести его до paid — повторить SimulateDeposit с ТЕМ ЖЕ TxID
+// и бОльшим Confirmations (повтор того же TxID идемпотентен и сумму не удваивает).
+//
+// Не путайте с maturity-холдом на ВЫПЛАТЕ (ошибка payout.funds_maturing): вот он в песочнице
+// снимается по возрасту фоновым джобом, по умолчанию через 10 минут
+// (env GATEWAY_SANDBOX_MATURITY_MINUTES). Это про доступность средств к выводу, а не про
+// подтверждения инвойса.
 func (r *SandboxResource) SimulateDeposit(ctx context.Context, params SandboxDepositParams) (*SandboxDeposit, error) {
 	body := Params{"invoice_id": params.InvoiceID}
 	if params.Amount != "" {

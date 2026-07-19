@@ -278,6 +278,17 @@ func (c *Client) requestIdem(ctx context.Context, path string, body Params, out 
 		}
 		body = clean
 	}
+	return c.requestIdemKey(ctx, path, body, key, out)
+}
+
+// requestIdemKey — как requestIdem, но тело произвольного типа (структура, срез), а ключ
+// передаётся ОТДЕЛЬНЫМ аргументом, а не служебным полем тела. Нужен там, где тело — типизированная
+// структура (напр. PayoutLinkParams) и вырезать из неё поле нельзя.
+//
+// Пустой key — сгенерировать UUID v4. Как и в requestIdem, ключ фиксируется ДО цикла повторов:
+// все внутренние ретраи одного вызова шлют один и тот же заголовок.
+func (c *Client) requestIdemKey(ctx context.Context, path string, body any, key string, out any) error {
+	key = strings.TrimSpace(key)
 	if key == "" {
 		key = newIdempotencyKey()
 	}

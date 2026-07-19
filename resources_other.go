@@ -25,9 +25,30 @@ func (r *WalletsResource) Block(ctx context.Context, address string, forceBlock 
 }
 
 // BlockedAddressRefund возвращает средства с кошелька на адрес. POST /v1/wallet/blocked-address-refund
+//
+// Вызов СОЗДАЁТ выплату, а SDK автоматически повторяет сетевые ошибки и 5xx, поэтому запрос идёт с
+// заголовком Idempotency-Key, зафиксированным до цикла повторов (свой ключ —
+// BlockedAddressRefundWithKey).
+//
+// Этот эндпоинт НАМЕРЕННО не обёрнут в идемпотентность на шлюзе — и не нуждается в ней: он
+// идемпотентен ПО СОСТОЯНИЮ, причём сильнее, чем дал бы заголовок. Шлюз строит детерминированную
+// ссылку "refund-wallet:<walletID>", берёт per-wallet advisory-lock и внутри лока сначала ищет уже
+// существующую выплату по этой ссылке. Повтор — с заголовком или без — возвращает ТУ ЖЕ выплату,
+// вторая не создаётся; конкурентные повторы сериализуются и дожидаются результата, а не получают
+// 409. Отключать ретраи ради этого вызова НЕ нужно.
+//
+// Косметическая оговорка: адрес НЕ входит в ссылку, поэтому повтор с ДРУГИМ адресом вернёт первую
+// выплату на ПЕРВЫЙ адрес (а не создаст выплату на новый).
 func (r *WalletsResource) BlockedAddressRefund(ctx context.Context, uuid, address string) (map[string]any, error) {
+	return r.BlockedAddressRefundWithKey(ctx, uuid, address, "")
+}
+
+// BlockedAddressRefundWithKey — как BlockedAddressRefund, но с вашим ключом идемпотентности
+// (пусто — SDK сгенерирует UUID v4).
+func (r *WalletsResource) BlockedAddressRefundWithKey(ctx context.Context, uuid, address, idempotencyKey string) (map[string]any, error) {
 	var out map[string]any
-	return out, r.c.request(ctx, "/v1/wallet/blocked-address-refund", Params{"uuid": uuid, "address": address}, &out)
+	body := Params{"uuid": uuid, "address": address}
+	return out, r.c.requestIdemKey(ctx, "/v1/wallet/blocked-address-refund", body, idempotencyKey, &out)
 }
 
 // QR возвращает QR-код произвольного адреса. POST /v1/wallet/qr
