@@ -77,7 +77,8 @@ func main() {
 
 Защита от дублей при повторах — заголовок **`Idempotency-Key`**: на создающих вызовах
 (`Payments.Create` / `Refund` / `Resolve` / `*Batch`, `Payouts.Create` / `CreateMass` / `CreateBatch`,
-`Account.TransferToPersonal`) SDK генерирует UUID **один раз до цикла повторов**, поэтому все
+`Account.TransferToPersonal` / `TransferToUser` / `TransferBatch`) SDK генерирует UUID **один раз до
+цикла повторов**, поэтому все
 внутренние ретраи шлют один и тот же ключ, и шлюз дедуплицирует повтор. Заголовок не входит в
 подпись запроса.
 
@@ -290,6 +291,47 @@ _, _ = client.Payouts.Create(ctx, oblodai.Params{
 - `Sandbox.ListWebhooks` — единственный подписанный `GET` в API: подпись по той же канонической
   строке `{ts}\nGET\n{path}\n` с пустым телом (SDK делает это сам).
 
+## Внутренние переводы пользователям платформы (v1.2.0)
+
+Перевод **без комиссии** с баланса мерчанта на личный кошелёк другого пользователя платформы —
+например, выплата исполнителю, у которого есть аккаунт Oblodai. `to_user_id` — **UUID пользователя
+на платформе, НЕ username** (username резолвится в id на стороне кабинета). Требует PAYOUT-ключ;
+дедуп — та же лестница, что у остальных денежных вызовов: заголовок `Idempotency-Key` (SDK шлёт
+сам) → `order_id` → подпись.
+
+```go
+res, err := client.Account.TransferToUser(ctx, oblodai.Params{
+	"to_user_id": "5c3a2c1e-9d0b-4f6a-8f3d-2b1a0c9e8d7f", // UUID получателя, не username
+	"amount":     "25",
+	"currency":   "USDT",
+	"order_id":   "payroll-7", // необязателен
+})
+// res.RecipientBalance — новый баланс получателя
+
+// «Зарплатная» пачка (до 5000 переводов одним запросом; обработка фоновая):
+sub, err := client.Account.TransferBatch(ctx, []oblodai.Params{
+	{"to_user_id": "…", "amount": "10", "currency": "USDT", "order_id": "s-1"},
+	{"to_user_id": "…", "amount": "20", "currency": "USDT", "order_id": "s-2"},
+}, "continue") // "continue" (по умолчанию) или "stop"
+info, err := client.Batches.Info(ctx, sub.BatchID, 100, 0) // прогресс и результат по каждой строке
+```
+
+## Публичная страница оплаты — свой checkout (v1.2.0)
+
+Публичные методы (`GET /v1/pay/{id}` и `POST /v1/pay/{id}/select`, **без подписи и без ключей**) —
+для СВОЕЙ страницы оплаты вместо hosted-страницы шлюза: браузер рендерит и поллит инвойс без
+секрета мерчанта.
+
+```go
+// Публичное состояние инвойса: адрес, сумма, QR, статус, срок. Мерчант-приватные поля
+// (additional_data, payer_email, payer_address) бэкенд вырезает.
+pub, err := client.Payments.PublicGet(ctx, payment.UUID)
+
+// Для валюто-агностичного инвойса (payment_status "select") pub.Accepted — методы на выбор;
+// выбор фиксирует курс, выделяет депозит-адрес и возвращает финализированный инвойс.
+p, err := client.Payments.PublicSelect(ctx, payment.UUID, "USDT", "tron")
+```
+
 ## Обзор методов
 
 ```go
@@ -309,6 +351,8 @@ client.Payments.SetAccepted(ctx, methods) / ListAccepted(ctx)
 client.Payments.SetAccuracy(ctx, params) / GetAccuracy(ctx)
 client.Payments.SetAutorefund(ctx, params) / GetAutorefund(ctx)
 client.Payments.SetDiscount(ctx, params) / ListDiscounts(ctx)
+client.Payments.PublicGet(ctx, uuid)                      // v1.2.0, публичный, без подписи
+client.Payments.PublicSelect(ctx, uuid, currency, network) // v1.2.0, публичный, без подписи
 
 // Выплаты
 client.Payouts.Create(ctx, params)
@@ -361,6 +405,8 @@ client.Wallets.QR(ctx, address)
 client.Account.Balance(ctx)
 client.Account.Referral(ctx)
 client.Account.TransferToPersonal(ctx, params)
+client.Account.TransferToUser(ctx, params)             // v1.2.0, to_user_id — UUID, не username
+client.Account.TransferBatch(ctx, transfers, onError)  // v1.2.0, до 5000, результат — Batches.Info
 client.Account.VRCS(ctx, enabled)
 
 // Вебхуки

@@ -68,6 +68,43 @@ func (r *AccountResource) TransferToPersonal(ctx context.Context, params Params)
 	return out, r.c.requestIdem(ctx, "/v1/transfer/to-personal", params, &out)
 }
 
+// TransferToUserResult — результат Account.TransferToUser (внутреннего перевода пользователю).
+type TransferToUserResult struct {
+	Currency         string `json:"currency"`
+	Amount           string `json:"amount"`
+	ToUserID         string `json:"to_user_id"`
+	RecipientBalance string `json:"recipient_balance"`
+}
+
+// TransferToUser переводит средства с баланса мерчанта на личный кошелёк ДРУГОГО пользователя
+// платформы — внутренний перевод без комиссии. POST /v1/transfer/to-user
+//
+// params: "to_user_id" — id пользователя-получателя (UUID платформы, НЕ username: username
+// резолвится в id на стороне кабинета), "amount" и "currency" — строки, "order_id" — необязателен.
+// Требует PAYOUT-ключ. Защита от дублей — та же лестница, что у остальных денежных эндпоинтов
+// (заголовок Idempotency-Key → order_id → подпись): SDK шлёт заголовок Idempotency-Key,
+// сгенерированный один раз до цикла повторов; свой ключ — в params["idempotency_key"].
+func (r *AccountResource) TransferToUser(ctx context.Context, params Params) (*TransferToUserResult, error) {
+	var out TransferToUserResult
+	return &out, r.c.requestIdem(ctx, "/v1/transfer/to-user", params, &out)
+}
+
+// TransferBatch ставит в обработку пачку внутренних переводов пользователям (до 5000) одним
+// подписанным запросом — «зарплатный» сценарий. POST /v1/transfer/batch
+//
+// Каждый элемент — тело обычного Account.TransferToUser. onError: "continue" (по умолчанию) или
+// "stop". Обработка фоновая: прогресс и результаты по каждому элементу — через
+// Batches.Info(batchID, ...). Требует PAYOUT-ключ. Запрос идёт с заголовком Idempotency-Key
+// (стабилен между повторами).
+func (r *AccountResource) TransferBatch(ctx context.Context, transfers []Params, onError string) (*BatchSubmission, error) {
+	body := Params{"transfers": transfers}
+	if onError != "" {
+		body["on_error"] = onError
+	}
+	var out BatchSubmission
+	return &out, r.c.requestIdem(ctx, "/v1/transfer/batch", body, &out)
+}
+
 // VRCS включает/выключает VRCS. enabled nil — чтение. POST /v1/vrcs
 func (r *AccountResource) VRCS(ctx context.Context, enabled *bool) (map[string]any, error) {
 	body := Params{}

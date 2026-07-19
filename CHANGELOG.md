@@ -20,6 +20,22 @@
   - `Sandbox.ReplayWebhook(ctx, deliveryID)` — повторная постановка доставки в очередь
     (`POST /v1/sandbox/webhooks/replay`).
 - **`oblodai.IsTestKey(publicID)`** — проверка, что public_id тестовый (префикс `test_`).
+- **Внутренние переводы пользователям платформы.** `Account.TransferToUser(ctx, params)` —
+  перевод без комиссии с баланса мерчанта на личный кошелёк ДРУГОГО пользователя платформы
+  (`POST /v1/transfer/to-user`; `to_user_id` — UUID пользователя, НЕ username; PAYOUT-ключ;
+  заголовок `Idempotency-Key` как у остальных денежных вызовов, лестница дедупа
+  заголовок → `order_id` → подпись). Тип `TransferToUserResult`
+  (`currency`/`amount`/`to_user_id`/`recipient_balance`).
+- **Пачка внутренних переводов.** `Account.TransferBatch(ctx, transfers, onError)` —
+  «зарплатная» постановка до 5000 переводов одним запросом (`POST /v1/transfer/batch`,
+  `on_error: continue|stop`); результат `BatchSubmission`, прогресс и построчные результаты —
+  через `Batches.Info(batchID, …)`.
+- **Публичная страница оплаты (свой checkout, без ключей в браузере).**
+  `Payments.PublicGet(ctx, uuid)` — публичное состояние инвойса (`GET /v1/pay/{id}`, БЕЗ подписи;
+  тип `PublicPayment` = `Payment` + `Accepted []AcceptedMethod` для инвойса в статусе выбора) и
+  `Payments.PublicSelect(ctx, uuid, currency, network)` — выбор валюты и сети валюто-агностичного
+  инвойса с фиксацией курса и выдачей адреса (`POST /v1/pay/{id}/select`, БЕЗ подписи; ответ —
+  обычный `Payment`).
 - **Подписанный GET.** HTTP-слой умеет подписывать GET-запросы с пустым телом — та же каноническая
   строка `{ts}\nGET\n{path}\n{пустое тело}` (нужно для `GET /v1/sandbox/webhooks`; поведение
   остальных эндпоинтов не изменилось).
