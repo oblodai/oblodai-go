@@ -1,6 +1,9 @@
 package oblodai
 
-import "context"
+import (
+	"context"
+	"net/url"
+)
 
 // lookup собирает тело запроса по uuid или order_id (нужен хотя бы один).
 func lookup(uuid, orderID string) Params {
@@ -183,6 +186,32 @@ func (r *PaymentsResource) SetDiscount(ctx context.Context, params Params) (map[
 func (r *PaymentsResource) ListDiscounts(ctx context.Context) ([]map[string]any, error) {
 	var out []map[string]any
 	return out, r.c.request(ctx, "/v1/payment/discount/list", map[string]any{}, &out)
+}
+
+// PublicPayment — публичное состояние инвойса для своей страницы оплаты (Payments.PublicGet).
+// Это Payment без мерчант-приватных полей (additional_data, payer_email, payer_address — бэкенд их
+// вырезает). Для валюто-агностичного инвойса, ждущего выбора метода, заполнен Accepted — пары
+// валюта+сеть, из которых плательщик может выбрать (Payments.PublicSelect).
+type PublicPayment struct {
+	Payment
+	Accepted []AcceptedMethod `json:"accepted,omitempty"`
+}
+
+// PublicGet возвращает публичное состояние инвойса — для СВОЕЙ страницы оплаты: рендер и поллинг
+// статуса без секрета мерчанта в браузере. GET /v1/pay/{id} — ПУБЛИЧНЫЙ, запрос уходит БЕЗ подписи.
+func (r *PaymentsResource) PublicGet(ctx context.Context, uuid string) (*PublicPayment, error) {
+	var out PublicPayment
+	return &out, r.c.requestPublicGET(ctx, "/v1/pay/"+url.PathEscape(uuid), &out)
+}
+
+// PublicSelect выбирает валюту и сеть оплаты валюто-агностичного инвойса: фиксирует курс, выделяет
+// депозит-адрес и возвращает финализированный инвойс. POST /v1/pay/{id}/select — ПУБЛИЧНЫЙ, без
+// подписи. Пара (currency, network) должна входить в принимаемый набор мерчанта (Accepted из
+// PublicGet); повторный выбор даёт pay.not_selectable.
+func (r *PaymentsResource) PublicSelect(ctx context.Context, uuid, currency, network string) (*Payment, error) {
+	var out Payment
+	return &out, r.c.requestPublic(ctx, "/v1/pay/"+url.PathEscape(uuid)+"/select",
+		Params{"currency": currency, "network": network}, &out)
 }
 
 // ─────────────────────────────── Payouts ───────────────────────────────
