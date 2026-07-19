@@ -109,7 +109,8 @@ type Config struct {
 }
 
 // Client — клиент Oblodai API. Создаётся через New. Ресурсы доступны как поля:
-// Payments, Payouts, Batches, Links, Splits, PayoutLinks, Wallets, Account, Webhooks, Settings, Rates.
+// Payments, Payouts, Batches, Links, Splits, PayoutLinks, Wallets, Account, Webhooks, Settings,
+// Rates, Sandbox.
 type Client struct {
 	publicID string
 	secret   string
@@ -129,6 +130,7 @@ type Client struct {
 	Webhooks    *WebhooksResource
 	Settings    *SettingsResource
 	Rates       *RatesResource
+	Sandbox     *SandboxResource
 }
 
 // New создаёт клиента. Возвращает ошибку, если не заданы обязательные поля конфигурации.
@@ -186,6 +188,7 @@ func New(cfg Config) (*Client, error) {
 	c.Webhooks = &WebhooksResource{c}
 	c.Settings = &SettingsResource{c}
 	c.Rates = &RatesResource{c}
+	c.Sandbox = &SandboxResource{c}
 	return c, nil
 }
 
@@ -291,6 +294,12 @@ func (c *Client) requestPublicGET(ctx context.Context, path string, out any) err
 	return c.execute(ctx, http.MethodGet, path, nil, false, "", out)
 }
 
+// requestSignedGET выполняет ПОДПИСАННЫЙ GET-запрос (напр. GET /v1/sandbox/webhooks).
+// Каноническая строка подписи та же, что у POST — "{ts}\nGET\n{path}\n{body}" — с пустым телом.
+func (c *Client) requestSignedGET(ctx context.Context, path string, out any) error {
+	return c.execute(ctx, http.MethodGet, path, nil, true, "", out)
+}
+
 func (c *Client) execute(ctx context.Context, method, path string, payload any, signed bool, idemKey string, out any) error {
 	attempts := 1
 	if c.retry != nil && c.retry.MaxAttempts > 1 {
@@ -368,7 +377,8 @@ func (c *Client) once(ctx context.Context, method, path string, payload any, sig
 		req.Header.Set("Idempotency-Key", idemKey)
 	}
 
-	if signed && bodyBytes != nil {
+	if signed {
+		// Для GET bodyBytes == nil → string(nil) == "" — подписывается пустое тело.
 		ts, sig := signRequest(c.secret, method, path, string(bodyBytes), "")
 		req.Header.Set("X-Public-Id", c.publicID)
 		req.Header.Set("X-Timestamp", ts)
