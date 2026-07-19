@@ -9,7 +9,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // ──────────────────── Песочница (v1.2.0) ────────────────────
@@ -447,5 +450,283 @@ func TestIsTestKey(t *testing.T) {
 		if got := IsTestKey(tc.publicID); got != tc.want {
 			t.Fatalf("IsTestKey(%q) = %v, want %v", tc.publicID, got, tc.want)
 		}
+	}
+}
+
+// ──────────── Идемпотентность денежных вызовов, которые её не слали (v1.2.0) ────────────
+
+// Три эндпоинта РЕЗЕРВИРУЮТ деньги и автоматически ретраятся, поэтому обязаны слать
+// Idempotency-Key: /v1/payout/link, /v1/payout/link/batch, /v1/wallet/blocked-address-refund.
+//
+// /v1/payout/link и /v1/payout/link/batch обёрнуты на шлюзе в withIdempotency, поэтому заголовок
+// там — реальная защита: повтор реплеит первый ответ, баланс дебетуется один раз.
+// /v1/wallet/blocked-address-refund намеренно НЕ обёрнут, но идемпотентен по состоянию (стабильная
+// ссылка refund-wallet:<id> под advisory-lock), так что заголовок ему безвреден. Тест фиксирует
+// поведение КЛИЕНТА (заголовок уходит), а не серверный дедуп.
+func TestMoneyEndpointsSendIdempotencyKey(t *testing.T) {
+	var mu sync.Mutex
+	got := map[string]string{} // path → Idempotency-Key
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		got[r.URL.Path] = r.Header.Get("Idempotency-Key")
+		mu.Unlock()
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+			"link_id": "l1", "status": "funded", "links": []any{},
+		}})
+	}, nil)
+	defer srv.Close()
+
+	ctx := context.Background()
+	link := PayoutLinkParams{Currency: "USDT", Network: "tron", Amount: "25", ExpiresInHours: 24}
+	if _, err := c.PayoutLinks.Create(ctx, link); err != nil {
+		t.Fatalf("PayoutLinks.Create: %v", err)
+	}
+	if _, err := c.PayoutLinks.CreateBatch(ctx, []PayoutLinkParams{link}); err != nil {
+		t.Fatalf("PayoutLinks.CreateBatch: %v", err)
+	}
+	if _, err := c.Wallets.BlockedAddressRefund(ctx, "u1", "T1"); err != nil {
+		t.Fatalf("BlockedAddressRefund: %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	for _, path := range []string{"/v1/payout/link", "/v1/payout/link/batch", "/v1/wallet/blocked-address-refund"} {
+		key, ok := got[path]
+		if !ok {
+			t.Fatalf("endpoint %s was not called; called: %v", path, got)
+		}
+		if !uuidRe.MatchString(key) {
+			t.Fatalf("%s must send a UUID v4 Idempotency-Key, got %q", path, key)
+		}
+	}
+}
+
+// Ключ фиксируется ДО цикла повторов: внутренний ретрай шлёт ТОТ ЖЕ заголовок — иначе шлюз,
+// который эти маршруты уже обернул в withIdempotency, увидит два разных ключа и создаст вторую
+// ссылку (двойной дебет баланса).
+func TestPayoutLinkIdempotencyKeyStableAcrossRetries(t *testing.T) {
+	cases := []struct {
+		name string
+		call func(*Client) error
+	}{
+		{"payout/link", func(c *Client) error {
+			_, err := c.PayoutLinks.Create(context.Background(), PayoutLinkParams{
+				Currency: "USDT", Network: "tron", Amount: "25", ExpiresInHours: 24,
+			})
+			return err
+		}},
+		{"payout/link/batch", func(c *Client) error {
+			_, err := c.PayoutLinks.CreateBatch(context.Background(), []PayoutLinkParams{{
+				Currency: "USDT", Network: "tron", Amount: "25", ExpiresInHours: 24,
+			}})
+			return err
+		}},
+		{"wallet/blocked-address-refund", func(c *Client) error {
+			_, err := c.Wallets.BlockedAddressRefund(context.Background(), "u1", "T1")
+			return err
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var keys []string
+			var calls int32
+			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				keys = append(keys, r.Header.Get("Idempotency-Key"))
+				mu.Unlock()
+				if atomic.AddInt32(&calls, 1) == 1 {
+					w.WriteHeader(503)
+					json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{
+						"code": "x.unavailable", "message": "later",
+					}})
+					return
+				}
+				json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+					"link_id": "l1", "status": "funded", "links": []any{},
+				}})
+			}, &RetryConfig{MaxAttempts: 3, InitialDelay: time.Millisecond, MaxDelay: 5 * time.Millisecond})
+			defer srv.Close()
+
+			if err := tc.call(c); err != nil {
+				t.Fatalf("call: %v", err)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if len(keys) != 2 {
+				t.Fatalf("expected 2 attempts, got %d", len(keys))
+			}
+			if keys[0] == "" || keys[0] != keys[1] {
+				t.Fatalf("Idempotency-Key must not change across retries: %q vs %q", keys[0], keys[1])
+			}
+		})
+	}
+}
+
+// Свой ключ: PayoutLinkParams.IdempotencyKey уходит ЗАГОЛОВКОМ и НЕ попадает в тело
+// (поле помечено json:"-"), структура вызывающего не мутируется.
+func TestPayoutLinkExplicitIdempotencyKey(t *testing.T) {
+	var gotKey string
+	var gotBody []byte
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		gotKey = r.Header.Get("Idempotency-Key")
+		gotBody, _ = io.ReadAll(r.Body)
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+			"link_id": "l1", "status": "funded",
+		}})
+	}, nil)
+	defer srv.Close()
+
+	params := PayoutLinkParams{
+		Currency: "USDT", Network: "tron", Amount: "25", ExpiresInHours: 24,
+		Reference: "bonus-42", IdempotencyKey: "my-key-1",
+	}
+	if _, err := c.PayoutLinks.Create(context.Background(), params); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if gotKey != "my-key-1" {
+		t.Fatalf("explicit key must go to the header, got %q", gotKey)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(gotBody, &body); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if _, ok := body["idempotency_key"]; ok {
+		t.Fatalf("idempotency_key must not leak into the body: %s", gotBody)
+	}
+	if body["reference"] != "bonus-42" {
+		t.Fatalf("reference must stay in the body: %s", gotBody)
+	}
+	if params.IdempotencyKey != "my-key-1" {
+		t.Fatal("caller params must not be mutated")
+	}
+}
+
+// Явный ключ у batch/refund-вариантов *WithKey; пустой ключ — SDK генерирует UUID v4.
+func TestWithKeyVariants(t *testing.T) {
+	var mu sync.Mutex
+	got := map[string]string{}
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		got[r.URL.Path] = r.Header.Get("Idempotency-Key")
+		mu.Unlock()
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{"links": []any{}}})
+	}, nil)
+	defer srv.Close()
+
+	ctx := context.Background()
+	if _, err := c.PayoutLinks.CreateBatchWithKey(ctx, []PayoutLinkParams{{Currency: "USDT", Network: "tron", Amount: "1"}}, "batch-key"); err != nil {
+		t.Fatalf("CreateBatchWithKey: %v", err)
+	}
+	if _, err := c.Wallets.BlockedAddressRefundWithKey(ctx, "u1", "T1", "refund-key"); err != nil {
+		t.Fatalf("BlockedAddressRefundWithKey: %v", err)
+	}
+	mu.Lock()
+	if got["/v1/payout/link/batch"] != "batch-key" || got["/v1/wallet/blocked-address-refund"] != "refund-key" {
+		mu.Unlock()
+		t.Fatalf("explicit keys must reach the header: %v", got)
+	}
+	mu.Unlock()
+
+	// Пустой ключ у *WithKey — генерируется UUID v4.
+	if _, err := c.Wallets.BlockedAddressRefundWithKey(ctx, "u1", "T1", ""); err != nil {
+		t.Fatalf("BlockedAddressRefundWithKey(empty): %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !uuidRe.MatchString(got["/v1/wallet/blocked-address-refund"]) {
+		t.Fatalf("empty key must be replaced by a generated UUID, got %q", got["/v1/wallet/blocked-address-refund"])
+	}
+}
+
+// ──────────── Коды слоя идемпотентности на payout-ссылках (v1.2.0) ────────────
+
+// Шлюз обернул /v1/payout/link и /v1/payout/link/batch в withIdempotency, поэтому эти маршруты
+// теперь отдают новые коды. Классификация обязана быть такой: 4xx — терминальные (авто-ретрай их
+// только сжёг бы попытки и задержал ответ вызывающему), 503 idempotency.unavailable — временная
+// (стор идемпотентности fail-closed by design, повтор проходит).
+//
+// Отдельно важен payoutlink.duplicate_reference: раньше дубль Reference приезжал как 500 и SDK
+// ретраил его впустую; теперь это 409 и он обязан отдаваться вызывающему сразу.
+func TestPayoutLinkIdempotencyErrorCodesRetryClassification(t *testing.T) {
+	cases := []struct {
+		code      string
+		status    int
+		retriable bool
+	}{
+		{"idempotency.key_reused", 400, false},
+		{"idempotency.bad_key", 400, false},
+		{"idempotency.in_progress", 409, false},
+		{"payoutlink.duplicate_reference", 409, false},
+		{"idempotency.unavailable", 503, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.code, func(t *testing.T) {
+			var calls int32
+			c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				if atomic.AddInt32(&calls, 1) == 1 {
+					w.WriteHeader(tc.status)
+					json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{
+						"code": tc.code, "message": "boom",
+					}})
+					return
+				}
+				json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+					"link_id": "l1", "status": "funded",
+				}})
+			}, &RetryConfig{MaxAttempts: 3, InitialDelay: time.Millisecond, MaxDelay: 5 * time.Millisecond})
+			defer srv.Close()
+
+			_, err := c.PayoutLinks.Create(context.Background(), PayoutLinkParams{
+				Currency: "USDT", Network: "tron", Amount: "25", ExpiresInHours: 24,
+			})
+			got := int(atomic.LoadInt32(&calls))
+
+			if tc.retriable {
+				if err != nil {
+					t.Fatalf("%s must be retried to success, got error: %v", tc.code, err)
+				}
+				if got != 2 {
+					t.Fatalf("%s must be retried once (2 calls), got %d", tc.code, got)
+				}
+				return
+			}
+			if got != 1 {
+				t.Fatalf("%s is terminal and must NOT be retried, got %d calls", tc.code, got)
+			}
+			var apiErr *APIError
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("%s must surface as *APIError, got %v", tc.code, err)
+			}
+			if apiErr.Code != tc.code || apiErr.Status != tc.status {
+				t.Fatalf("want %s/%d, got %s/%d", tc.code, tc.status, apiErr.Code, apiErr.Status)
+			}
+			if apiErr.IsRetriable() {
+				t.Fatalf("%s must not be classified retriable", tc.code)
+			}
+		})
+	}
+}
+
+// Реплей на стороне шлюза прозрачен для SDK: повтор с тем же ключом отдаёт первый ответ и
+// заголовок Idempotent-Replayed: true. SDK обязан разобрать такой ответ как обычный успех
+// (тело — тот же конверт), а не считать наличие заголовка ошибкой.
+func TestPayoutLinkReplayedResponseParsesAsSuccess(t *testing.T) {
+	c, srv := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Idempotent-Replayed", "true")
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{
+			"link_id": "l1", "status": "funded", "claim_token": "tok-1",
+		}})
+	}, nil)
+	defer srv.Close()
+
+	link, err := c.PayoutLinks.Create(context.Background(), PayoutLinkParams{
+		Currency: "USDT", Network: "tron", Amount: "25", ExpiresInHours: 24,
+	})
+	if err != nil {
+		t.Fatalf("replayed response must parse as success: %v", err)
+	}
+	if link.LinkID != "l1" || link.ClaimToken != "tok-1" {
+		t.Fatalf("replayed body must be parsed in full, got %+v", link)
 	}
 }

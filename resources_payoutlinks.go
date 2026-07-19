@@ -21,11 +21,18 @@ type PayoutLinkParams struct {
 	Currency string `json:"currency"` // только крипто-актив
 	Network  string `json:"network"`  // сеть выплаты получателю
 	Amount   string `json:"amount"`   // human-строка в currency, > 0
-	// Reference — ваш ключ дедупликации ссылки (уникален per-merchant). Именно он защищает от
-	// дублей: заголовок Idempotency-Key на payout-link-эндпоинты не шлётся.
+	// Reference — ваш ключ дедупликации ссылки (уникальный индекс per-merchant, только когда
+	// задан). ВТОРОЙ, durable слой защиты от дублей поверх заголовка Idempotency-Key: работает
+	// даже без заголовка и даже когда ответ батча слишком велик для кэша идемпотентности
+	// (>256 КБ). Дубль даёт payoutlink.duplicate_reference (409), а не реплей первого ответа.
+	// Задавайте его всегда — особенно на CreateBatch. См. комментарий к PayoutLinksResource.
 	Reference string `json:"reference,omitempty"`
-	Title     string `json:"title,omitempty"` // лейбл, виден получателю
-	Note      string `json:"note,omitempty"`  // заметка, видна получателю (и в письме)
+	// IdempotencyKey — свой ключ для заголовка Idempotency-Key (пусто — SDK сгенерирует UUID v4).
+	// В теле запроса НЕ передаётся (json:"-"). Заголовок отправляется всегда, и шлюз его УВАЖАЕТ:
+	// повтор с тем же ключом реплеит первый ответ. См. комментарий к PayoutLinksResource.
+	IdempotencyKey string `json:"-"`
+	Title          string `json:"title,omitempty"` // лейбл, виден получателю
+	Note           string `json:"note,omitempty"`  // заметка, видна получателю (и в письме)
 	// Email — при заполнении получателю уходит письмо со ссылкой claim (best-effort).
 	Email string `json:"email,omitempty"`
 	// ExpiresInHours — окно claim в часах, клампится бэкендом в [1, 720]. ЗАДАВАЙТЕ ЯВНО:
@@ -94,32 +101,73 @@ type PayoutLinkClaim struct {
 // PayoutLinksResource — claimable payout-ссылки («крипто-чеки»): мерчант резервирует средства, НЕ
 // зная кошелька получателя; получатель открывает публичную страницу claim и вводит свой адрес.
 //
-// Management-методы (Create/CreateBatch/List/Info/Cancel) требуют PAYOUT-ключ. Заголовок
-// Idempotency-Key на них НЕ шлётся — эти эндпоинты не обёрнуты в идемпотентность на шлюзе;
-// защита от дублей — ваш per-link Reference (уникальный индекс per-merchant). ClaimInfo/Claim —
-// публичные, без подписи.
+// Management-методы (Create/CreateBatch/List/Info/Cancel) требуют PAYOUT-ключ.
+// ClaimInfo/Claim — публичные, без подписи.
+//
+// # Дедупликация создающих вызовов — ВАЖНО
+//
+// Create/CreateBatch РЕЗЕРВИРУЮТ деньги, а SDK автоматически повторяет сетевые ошибки и 5xx
+// (до 4 попыток). Потерянный ответ поэтому мог бы обернуться несколькими профинансированными
+// ссылками. Защита — два слоя:
+//
+//  1. Заголовок Idempotency-Key. SDK шлёт его на оба эндпоинта, фиксируя ключ ДО цикла повторов,
+//     и шлюз его УВАЖАЕТ: /v1/payout/link и /v1/payout/link/batch обёрнуты в идемпотентность.
+//     Повтор с тем же ключом реплеит первый ответ (та же ссылка, тот же ClaimToken) с заголовком
+//     Idempotent-Replayed: true, а баланс дебетуется РОВНО ОДИН РАЗ. Без заголовка поведение
+//     прежнее: два одинаковых вызова создадут ДВЕ ссылки.
+//  2. Per-link Reference — durable слой: на (merchant_id, reference) стоит уникальный индекс, и
+//     повтор с тем же Reference не создаст вторую ссылку. Работает даже без заголовка.
+//
+// Коды ответа, специфичные для слоя идемпотентности:
+//   - 400 idempotency.key_reused    — тот же ключ с ДРУГИМ телом (терминальная, SDK не ретраит);
+//   - 400 idempotency.bad_key       — кривой/слишком длинный ключ (>255) (терминальная);
+//   - 409 idempotency.in_progress   — параллельный повтор, пока первый ещё выполняется
+//     (терминальная для авто-ретрая; повторите сами чуть позже с ТЕМ ЖЕ ключом);
+//   - 503 idempotency.unavailable   — стор идемпотентности недоступен, fail-closed by design
+//     (ретраибельная, SDK повторит сам);
+//   - 409 payoutlink.duplicate_reference — дубль Reference (терминальная; раньше было 500,
+//     которое SDK ретраил впустую).
+//
+// Оговорки по батчам:
+//   - Частично упавший батч реплеится КАК ЕСТЬ: упавшие элементы НЕ повторяются под тем же
+//     ключом — шлите их НОВЫМ ключом.
+//   - Ответ батча больше 256 КБ шлюз НЕ кэширует, и тогда повтор выполнится заново. Именно
+//     поэтому на батчах стоит проставлять per-item Reference — второй слой защиты.
 type PayoutLinksResource struct{ c *Client }
 
 // Create создаёт payout-ссылку: резервирует Amount с доступного баланса и возвращает одноразовые
 // ClaimToken/ClaimURL. POST /v1/payout/link
 //
 // РЕКОМЕНДАЦИЯ: задавайте ExpiresInHours явно — при 0/отсутствии бэкенд клампит срок к минимуму,
-// и ссылка проживёт всего 1 час (диапазон [1, 720]). Для защиты от дублей задавайте Reference:
-// заголовок Idempotency-Key на этот эндпоинт не шлётся.
+// и ссылка проживёт всего 1 час (диапазон [1, 720]).
+//
+// Запрос идёт с заголовком Idempotency-Key (стабилен между внутренними повторами; свой ключ —
+// params.IdempotencyKey). Шлюз его уважает: повтор реплеит первый ответ, баланс дебетуется один
+// раз. Reference — второй, durable слой защиты. См. комментарий к PayoutLinksResource.
 func (r *PayoutLinksResource) Create(ctx context.Context, params PayoutLinkParams) (*PayoutLink, error) {
 	var out PayoutLink
-	return &out, r.c.request(ctx, "/v1/payout/link", params, &out)
+	return &out, r.c.requestIdemKey(ctx, "/v1/payout/link", params, params.IdempotencyKey, &out)
 }
 
 // CreateBatch создаёт до 500 payout-ссылок одним запросом. POST /v1/payout/link/batch
 //
 // Каждый элемент резервируется в собственной транзакции: плохой элемент фейлит только себя
 // (Results index-aligned с запросом); все созданные ссылки получают общий BatchID. Больше 500
-// элементов — batch.too_large (разбейте на страницы). Заголовок Idempotency-Key не шлётся —
-// задавайте per-link Reference. Про ExpiresInHours — см. Create.
+// элементов — batch.too_large (разбейте на страницы). Про ExpiresInHours — см. Create.
+//
+// Запрос идёт с заголовком Idempotency-Key (стабилен между внутренними повторами); свой ключ на
+// весь батч — CreateBatchWithKey. Шлюз его уважает. ДВЕ оговорки именно для батчей: частично
+// упавший батч реплеится как есть (упавшие элементы шлите НОВЫМ ключом), а ответ больше 256 КБ
+// не кэшируется — поэтому проставляйте per-item Reference. См. комментарий к PayoutLinksResource.
 func (r *PayoutLinksResource) CreateBatch(ctx context.Context, links []PayoutLinkParams) (*PayoutLinkBatch, error) {
+	return r.CreateBatchWithKey(ctx, links, "")
+}
+
+// CreateBatchWithKey — как CreateBatch, но с вашим ключом идемпотентности на весь вызов
+// (пусто — SDK сгенерирует UUID v4). Ключ уходит заголовком Idempotency-Key и не входит в подпись.
+func (r *PayoutLinksResource) CreateBatchWithKey(ctx context.Context, links []PayoutLinkParams, idempotencyKey string) (*PayoutLinkBatch, error) {
 	var out PayoutLinkBatch
-	return &out, r.c.request(ctx, "/v1/payout/link/batch", Params{"links": links}, &out)
+	return &out, r.c.requestIdemKey(ctx, "/v1/payout/link/batch", Params{"links": links}, idempotencyKey, &out)
 }
 
 // List возвращает страницу payout-ссылок (created_at DESC, без claim-токенов).

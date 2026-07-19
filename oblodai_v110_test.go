@@ -165,8 +165,10 @@ func TestTransferToPersonalIdempotencyHeader(t *testing.T) {
 	}
 }
 
-// Эндпоинты БЕЗ withIdempotency на шлюзе не должны получать заголовок (payout-link — дедуп по
-// reference; info — read-only).
+// Read-only эндпоинты заголовок не получают.
+//
+// ИЗМЕНЕНО в v1.2.0: PayoutLinks.Create раньше проверялся здесь как «без заголовка». Теперь он
+// денежный и заголовок ШЛЁТ — см. TestMoneyEndpointsSendIdempotencyKey.
 func TestNonIdempotentEndpointsNoHeader(t *testing.T) {
 	var mu sync.Mutex
 	headers := map[string]string{}
@@ -174,15 +176,11 @@ func TestNonIdempotentEndpointsNoHeader(t *testing.T) {
 		mu.Lock()
 		headers[r.URL.Path] = r.Header.Get("Idempotency-Key")
 		mu.Unlock()
-		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{"link_id": "l1", "status": "funded"}})
+		json.NewEncoder(w).Encode(map[string]any{"state": 0, "result": map[string]any{"uuid": "u1", "payment_status": "check"}})
 	}, nil)
 	defer srv.Close()
 
-	ctx := context.Background()
-	if _, err := c.PayoutLinks.Create(ctx, PayoutLinkParams{Currency: "BTC", Network: "bitcoin", Amount: "0.005", ExpiresInHours: 24}); err != nil {
-		t.Fatalf("PayoutLinks.Create: %v", err)
-	}
-	if _, err := c.Payments.Info(ctx, "u1", ""); err != nil {
+	if _, err := c.Payments.Info(context.Background(), "u1", ""); err != nil {
 		t.Fatalf("Payments.Info: %v", err)
 	}
 	for path, h := range headers {
