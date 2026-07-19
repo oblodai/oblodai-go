@@ -280,6 +280,14 @@ func (r *PayoutsResource) Calculate(ctx context.Context, params Params) (*Payout
 }
 
 // Approve подтверждает выплату в статусе pending. POST /v1/payout/approve
+//
+// Заголовок Idempotency-Key сюда НЕ шлётся и не нужен: approve — это переход СОСТОЯНИЯ, а не
+// создание. Шлюз принимает только выплату в статусе pending и на любой другой отвечает
+// payout.not_pending (409), поэтому повторный approve физически не может одобрить выплату дважды
+// или сдвинуть деньги дважды.
+//
+// ВАЖНО для обработки ошибок: читайте 409 payout.not_pending как «уже одобрено», а не как
+// провал, и уточняйте фактический статус через Payouts.Info.
 func (r *PayoutsResource) Approve(ctx context.Context, uuid string) (map[string]any, error) {
 	var out map[string]any
 	return out, r.c.request(ctx, "/v1/payout/approve", Params{"uuid": uuid}, &out)
