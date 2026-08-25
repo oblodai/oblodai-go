@@ -1,0 +1,843 @@
+{
+  "request": {
+    "POST /v1/batch/info": {
+      "batch_id": "Batch id from the submit response.",
+      "limit": "How many items to return in items (pagination).",
+      "offset": "Offset over items."
+    },
+    "POST /v1/claim/{token}": {
+      "address": "Recipient address in the payout network.",
+      "memo": "Memo/tag — only for networks where it is required.",
+      "passcode": "Claim code — if the sender set one on the link. After 10 incorrect attempts the link is locked."
+    },
+    "POST /v1/documents/jobs": {
+      "format": "File format: pdf (default) or csv. CSV is generated without layout — cheaper for large statements and loads into Excel/1C.",
+      "from": "Start of the period, YYYY-MM-DD (defaults to the first day of the current month).",
+      "kind": "Report type: statement (operations), fees (commissions) or ledger (balance movements).",
+      "lang": "Document language (default en).",
+      "to": "End of the period, inclusive, YYYY-MM-DD (defaults to today). The period may span up to two years."
+    },
+    "POST /v1/documents/jobs/info": {
+      "job_id": "Job id from the creation response."
+    },
+    "POST /v1/exchange-rate/list": {
+      "currency_from": "Currency code. If set, only its rate is returned. If empty or the body is {}, rates for all currencies are returned.",
+      "currency_to": "Quote currency: USDT by default; any pricing asset, including fiats with a direct feed (EUR, RUB, …).",
+      "limit": "Page size, 1–100; default 25.",
+      "offset": "Offset from the start of the list; default 0."
+    },
+    "POST /v1/link/{id}/checkout": {
+      "amount": "Amount entered by the buyer, in the link's price currency; required for open and range, ignored for fixed.",
+      "currency": "Settlement currency — the coin the buyer pays with; needed only if the link did not pin pinned_currency.",
+      "network": "Settlement network; needed only if the link did not pin pinned_network.",
+      "order_id": "Shop order number from the embedded widget (data-oblodai-order-id); carried over to the invoice and to the webhook for matching with the order; not an idempotency key.",
+      "payer_email": "Buyer email — the cheque is sent there automatically after payment."
+    },
+    "POST /v1/pay/{id}/select": {
+      "currency": "Selected payment currency.",
+      "network": "Selected network."
+    },
+    "POST /v1/payment": {
+      "accuracy_payment_percent": "Under/overpayment tolerance, 0–5 %. Overrides the merchant setting.",
+      "additional_data": "Private merchant data, echoed back in webhooks (not visible to the buyer).",
+      "amount": "Amount to pay, in currency.",
+      "currency": "Price currency code: any of the 23 fiats (USD, EUR, RUB, …) or any coin (USDT, BTC, …). JPY and KRW have zero decimal places.",
+      "is_payment_multiple": "Allow paying up the remaining amount.",
+      "is_refresh": "Revive an expired invoice by order_id instead of creating a new one.",
+      "lifetime_seconds": "Invoice lifetime in seconds, 300–43200; default 3600. Values outside the range are clamped to the nearest bound.",
+      "network": "Settlement network (e.g. tron, ethereum). Optional — see the currency and network selection modes.",
+      "order_id": "Merchant reference; idempotency key. Strongly recommended.",
+      "payer_email": "Payer email. If set, a cheque is sent there automatically after payment; it is also the default recipient for POST /v1/payment/send-email.",
+      "subtract": "Deprecated: % of the network markup charged to the payer (0–100); payer-facing markups are configured via discount.",
+      "theme": "Payment page theme: dark | light.",
+      "to_currency": "Settlement currency — the crypto used for payment. Defaults to currency (only if currency is a coin); with a fiat price set it explicitly or omit it together with network.",
+      "url_callback": "Per-invoice webhook. Requires a registered endpoint (POST /v1/webhooks): delivery is signed with its secret.",
+      "url_return": "\"Back to shop\" link on the payment page.",
+      "url_success": "Redirect after successful payment."
+    },
+    "POST /v1/payment/accuracy/set": {
+      "accuracy_percent": "Tolerance in percent, 1–5. Required when enabled: true; ignored when enabled: false (reset to 0). Capped at 5 %.",
+      "enabled": "Enable/disable the tolerance."
+    },
+    "POST /v1/payment/autorefund/set": {
+      "overpay": "Refund the excess on overpayment (paid_over).",
+      "underpay": "Refund the funds on an expired underpayment (wrong_amount)."
+    },
+    "POST /v1/payment/batch": {
+      "on_error": "What to do when an item fails: continue (default) — process the rest; stop — halt processing after the first error.",
+      "payments": "Array of 1 to 5000 items — the same fields as POST /v1/payment; set order_id on every item: results are matched by it and it protects against duplicates.",
+      "payments.accuracy_payment_percent": "Under/overpayment tolerance, 0–5 %. Overrides the merchant setting.",
+      "payments.additional_data": "Private merchant data, echoed back in webhooks (not visible to the buyer).",
+      "payments.amount": "Amount to pay, in currency.",
+      "payments.currency": "Price currency code: any of the 23 fiats (USD, EUR, RUB, …) or any coin (USDT, BTC, …). JPY and KRW have zero decimal places.",
+      "payments.is_payment_multiple": "Allow paying up the remaining amount.",
+      "payments.is_refresh": "Revive an expired invoice by order_id instead of creating a new one.",
+      "payments.lifetime_seconds": "Invoice lifetime in seconds, 300–43200; default 3600. Values outside the range are clamped to the nearest bound.",
+      "payments.network": "Settlement network (e.g. tron, ethereum). Optional — see the currency and network selection modes.",
+      "payments.order_id": "Merchant reference; idempotency key. Strongly recommended.",
+      "payments.payer_email": "Payer email. If set, a cheque is sent there automatically after payment; it is also the default recipient for POST /v1/payment/send-email.",
+      "payments.subtract": "Deprecated: % of the network markup charged to the payer (0–100); payer-facing markups are configured via discount.",
+      "payments.theme": "Payment page theme: dark | light.",
+      "payments.to_currency": "Settlement currency — the crypto used for payment. Defaults to currency (only if currency is a coin); with a fiat price set it explicitly or omit it together with network.",
+      "payments.url_callback": "Per-invoice webhook. Requires a registered endpoint (POST /v1/webhooks): delivery is signed with its secret.",
+      "payments.url_return": "\"Back to shop\" link on the payment page.",
+      "payments.url_success": "Redirect after successful payment."
+    },
+    "POST /v1/payment/cancel": {
+      "order_id": "Your order reference.",
+      "uuid": "Invoice id in Oblodai. Either uuid or order_id is required; uuid takes priority."
+    },
+    "POST /v1/payment/discount/set": {
+      "currency": "Currency. Empty = global default for all coins.",
+      "discount_percent": "Percentage, from -99 to 99. Positive is a discount, negative is a markup.",
+      "network": "Network. Empty = any network of this currency."
+    },
+    "POST /v1/payment/fee-config/set": {
+      "payer_pays_percent": "Share of OUR commission paid by the buyer: 0 — the merchant pays (current behaviour), 100 — the buyer pays and the invoice is issued with a markup. Applies to invoices created AFTER the change."
+    },
+    "POST /v1/payment/info": {
+      "order_id": "Your order reference.",
+      "uuid": "Invoice id in Oblodai. Either uuid or order_id is required; uuid takes priority."
+    },
+    "POST /v1/payment/link": {
+      "amount_fixed": "Amount — for fixed mode; required in this mode.",
+      "amount_mode": "Amount mode: fixed | open | range.",
+      "currency": "Price currency — fiat (USD, EUR, RUB, …) or a coin; see pricing_currencies from GET /v1/currencies.",
+      "description": "Description on the payment page.",
+      "expires_in_seconds": "Link lifetime in seconds from creation; 0 (default) — the link never expires.",
+      "max_amount": "Upper bound — for range; required in this mode.",
+      "min_amount": "Lower bound: an optional floor for open, a required minimum for range.",
+      "pinned_currency": "Settlement currency (coin) pinned to the link; empty — the buyer chooses the coin.",
+      "pinned_network": "Settlement network pinned to the link; empty — the buyer chooses the network.",
+      "title": "Title on the payment page."
+    },
+    "POST /v1/payment/link/info": {
+      "document_url": "Signed link to a PDF poster with the payment QR (for printing at the till). Empty if document generation is not enabled.",
+      "link_id": "Payment link identifier.",
+      "url": "Public URL of the payment page — give it to the buyer as a button, in an email or as a QR code.",
+      "limit": "Page size for the link's payments, 1–100; out of range falls back to 25.",
+      "offset": "Offset within the link's payments."
+    },
+    "POST /v1/payment/qr": {
+      "order_id": "Your order reference.",
+      "uuid": "Invoice id in Oblodai. Either uuid or order_id is required; uuid takes priority."
+    },
+    "POST /v1/payment/refund": {
+      "address": "Refund destination address. Defaults to the payment's payer_address; required only for Bitcoin/UTXO.",
+      "amount": "Partial amount. Defaults to the full amount received.",
+      "network": "Network.",
+      "order_id": "Your order reference for the payment. Either uuid or order_id is required.",
+      "reference": "Optional refund idempotency key: distinguishes two different refunds with the same (payment, address, amount); a repeat with the same value is deduplicated. This is not order_id.",
+      "uuid": "Payment id. Either uuid or order_id is required."
+    },
+    "POST /v1/payment/resend": {
+      "order_id": "Your order reference.",
+      "uuid": "Invoice id in Oblodai. Either uuid or order_id is required; uuid takes priority."
+    },
+    "POST /v1/payment/resolve": {
+      "action": "accept — accept the partial payment, refund — return it to the payer.",
+      "address": "refund only: refund address. Defaults to the payment's recorded payer_address; if it is empty (Bitcoin/UTXO) the address is required, otherwise refund.no_address.",
+      "network": "refund only: refund network, defaults to the payment network.",
+      "order_id": "Your payment identifier.",
+      "reference": "refund only: your refund deduplication key.",
+      "uuid": "Payment UUID. Either uuid or order_id is required."
+    },
+    "POST /v1/payment/send-email": {
+      "email": "Where to send it. Defaults to the payer_email set on the payment.",
+      "order_id": "Your order reference.",
+      "uuid": "Payment id in Oblodai. Either uuid or order_id is required."
+    },
+    "POST /v1/payment/testing-webhook": {
+      "status": "Status in the body. Default paid.",
+      "url": "Where to send the test body. If not provided, delivery goes to the project's registered endpoint; without an endpoint it fails with webhook.no_endpoint. Signed with the project endpoint's secret, including when url is passed explicitly."
+    },
+    "POST /v1/payout": {
+      "address": "Recipient address.",
+      "amount": "Payout amount, in currency.",
+      "currency": "Currency code (for example USDT).",
+      "from_currency": "Fund the payout by converting the balance. USDT → currency only.",
+      "is_subtract": "Who pays the network fee: true — amount+fee is debited from the balance and the recipient receives amount; false — the recipient receives amount-fee; not provided — the project fee-config.",
+      "memo": "Destination tag/memo (TON Jetton). Maximum 120 characters.",
+      "network": "Network (tron, ethereum, …). Required for coins with several networks.",
+      "order_id": "Your payout number; idempotency key.",
+      "source": "Origin label: api (default) or manual.",
+      "url_callback": "Custom webhook URL for this payout (passes the SSRF check). Requires a registered endpoint (POST /v1/webhooks): delivery is signed with its secret."
+    },
+    "POST /v1/payout/approve": {
+      "uuid": "Payout id."
+    },
+    "POST /v1/payout/batch": {
+      "on_error": "What to do when an item fails: continue (default) — process the rest; stop — halt processing after the first error.",
+      "payouts": "Array of 1 to 5000 items — the same fields as POST /v1/payout; order_id is required on every item and serves as the idempotency key: a repeat returns the already created payout.",
+      "payouts.address": "Recipient address.",
+      "payouts.amount": "Payout amount, in currency.",
+      "payouts.currency": "Currency code (for example USDT).",
+      "payouts.from_currency": "Fund the payout by converting the balance. USDT → currency only.",
+      "payouts.is_subtract": "Who pays the network fee: true — amount+fee is debited from the balance and the recipient receives amount; false — the recipient receives amount-fee; not provided — the project fee-config.",
+      "payouts.memo": "Destination tag/memo (TON Jetton). Maximum 120 characters.",
+      "payouts.network": "Network (tron, ethereum, …). Required for coins with several networks.",
+      "payouts.order_id": "Your payout number; idempotency key.",
+      "payouts.source": "Origin label: api (default) or manual.",
+      "payouts.url_callback": "Custom webhook URL for this payout (passes the SSRF check). Requires a registered endpoint (POST /v1/webhooks): delivery is signed with its secret."
+    },
+    "POST /v1/payout/cancel": {
+      "uuid": "Id of the payout (or refund) to cancel."
+    },
+    "POST /v1/payout/fee-config/set": {
+      "fee_on_recipient": "true — the recipient pays the network fee (receives less); false — the merchant bears the fee."
+    },
+    "POST /v1/payout/info": {
+      "order_id": "Your order reference.",
+      "uuid": "Invoice id in Oblodai. Either uuid or order_id is required; uuid takes priority."
+    },
+    "POST /v1/payout/link": {
+      "amount": "Amount in currency, as a string; greater than zero.",
+      "currency": "Payout crypto asset (USDT, BTC, …); fiat is not possible.",
+      "email": "If set, the recipient receives an email with a \"Claim funds\" button; a delivery failure does not cancel link creation.",
+      "expires_in_seconds": "Link lifetime in seconds, clamped to 3600–2592000 (one hour to 30 days); without the field or with 0 the link lives 1 hour, not the maximum — set it explicitly.",
+      "fee_bearer": "Who pays the network fee: \"recipient\" (default — deducted from the amount, the recipient receives less) or \"merchant\" (the amount plus the fee is reserved, the recipient receives exactly amount).",
+      "network": "Payout network for the recipient (tron, bitcoin, …).",
+      "note": "Message to the recipient (shown on the claim page and in the email).",
+      "passcode": "Claim code — a second factor for the link: \"auto\" — we generate it and return it ONCE in the response, or your own (6–64 visible characters), empty — no code. Pass the code to the recipient over a channel SEPARATE from the link (it is not put into the email); after 10 incorrect attempts the link is locked.",
+      "reference": "Your deduplication key, unique per merchant; the Idempotency-Key header has no effect on this endpoint.",
+      "title": "Title — shown to the recipient on the claim page."
+    },
+    "POST /v1/payout/link/batch": {
+      "items": "Up to 500 links per call; each one succeeds or fails independently, the response is aligned with the request indexes.",
+      "items.amount": "Amount in currency, as a string; greater than zero.",
+      "items.currency": "Payout crypto asset (USDT, BTC, …); fiat is not possible.",
+      "items.email": "If set, the recipient receives an email with a \"Claim funds\" button; a delivery failure does not cancel link creation.",
+      "items.expires_in_seconds": "Link lifetime in seconds, clamped to 3600–2592000 (one hour to 30 days); without the field or with 0 the link lives 1 hour, not the maximum — set it explicitly.",
+      "items.fee_bearer": "Who pays the network fee: \"recipient\" (default — deducted from the amount, the recipient receives less) or \"merchant\" (the amount plus the fee is reserved, the recipient receives exactly amount).",
+      "items.network": "Payout network for the recipient (tron, bitcoin, …).",
+      "items.note": "Message to the recipient (shown on the claim page and in the email).",
+      "items.passcode": "Claim code — a second factor for the link: \"auto\" — we generate it and return it ONCE in the response, or your own (6–64 visible characters), empty — no code. Pass the code to the recipient over a channel SEPARATE from the link (it is not put into the email); after 10 incorrect attempts the link is locked.",
+      "items.reference": "Your deduplication key, unique per merchant; the Idempotency-Key header has no effect on this endpoint.",
+      "items.title": "Title — shown to the recipient on the claim page."
+    },
+    "POST /v1/payout/link/cancel": {
+      "link_id": "Payout link id (link_id from the creation response)."
+    },
+    "POST /v1/payout/link/cheque": {
+      "claim_token": "Claim secret from the payout link creation response. Stored only as a hash and never reissued — the cheque can be printed only while you still hold the token.",
+      "lang": "Document language — one of the 41 supported codes (en by default); the full list is in the document.unknown_lang error."
+    },
+    "POST /v1/payout/link/info": {
+      "link_id": "Payout link id (link_id from the creation response)."
+    },
+    "POST /v1/payout/link/list": {
+      "limit": "How many links to return per page.",
+      "offset": "Offset from the start of the list (paging)."
+    },
+    "POST /v1/payout/mass": {
+      "payouts": "Array of up to 100 items; the fields of each are as in POST /v1/payout.",
+      "payouts.address": "Recipient address.",
+      "payouts.amount": "Payout amount, in currency.",
+      "payouts.currency": "Currency code (for example USDT).",
+      "payouts.from_currency": "Fund the payout by converting the balance. USDT → currency only.",
+      "payouts.is_subtract": "Who pays the network fee: true — amount+fee is debited from the balance and the recipient receives amount; false — the recipient receives amount-fee; not provided — the project fee-config.",
+      "payouts.memo": "Destination tag/memo (TON Jetton). Maximum 120 characters.",
+      "payouts.network": "Network (tron, ethereum, …). Required for coins with several networks.",
+      "payouts.order_id": "Your payout number; idempotency key.",
+      "payouts.source": "Origin label: api (default) or manual.",
+      "payouts.url_callback": "Custom webhook URL for this payout (passes the SSRF check). Requires a registered endpoint (POST /v1/webhooks): delivery is signed with its secret.",
+      "source": "Origin label, applied to every item without its own source."
+    },
+    "POST /v1/payout/refund-fee-config/set": {
+      "fee_on_customer": "true — the customer receives net (the customer pays the fee); false — the merchant pays the fee and the customer receives gross."
+    },
+    "POST /v1/payout/validate": {
+      "address": "Recipient address.",
+      "amount": "Payout amount, in currency.",
+      "currency": "Currency code (for example USDT).",
+      "from_currency": "Fund the payout by converting the balance. USDT → currency only.",
+      "is_subtract": "Who pays the network fee: true — amount+fee is debited from the balance and the recipient receives amount; false — the recipient receives amount-fee; not provided — the project fee-config.",
+      "memo": "Destination tag/memo (TON Jetton). Maximum 120 characters.",
+      "network": "Network (tron, ethereum, …). Required for coins with several networks.",
+      "order_id": "Your payout number; idempotency key.",
+      "source": "Origin label: api (default) or manual.",
+      "url_callback": "Custom webhook URL for this payout (passes the SSRF check). Requires a registered endpoint (POST /v1/webhooks): delivery is signed with its secret."
+    },
+    "POST /v1/refund/batch": {
+      "on_error": "What to do when an item fails: continue (default) — process the rest; stop — halt processing after the first error.",
+      "refunds": "Array of 1 to 5000 items — the same fields as POST /v1/payment/refund; every item requires reference (idempotency key) and either uuid or order_id of the payment.",
+      "refunds.address": "Refund destination address. Defaults to the payment's payer_address; required only for Bitcoin/UTXO.",
+      "refunds.amount": "Partial amount. Defaults to the full amount received.",
+      "refunds.network": "Network.",
+      "refunds.order_id": "Your order reference for the payment. Either uuid or order_id is required.",
+      "refunds.reference": "Optional refund idempotency key: distinguishes two different refunds with the same (payment, address, amount); a repeat with the same value is deduplicated. This is not order_id.",
+      "refunds.uuid": "Payment id. Either uuid or order_id is required."
+    },
+    "POST /v1/sandbox/deposit": {
+      "amount": "Amount in the invoice currency; empty — pay exactly what is due, anything else is a way to produce an under/overpayment.",
+      "confirmations": "How many confirmations the deposit arrived with; 0 — fully confirmed; fewer than required — a way to test the pending→confirmed transition (repeat the same txid with a higher number).",
+      "invoice_id": "UUID of the test invoice being \"paid\".",
+      "txid": "Repeating the same txid tests your idempotency; empty — a new txid."
+    },
+    "POST /v1/sandbox/faucet": {
+      "amount": "Amount of test money, as a string; capped at 1000000 per call.",
+      "asset": "Top-up asset (USDT, BTC, …).",
+      "idempotency_key": "Safe-retry key; empty — every call creates a new top-up."
+    },
+    "POST /v1/sandbox/webhooks/replay": {
+      "delivery_id": "Delivery id from GET /v1/sandbox/webhooks."
+    },
+    "POST /v1/split/config/set": {
+      "refund_hold_seconds": "How many seconds to defer split settlement; range 0–7776000 (up to 90 days). 0 — send the shares immediately: you take on the risk that a refund becomes impossible."
+    },
+    "POST /v1/split/recipient/optin": {
+      "enabled": "Allow other merchants to route split shares to your balance. true — enable receiving, false — disable (new rules targeting you stop being created; existing ones keep executing)."
+    },
+    "POST /v1/split/rule": {
+      "address": "External crypto address of the partner; the share leaves as a real on-chain transaction — irreversible. Exactly one recipient option: either address+network or merchant_id.",
+      "merchant_id": "Id of the partner merchant inside Oblodai; the share moves through internal accounting and is clawed back on a refund.",
+      "network": "Address network. Required together with address.",
+      "note": "Comment for yourself (shown in the rule list).",
+      "percent": "Share of every payment, as a string: \"10\" = 10 %, \"2.5\" = 2.5 %. Greater than 0 and at most 100, step 0.01 %; the sum of all rules cannot exceed 100 %."
+    },
+    "POST /v1/test-webhook/payment": {
+      "currency": "Currency in the body.",
+      "network": "Network in the body.",
+      "order_id": "Your order_id, which is put into the test event body.",
+      "status": "Status in the body — from the status dictionary of this event type. Default paid (confirmed for a payout).",
+      "url_callback": "Where to send the test body.",
+      "uuid": "UUID of the object (payment, wallet or payout) put into the test event body."
+    },
+    "POST /v1/test-webhook/payout": {
+      "currency": "Currency in the body.",
+      "network": "Network in the body.",
+      "order_id": "Your order_id, which is put into the test event body.",
+      "status": "Status in the body — from the status dictionary of this event type. Default paid (confirmed for a payout).",
+      "url_callback": "Where to send the test body.",
+      "uuid": "UUID of the object (payment, wallet or payout) put into the test event body."
+    },
+    "POST /v1/test-webhook/wallet": {
+      "currency": "Currency in the body.",
+      "network": "Network in the body.",
+      "order_id": "Your order_id, which is put into the test event body.",
+      "status": "Status in the body — from the status dictionary of this event type. Default paid (confirmed for a payout).",
+      "url_callback": "Where to send the test body.",
+      "uuid": "UUID of the object (payment, wallet or payout) put into the test event body."
+    },
+    "POST /v1/transfer/batch": {
+      "on_error": "What to do when an item fails: continue (default) — process the rest; stop — halt processing after the first error.",
+      "transfers": "Array of 1 to 5000 items — the same fields as POST /v1/transfer/to-user; every item requires order_id (idempotency key) and to_user_id (user UUID).",
+      "transfers.amount": "Transfer amount in currency.",
+      "transfers.currency": "Currency code (cryptocurrency).",
+      "transfers.order_id": "Idempotency key: a repeat with the same order_id is a no-op; required in a transfer batch.",
+      "transfers.to_user_id": "Platform user id of the recipient (UUID, not username); a username is resolved to an id via the cabinet public profile /public/users/{username}."
+    },
+    "POST /v1/transfer/to-personal": {
+      "amount": "Transfer amount in currency.",
+      "currency": "Currency code (cryptocurrency).",
+      "order_id": "Idempotency key: a repeat with the same order_id is a no-op. Always send it, otherwise retrying the request after a network timeout creates a second transfer."
+    },
+    "POST /v1/transfer/to-user": {
+      "amount": "Transfer amount in currency.",
+      "currency": "Currency code (cryptocurrency).",
+      "order_id": "Idempotency key: a repeat with the same order_id is a no-op; required in a transfer batch.",
+      "to_user_id": "Platform user id of the recipient (UUID, not username); a username is resolved to an id via the cabinet public profile /public/users/{username}."
+    },
+    "POST /v1/wallet": {
+      "currency": "Symbol of the receiving currency (USDT, BTC, ETH, …).",
+      "network": "Receiving network (tron, ethereum, bitcoin, …).",
+      "order_id": "Your customer/order identifier. Pins a dedicated permanent address to the customer."
+    },
+    "POST /v1/wallet/block": {
+      "address": "Static wallet address.",
+      "is_force_block": "true — block (the default when the field is omitted); false — unblock."
+    },
+    "POST /v1/wallet/blocked-address-refund": {
+      "address": "Refund destination address.",
+      "memo": "Destination tag/memo (XRP destination tag, XLM memo id, TON comment). Required for a classic address on a tag/memo network if the tag is not embedded in the X-/M-address.",
+      "uuid": "Static wallet id (from the /v1/wallet response)."
+    },
+    "POST /v1/wallet/qr": {
+      "address": "Arbitrary address to render into a QR code (PNG as a data: URI)."
+    },
+    "POST /v1/webhooks": {
+      "url": "HTTPS callback URL. SSRF check: private and local addresses are rejected."
+    },
+    "POST /v1/payment/history": {
+      "limit": "Page size, 1–100; out of range falls back to 25.",
+      "offset": "Offset from the start of the list (newest first).",
+      "status": "Filter by status (an exact value from the status vocabulary); empty returns all.",
+      "kind": "Ignored on this route (payout history only)."
+    },
+    "POST /v1/payout/history": {
+      "limit": "Page size, 1–100; out of range falls back to 25.",
+      "offset": "Offset from the start of the list (newest first).",
+      "status": "Filter by status (an exact value from the status vocabulary); empty returns all.",
+      "kind": "payout — ordinary payouts, refund — refunds; empty returns both."
+    },
+    "POST /v1/payment/services": {
+      "limit": "Page size, 1–100; out of range falls back to 25.",
+      "offset": "Offset from the start of the list (newest first)."
+    },
+    "POST /v1/payout/services": {
+      "limit": "Page size, 1–100; out of range falls back to 25.",
+      "offset": "Offset from the start of the list (newest first)."
+    },
+    "POST /v1/webhooks/deliveries": {
+      "limit": "Page size, 1–100; out of range falls back to 25.",
+      "offset": "Offset from the start of the list (newest first)."
+    },
+    "POST /v1/payment/link/list": {
+      "limit": "Page size, 1–100; out of range falls back to 25.",
+      "offset": "Offset from the start of the list (newest first)."
+    },
+    "POST /v1/split/rule/list": {
+      "limit": "Page size, 1–100; out of range falls back to 25.",
+      "offset": "Offset from the start of the list (newest first)."
+    },
+    "POST /v1/payment/discount/list": {
+      "limit": "Page size, 1–100; out of range falls back to 25.",
+      "offset": "Offset from the start of the list (newest first)."
+    },
+    "POST /v1/payment/accepted/list": {
+      "limit": "Page size, 1–100; out of range falls back to 25.",
+      "offset": "Offset from the start of the list (newest first)."
+    },
+    "POST /v1/payout/calculate": {
+      "amount": "Payout amount as a decimal string.",
+      "currency": "Payout asset (USDT, BTC, …).",
+      "network": "Payout network; required when the asset lives on several networks.",
+      "is_subtract": "true — the fee is debited from the balance on top of the amount (the recipient gets exactly amount); false — the fee is taken out of the payout."
+    },
+    "POST /v1/payment/link/toggle": {
+      "link_id": "Payment link identifier.",
+      "active": "true — the link accepts payments; false — disabled (the page shows the link as inactive)."
+    },
+    "POST /v1/split/rule/delete": {
+      "rule_id": "Rule identifier from POST /v1/split/rule or the list."
+    },
+    "POST /v1/payment/accepted/set": {
+      "accepted": "The full list of currency+network pairs payers may use; an empty list accepts everything in the catalog.",
+      "accepted.currency": "Asset code.",
+      "accepted.network": "Asset network."
+    },
+    "POST /v1/auto-withdraw/set": {
+      "currency": "Asset to withdraw automatically.",
+      "network": "Network of the destination address.",
+      "address": "Destination address (the merchant's external wallet).",
+      "min_amount": "Threshold: the sweep runs once the available balance of the asset reaches this amount; empty uses the network minimum."
+    },
+    "POST /v1/auto-withdraw/delete": {
+      "currency": "Asset whose auto-withdrawal to switch off."
+    },
+    "POST /v1/api-allowlist/add": {
+      "cidr": "IP or subnet in CIDR notation (203.0.113.7 or 203.0.113.0/24)."
+    },
+    "POST /v1/api-allowlist/remove": {
+      "cidr": "IP or subnet in CIDR notation (203.0.113.7 or 203.0.113.0/24)."
+    },
+    "POST /v1/api-allowlist/enable": {
+      "enabled": "true — accept API calls only from listed addresses; false — the list is kept but not enforced."
+    },
+    "POST /v1/vrcs": {
+      "enabled": "true — enable auto-conversion of volatile deposits to USDT, false — disable; omit to read the current state."
+    },
+    "POST /v1/merchants": {
+      "email": "Owner email; must be unique across merchants.",
+      "name": "Display name of the merchant."
+    }
+  },
+  "response": {
+    "POST /v1/batch/info": {
+      "batch_id": "Batch id.",
+      "created_at": "Batch creation time (ISO 8601, UTC).",
+      "failed": "Failed with an error (with on_error stop, skipped items are counted here too).",
+      "items": "Page of items with the result or the error for each one.",
+      "items.error_code": "Machine-readable error code — the same one a single call would return (payment.below_minimum, payout.address_network_mismatch, …); batch.stopped / batch.key_revoked — the item was not executed; only when status is \"error\". Empty for items completed before the field was introduced.",
+      "items.http_status": "HTTP status a single call would have returned (400, 409, …); absent if the item never reached the handler (batch.stopped, batch.key_revoked).",
+      "items.idx": "Index of the item in the original array (zero-based).",
+      "items.message": "Human-readable error message; only when status is \"error\".",
+      "items.ok": "Item outcome: true when status is \"done\", false when status is \"error\"; absent while the item is not processed.",
+      "items.order_id": "The item's order_id, if you set one; not always present.",
+      "items.result": "Result of the successful operation — the same object a single call would return; only when status is \"done\".",
+      "items.status": "Item status: pending | processing | done | error.",
+      "kind": "Batch kind: payment | refund | payout.",
+      "on_error": "Error handling mode the batch was submitted with: continue | stop.",
+      "status": "Batch status: pending | processing | completed | stopped. TERMINAL states are completed AND stopped (poll until one of them, not only until completed): completed = processing reached the end, stopped = a batch with on_error=stop halted on the first error (the remaining items were skipped and counted in failed). Neither means \"everything succeeded\" — check succeeded/failed.",
+      "succeeded": "Processed successfully.",
+      "total": "Total items in the batch; counted over the whole batch and independent of pagination.",
+      "updated_at": "Time of the last change (ISO 8601, UTC)."
+    },
+    "POST /v1/link/{id}/checkout": {
+      "additional_data": "Your private data, returned in the response and in the webhook.",
+      "address": "Address the customer sends the funds to. On XRP this is the classic r-address of the SHARED wallet — the payment must carry destination_tag, otherwise the network rejects it.",
+      "address_muxed": "XLM only: the same details in one string — muxed address M… (SEP-23), address and memo together; the QR encodes it as well. Empty on other networks.",
+      "address_qr_code": "Address QR code as a PNG data: URI — can be used directly in <img src>. On XRP it encodes the X-address (address+tag in one string).",
+      "address_xaddress": "XRP only: the same details in one string in X-address format (XLS-5) — address and tag together; the QR encodes it as well. Empty on other networks.",
+      "amount": "Amount due in the price currency (for example, in USD).",
+      "amount_paid": "How much has already been confirmed as paid, in the payment crypto; always a string (0 if nothing arrived).",
+      "amount_remaining": "How much is still left to pay (due − paid); 0 if enough has arrived.",
+      "commission": "Our commission on this payment, in the payment currency. The invoice rate already includes the amortized fixed fee — it is not charged a second time. Empty for a currency-agnostic invoice until a coin is chosen; 0 while nothing has been credited.",
+      "confirmations": "Current number of confirmations of the incoming payment.",
+      "created_at": "Creation time (ISO 8601).",
+      "currency": "Price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. Tells what the invoice COSTS, not what it is paid with (that is payer_currency).",
+      "destination_tag": "XRP only: numeric destination tag the customer MUST include in the transfer (the \"tag/memo of the recipient\" field on an exchange or in a wallet). Empty on other networks.",
+      "document_url": "Signed link to the PDF cheque for this operation — opens without an API key, can be attached to an email or handed to the customer. Empty if document generation is not enabled.",
+      "exchange_rate": "Rate locked by this invoice (how much payment currency per 1 unit of the price currency) — payer_amount is calculated from it. Empty until the currency is chosen.",
+      "expired_at": "When the invoice expires (ISO 8601, like all time fields).",
+      "is_final": "true — the status is final and will not change again.",
+      "is_multi": "true — this is a currency-agnostic link, the customer has not chosen a currency/network yet.",
+      "is_test": "true — a sandbox invoice (dev shop): the money is not real, do not include it in live reconciliation.",
+      "memo": "XLM (Stellar) only: numeric memo (type ID) the customer MUST include in the transfer — the \"memo\" field on an exchange or in a wallet. Empty on other networks.",
+      "merchant_amount": "How much is (or will be) credited to you: amount_paid − commission. The network costs of collecting the deposit are borne by the gateway — they are NOT deducted from this amount.",
+      "network": "Blockchain network (for example, tron).",
+      "order_id": "Your order number, passed at creation.",
+      "paid_at": "Moment of the actual payment — crediting of the last confirmed transfer (ISO 8601). null until the payment arrives. Distinguish it from updated_at, which shifts on any invoice change.",
+      "payer_address": "Address the first confirmed deposit came FROM — on account-based networks (EVM/Tron/Solana/TON); empty on UTXO. ⚠ This is NOT necessarily a refund address: the sender may be an exchange, the change of a UTXO transaction or the hot omnibus of a crypto on-ramp if the buyer paid by card. Check payer_address_is_refundable before refunding funds here.",
+      "payer_address_is_refundable": "true — payer_address belongs to the payer and address may be omitted in /v1/payment/refund (we refund to it). false — the refund address is unknown (UTXO/XRP, card payment via an on-ramp, address not recorded): ask the buyer for an address and pass address explicitly, otherwise the request is rejected with refund.no_address.",
+      "payer_amount": "How much must be sent in the payment crypto.",
+      "payer_currency": "Currency the customer pays in (for example, USDT). Empty for a currency-agnostic invoice (is_multi) until the customer picks a coin — it has no settlement currency yet.",
+      "payer_email": "Payer e-mail, if you passed one.",
+      "rate_expires_at": "When the rate will be refreshed (ISO 8601; the rate holds for ~5 min).",
+      "required_confirmations": "How many confirmations are needed for crediting (depends on the amount and the network).",
+      "status": "Status: select (the customer is choosing a currency) | created (waiting for payment) | confirm_check (payment seen, waiting for confirmations; with amount_remaining > 0 it is partial and the remainder is awaited) | paid | paid_over (overpayment) | wrong_amount (underpayment, deadline passed) | expired | cancelled.",
+      "tx_list": "All confirmed transfers that paid the invoice. Partial payment in several transfers is the regular wrong_amount scenario; the single txid at the top level is only the last one seen.",
+      "tx_list.amount": "Transfer amount in the payment currency.",
+      "tx_list.created_at": "When the transfer was credited (ISO 8601).",
+      "tx_list.height": "Height of the block the transfer was confirmed in.",
+      "tx_list.network": "Network the transfer arrived on. On EVM it may differ from the invoice network: a deposit is credited on another chain with the same address too.",
+      "tx_list.txid": "Transaction hash.",
+      "txid": "Hash of the incoming transaction (once it is seen).",
+      "updated_at": "Time of the last change (ISO 8601).",
+      "url": "Link to the hosted payment page.",
+      "url_return": "\"Back to shop\" link shown before payment.",
+      "url_success": "Where to redirect after successful payment.",
+      "uuid": "Our payment id (use it in info/refund)."
+    },
+    "GET /v1/pay/{id}": {
+      "additional_data": "Your private data, returned in the response and in the webhook.",
+      "address": "Address the customer sends the funds to. On XRP this is the classic r-address of the SHARED wallet — the payment must carry destination_tag, otherwise the network rejects it.",
+      "address_muxed": "XLM only: the same details in one string — muxed address M… (SEP-23), address and memo together; the QR encodes it as well. Empty on other networks.",
+      "address_qr_code": "Address QR code as a PNG data: URI — can be used directly in <img src>. On XRP it encodes the X-address (address+tag in one string).",
+      "address_xaddress": "XRP only: the same details in one string in X-address format (XLS-5) — address and tag together; the QR encodes it as well. Empty on other networks.",
+      "amount": "Amount due in the price currency (for example, in USD).",
+      "amount_paid": "How much has already been confirmed as paid, in the payment crypto; always a string (0 if nothing arrived).",
+      "amount_remaining": "How much is still left to pay (due − paid); 0 if enough has arrived.",
+      "commission": "Our commission on this payment, in the payment currency. The invoice rate already includes the amortized fixed fee — it is not charged a second time. Empty for a currency-agnostic invoice until a coin is chosen; 0 while nothing has been credited.",
+      "confirmations": "Current number of confirmations of the incoming payment.",
+      "created_at": "Creation time (ISO 8601).",
+      "currency": "Price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. Tells what the invoice COSTS, not what it is paid with (that is payer_currency).",
+      "destination_tag": "XRP only: numeric destination tag the customer MUST include in the transfer (the \"tag/memo of the recipient\" field on an exchange or in a wallet). Empty on other networks.",
+      "document_url": "Signed link to the PDF cheque for this operation — opens without an API key, can be attached to an email or handed to the customer. Empty if document generation is not enabled.",
+      "exchange_rate": "Rate locked by this invoice (how much payment currency per 1 unit of the price currency) — payer_amount is calculated from it. Empty until the currency is chosen.",
+      "expired_at": "When the invoice expires (ISO 8601, like all time fields).",
+      "is_final": "true — the status is final and will not change again.",
+      "is_multi": "true — this is a currency-agnostic link, the customer has not chosen a currency/network yet.",
+      "is_test": "true — a sandbox invoice (dev shop): the money is not real, do not include it in live reconciliation.",
+      "memo": "XLM (Stellar) only: numeric memo (type ID) the customer MUST include in the transfer — the \"memo\" field on an exchange or in a wallet. Empty on other networks.",
+      "merchant_amount": "How much is (or will be) credited to you: amount_paid − commission. The network costs of collecting the deposit are borne by the gateway — they are NOT deducted from this amount.",
+      "network": "Blockchain network (for example, tron).",
+      "order_id": "Your order number, passed at creation.",
+      "paid_at": "Moment of the actual payment — crediting of the last confirmed transfer (ISO 8601). null until the payment arrives. Distinguish it from updated_at, which shifts on any invoice change.",
+      "payer_address": "Address the first confirmed deposit came FROM — on account-based networks (EVM/Tron/Solana/TON); empty on UTXO. ⚠ This is NOT necessarily a refund address: the sender may be an exchange, the change of a UTXO transaction or the hot omnibus of a crypto on-ramp if the buyer paid by card. Check payer_address_is_refundable before refunding funds here.",
+      "payer_address_is_refundable": "true — payer_address belongs to the payer and address may be omitted in /v1/payment/refund (we refund to it). false — the refund address is unknown (UTXO/XRP, card payment via an on-ramp, address not recorded): ask the buyer for an address and pass address explicitly, otherwise the request is rejected with refund.no_address.",
+      "payer_amount": "How much must be sent in the payment crypto.",
+      "payer_currency": "Currency the customer pays in (for example, USDT). Empty for a currency-agnostic invoice (is_multi) until the customer picks a coin — it has no settlement currency yet.",
+      "payer_email": "Payer e-mail, if you passed one.",
+      "rate_expires_at": "When the rate will be refreshed (ISO 8601; the rate holds for ~5 min).",
+      "required_confirmations": "How many confirmations are needed for crediting (depends on the amount and the network).",
+      "status": "Status: select (the customer is choosing a currency) | created (waiting for payment) | confirm_check (payment seen, waiting for confirmations; with amount_remaining > 0 it is partial and the remainder is awaited) | paid | paid_over (overpayment) | wrong_amount (underpayment, deadline passed) | expired | cancelled.",
+      "tx_list": "All confirmed transfers that paid the invoice. Partial payment in several transfers is the regular wrong_amount scenario; the single txid at the top level is only the last one seen.",
+      "tx_list.amount": "Transfer amount in the payment currency.",
+      "tx_list.created_at": "When the transfer was credited (ISO 8601).",
+      "tx_list.height": "Height of the block the transfer was confirmed in.",
+      "tx_list.network": "Network the transfer arrived on. On EVM it may differ from the invoice network: a deposit is credited on another chain with the same address too.",
+      "tx_list.txid": "Transaction hash.",
+      "txid": "Hash of the incoming transaction (once it is seen).",
+      "updated_at": "Time of the last change (ISO 8601).",
+      "url": "Link to the hosted payment page.",
+      "url_return": "\"Back to shop\" link shown before payment.",
+      "url_success": "Where to redirect after successful payment.",
+      "uuid": "Our payment id (use it in info/refund)."
+    },
+    "POST /v1/pay/{id}/select": {
+      "additional_data": "Your private data, returned in the response and in the webhook.",
+      "address": "Address the customer sends the funds to. On XRP this is the classic r-address of the SHARED wallet — the payment must carry destination_tag, otherwise the network rejects it.",
+      "address_muxed": "XLM only: the same details in one string — muxed address M… (SEP-23), address and memo together; the QR encodes it as well. Empty on other networks.",
+      "address_qr_code": "Address QR code as a PNG data: URI — can be used directly in <img src>. On XRP it encodes the X-address (address+tag in one string).",
+      "address_xaddress": "XRP only: the same details in one string in X-address format (XLS-5) — address and tag together; the QR encodes it as well. Empty on other networks.",
+      "amount": "Amount due in the price currency (for example, in USD).",
+      "amount_paid": "How much has already been confirmed as paid, in the payment crypto; always a string (0 if nothing arrived).",
+      "amount_remaining": "How much is still left to pay (due − paid); 0 if enough has arrived.",
+      "commission": "Our commission on this payment, in the payment currency. The invoice rate already includes the amortized fixed fee — it is not charged a second time. Empty for a currency-agnostic invoice until a coin is chosen; 0 while nothing has been credited.",
+      "confirmations": "Current number of confirmations of the incoming payment.",
+      "created_at": "Creation time (ISO 8601).",
+      "currency": "Price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. Tells what the invoice COSTS, not what it is paid with (that is payer_currency).",
+      "destination_tag": "XRP only: numeric destination tag the customer MUST include in the transfer (the \"tag/memo of the recipient\" field on an exchange or in a wallet). Empty on other networks.",
+      "document_url": "Signed link to the PDF cheque for this operation — opens without an API key, can be attached to an email or handed to the customer. Empty if document generation is not enabled.",
+      "exchange_rate": "Rate locked by this invoice (how much payment currency per 1 unit of the price currency) — payer_amount is calculated from it. Empty until the currency is chosen.",
+      "expired_at": "When the invoice expires (ISO 8601, like all time fields).",
+      "is_final": "true — the status is final and will not change again.",
+      "is_multi": "true — this is a currency-agnostic link, the customer has not chosen a currency/network yet.",
+      "is_test": "true — a sandbox invoice (dev shop): the money is not real, do not include it in live reconciliation.",
+      "memo": "XLM (Stellar) only: numeric memo (type ID) the customer MUST include in the transfer — the \"memo\" field on an exchange or in a wallet. Empty on other networks.",
+      "merchant_amount": "How much is (or will be) credited to you: amount_paid − commission. The network costs of collecting the deposit are borne by the gateway — they are NOT deducted from this amount.",
+      "network": "Blockchain network (for example, tron).",
+      "order_id": "Your order number, passed at creation.",
+      "paid_at": "Moment of the actual payment — crediting of the last confirmed transfer (ISO 8601). null until the payment arrives. Distinguish it from updated_at, which shifts on any invoice change.",
+      "payer_address": "Address the first confirmed deposit came FROM — on account-based networks (EVM/Tron/Solana/TON); empty on UTXO. ⚠ This is NOT necessarily a refund address: the sender may be an exchange, the change of a UTXO transaction or the hot omnibus of a crypto on-ramp if the buyer paid by card. Check payer_address_is_refundable before refunding funds here.",
+      "payer_address_is_refundable": "true — payer_address belongs to the payer and address may be omitted in /v1/payment/refund (we refund to it). false — the refund address is unknown (UTXO/XRP, card payment via an on-ramp, address not recorded): ask the buyer for an address and pass address explicitly, otherwise the request is rejected with refund.no_address.",
+      "payer_amount": "How much must be sent in the payment crypto.",
+      "payer_currency": "Currency the customer pays in (for example, USDT). Empty for a currency-agnostic invoice (is_multi) until the customer picks a coin — it has no settlement currency yet.",
+      "payer_email": "Payer e-mail, if you passed one.",
+      "rate_expires_at": "When the rate will be refreshed (ISO 8601; the rate holds for ~5 min).",
+      "required_confirmations": "How many confirmations are needed for crediting (depends on the amount and the network).",
+      "status": "Status: select (the customer is choosing a currency) | created (waiting for payment) | confirm_check (payment seen, waiting for confirmations; with amount_remaining > 0 it is partial and the remainder is awaited) | paid | paid_over (overpayment) | wrong_amount (underpayment, deadline passed) | expired | cancelled.",
+      "tx_list": "All confirmed transfers that paid the invoice. Partial payment in several transfers is the regular wrong_amount scenario; the single txid at the top level is only the last one seen.",
+      "tx_list.amount": "Transfer amount in the payment currency.",
+      "tx_list.created_at": "When the transfer was credited (ISO 8601).",
+      "tx_list.height": "Height of the block the transfer was confirmed in.",
+      "tx_list.network": "Network the transfer arrived on. On EVM it may differ from the invoice network: a deposit is credited on another chain with the same address too.",
+      "tx_list.txid": "Transaction hash.",
+      "txid": "Hash of the incoming transaction (once it is seen).",
+      "updated_at": "Time of the last change (ISO 8601).",
+      "url": "Link to the hosted payment page.",
+      "url_return": "\"Back to shop\" link shown before payment.",
+      "url_success": "Where to redirect after successful payment.",
+      "uuid": "Our payment id (use it in info/refund)."
+    },
+    "POST /v1/payment": {
+      "additional_data": "Your private data, returned in the response and in the webhook.",
+      "address": "Address the customer sends the funds to. On XRP this is the classic r-address of the SHARED wallet — the payment must carry destination_tag, otherwise the network rejects it.",
+      "address_muxed": "XLM only: the same details in one string — muxed address M… (SEP-23), address and memo together; the QR encodes it as well. Empty on other networks.",
+      "address_qr_code": "Address QR code as a PNG data: URI — can be used directly in <img src>. On XRP it encodes the X-address (address+tag in one string).",
+      "address_xaddress": "XRP only: the same details in one string in X-address format (XLS-5) — address and tag together; the QR encodes it as well. Empty on other networks.",
+      "amount": "Amount due in the price currency (for example, in USD).",
+      "amount_paid": "How much has already been confirmed as paid, in the payment crypto; always a string (0 if nothing arrived).",
+      "amount_remaining": "How much is still left to pay (due − paid); 0 if enough has arrived.",
+      "commission": "Our commission on this payment, in the payment currency. The invoice rate already includes the amortized fixed fee — it is not charged a second time. Empty for a currency-agnostic invoice until a coin is chosen; 0 while nothing has been credited.",
+      "confirmations": "Current number of confirmations of the incoming payment.",
+      "created_at": "Creation time (ISO 8601).",
+      "currency": "Price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. Tells what the invoice COSTS, not what it is paid with (that is payer_currency).",
+      "destination_tag": "XRP only: numeric destination tag the customer MUST include in the transfer (the \"tag/memo of the recipient\" field on an exchange or in a wallet). Empty on other networks.",
+      "document_url": "Signed link to the PDF cheque for this operation — opens without an API key, can be attached to an email or handed to the customer. Empty if document generation is not enabled.",
+      "exchange_rate": "Rate locked by this invoice (how much payment currency per 1 unit of the price currency) — payer_amount is calculated from it. Empty until the currency is chosen.",
+      "expired_at": "When the invoice expires (ISO 8601, like all time fields).",
+      "is_final": "true — the status is final and will not change again.",
+      "is_multi": "true — this is a currency-agnostic link, the customer has not chosen a currency/network yet.",
+      "is_test": "true — a sandbox invoice (dev shop): the money is not real, do not include it in live reconciliation.",
+      "memo": "XLM (Stellar) only: numeric memo (type ID) the customer MUST include in the transfer — the \"memo\" field on an exchange or in a wallet. Empty on other networks.",
+      "merchant_amount": "How much is (or will be) credited to you: amount_paid − commission. The network costs of collecting the deposit are borne by the gateway — they are NOT deducted from this amount.",
+      "network": "Blockchain network (for example, tron).",
+      "order_id": "Your order number, passed at creation.",
+      "paid_at": "Moment of the actual payment — crediting of the last confirmed transfer (ISO 8601). null until the payment arrives. Distinguish it from updated_at, which shifts on any invoice change.",
+      "payer_address": "Address the first confirmed deposit came FROM — on account-based networks (EVM/Tron/Solana/TON); empty on UTXO. ⚠ This is NOT necessarily a refund address: the sender may be an exchange, the change of a UTXO transaction or the hot omnibus of a crypto on-ramp if the buyer paid by card. Check payer_address_is_refundable before refunding funds here.",
+      "payer_address_is_refundable": "true — payer_address belongs to the payer and address may be omitted in /v1/payment/refund (we refund to it). false — the refund address is unknown (UTXO/XRP, card payment via an on-ramp, address not recorded): ask the buyer for an address and pass address explicitly, otherwise the request is rejected with refund.no_address.",
+      "payer_amount": "How much must be sent in the payment crypto.",
+      "payer_currency": "Currency the customer pays in (for example, USDT). Empty for a currency-agnostic invoice (is_multi) until the customer picks a coin — it has no settlement currency yet.",
+      "payer_email": "Payer e-mail, if you passed one.",
+      "rate_expires_at": "When the rate will be refreshed (ISO 8601; the rate holds for ~5 min).",
+      "required_confirmations": "How many confirmations are needed for crediting (depends on the amount and the network).",
+      "status": "Status: select (the customer is choosing a currency) | created (waiting for payment) | confirm_check (payment seen, waiting for confirmations; with amount_remaining > 0 it is partial and the remainder is awaited) | paid | paid_over (overpayment) | wrong_amount (underpayment, deadline passed) | expired | cancelled.",
+      "tx_list": "All confirmed transfers that paid the invoice. Partial payment in several transfers is the regular wrong_amount scenario; the single txid at the top level is only the last one seen.",
+      "tx_list.amount": "Transfer amount in the payment currency.",
+      "tx_list.created_at": "When the transfer was credited (ISO 8601).",
+      "tx_list.height": "Height of the block the transfer was confirmed in.",
+      "tx_list.network": "Network the transfer arrived on. On EVM it may differ from the invoice network: a deposit is credited on another chain with the same address too.",
+      "tx_list.txid": "Transaction hash.",
+      "txid": "Hash of the incoming transaction (once it is seen).",
+      "updated_at": "Time of the last change (ISO 8601).",
+      "url": "Link to the hosted payment page.",
+      "url_return": "\"Back to shop\" link shown before payment.",
+      "url_success": "Where to redirect after successful payment.",
+      "uuid": "Our payment id (use it in info/refund)."
+    },
+    "POST /v1/payment/batch": {
+      "batch_id": "Batch id — use it in POST /v1/batch/info to get the status and the results.",
+      "count": "How many items were accepted for processing.",
+      "kind": "Batch kind: payment | refund | payout | transfer.",
+      "status": "Initial status — always pending."
+    },
+    "POST /v1/payment/cancel": {
+      "additional_data": "Your private data, returned in the response and in the webhook.",
+      "address": "Address the customer sends the funds to. On XRP this is the classic r-address of the SHARED wallet — the payment must carry destination_tag, otherwise the network rejects it.",
+      "address_muxed": "XLM only: the same details in one string — muxed address M… (SEP-23), address and memo together; the QR encodes it as well. Empty on other networks.",
+      "address_qr_code": "Address QR code as a PNG data: URI — can be used directly in <img src>. On XRP it encodes the X-address (address+tag in one string).",
+      "address_xaddress": "XRP only: the same details in one string in X-address format (XLS-5) — address and tag together; the QR encodes it as well. Empty on other networks.",
+      "amount": "Amount due in the price currency (for example, in USD).",
+      "amount_paid": "How much has already been confirmed as paid, in the payment crypto; always a string (0 if nothing arrived).",
+      "amount_remaining": "How much is still left to pay (due − paid); 0 if enough has arrived.",
+      "commission": "Our commission on this payment, in the payment currency. The invoice rate already includes the amortized fixed fee — it is not charged a second time. Empty for a currency-agnostic invoice until a coin is chosen; 0 while nothing has been credited.",
+      "confirmations": "Current number of confirmations of the incoming payment.",
+      "created_at": "Creation time (ISO 8601).",
+      "currency": "Price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. Tells what the invoice COSTS, not what it is paid with (that is payer_currency).",
+      "destination_tag": "XRP only: numeric destination tag the customer MUST include in the transfer (the \"tag/memo of the recipient\" field on an exchange or in a wallet). Empty on other networks.",
+      "document_url": "Signed link to the PDF cheque for this operation — opens without an API key, can be attached to an email or handed to the customer. Empty if document generation is not enabled.",
+      "exchange_rate": "Rate locked by this invoice (how much payment currency per 1 unit of the price currency) — payer_amount is calculated from it. Empty until the currency is chosen.",
+      "expired_at": "When the invoice expires (ISO 8601, like all time fields).",
+      "is_final": "true — the status is final and will not change again.",
+      "is_multi": "true — this is a currency-agnostic link, the customer has not chosen a currency/network yet.",
+      "is_test": "true — a sandbox invoice (dev shop): the money is not real, do not include it in live reconciliation.",
+      "memo": "XLM (Stellar) only: numeric memo (type ID) the customer MUST include in the transfer — the \"memo\" field on an exchange or in a wallet. Empty on other networks.",
+      "merchant_amount": "How much is (or will be) credited to you: amount_paid − commission. The network costs of collecting the deposit are borne by the gateway — they are NOT deducted from this amount.",
+      "network": "Blockchain network (for example, tron).",
+      "order_id": "Your order number, passed at creation.",
+      "paid_at": "Moment of the actual payment — crediting of the last confirmed transfer (ISO 8601). null until the payment arrives. Distinguish it from updated_at, which shifts on any invoice change.",
+      "payer_address": "Address the first confirmed deposit came FROM — on account-based networks (EVM/Tron/Solana/TON); empty on UTXO. ⚠ This is NOT necessarily a refund address: the sender may be an exchange, the change of a UTXO transaction or the hot omnibus of a crypto on-ramp if the buyer paid by card. Check payer_address_is_refundable before refunding funds here.",
+      "payer_address_is_refundable": "true — payer_address belongs to the payer and address may be omitted in /v1/payment/refund (we refund to it). false — the refund address is unknown (UTXO/XRP, card payment via an on-ramp, address not recorded): ask the buyer for an address and pass address explicitly, otherwise the request is rejected with refund.no_address.",
+      "payer_amount": "How much must be sent in the payment crypto.",
+      "payer_currency": "Currency the customer pays in (for example, USDT). Empty for a currency-agnostic invoice (is_multi) until the customer picks a coin — it has no settlement currency yet.",
+      "payer_email": "Payer e-mail, if you passed one.",
+      "rate_expires_at": "When the rate will be refreshed (ISO 8601; the rate holds for ~5 min).",
+      "required_confirmations": "How many confirmations are needed for crediting (depends on the amount and the network).",
+      "status": "Status: select (the customer is choosing a currency) | created (waiting for payment) | confirm_check (payment seen, waiting for confirmations; with amount_remaining > 0 it is partial and the remainder is awaited) | paid | paid_over (overpayment) | wrong_amount (underpayment, deadline passed) | expired | cancelled.",
+      "tx_list": "All confirmed transfers that paid the invoice. Partial payment in several transfers is the regular wrong_amount scenario; the single txid at the top level is only the last one seen.",
+      "tx_list.amount": "Transfer amount in the payment currency.",
+      "tx_list.created_at": "When the transfer was credited (ISO 8601).",
+      "tx_list.height": "Height of the block the transfer was confirmed in.",
+      "tx_list.network": "Network the transfer arrived on. On EVM it may differ from the invoice network: a deposit is credited on another chain with the same address too.",
+      "tx_list.txid": "Transaction hash.",
+      "txid": "Hash of the incoming transaction (once it is seen).",
+      "updated_at": "Time of the last change (ISO 8601).",
+      "url": "Link to the hosted payment page.",
+      "url_return": "\"Back to shop\" link shown before payment.",
+      "url_success": "Where to redirect after successful payment.",
+      "uuid": "Our payment id (use it in info/refund)."
+    },
+    "POST /v1/payment/info": {
+      "additional_data": "Your private data, returned in the response and in the webhook.",
+      "address": "Address the customer sends the funds to. On XRP this is the classic r-address of the SHARED wallet — the payment must carry destination_tag, otherwise the network rejects it.",
+      "address_muxed": "XLM only: the same details in one string — muxed address M… (SEP-23), address and memo together; the QR encodes it as well. Empty on other networks.",
+      "address_qr_code": "Address QR code as a PNG data: URI — can be used directly in <img src>. On XRP it encodes the X-address (address+tag in one string).",
+      "address_xaddress": "XRP only: the same details in one string in X-address format (XLS-5) — address and tag together; the QR encodes it as well. Empty on other networks.",
+      "amount": "Amount due in the price currency (for example, in USD).",
+      "amount_paid": "How much has already been confirmed as paid, in the payment crypto; always a string (0 if nothing arrived).",
+      "amount_remaining": "How much is still left to pay (due − paid); 0 if enough has arrived.",
+      "commission": "Our commission on this payment, in the payment currency. The invoice rate already includes the amortized fixed fee — it is not charged a second time. Empty for a currency-agnostic invoice until a coin is chosen; 0 while nothing has been credited.",
+      "confirmations": "Current number of confirmations of the incoming payment.",
+      "created_at": "Creation time (ISO 8601).",
+      "currency": "Price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. Tells what the invoice COSTS, not what it is paid with (that is payer_currency).",
+      "destination_tag": "XRP only: numeric destination tag the customer MUST include in the transfer (the \"tag/memo of the recipient\" field on an exchange or in a wallet). Empty on other networks.",
+      "document_url": "Signed link to the PDF cheque for this operation — opens without an API key, can be attached to an email or handed to the customer. Empty if document generation is not enabled.",
+      "exchange_rate": "Rate locked by this invoice (how much payment currency per 1 unit of the price currency) — payer_amount is calculated from it. Empty until the currency is chosen.",
+      "expired_at": "When the invoice expires (ISO 8601, like all time fields).",
+      "is_final": "true — the status is final and will not change again.",
+      "is_multi": "true — this is a currency-agnostic link, the customer has not chosen a currency/network yet.",
+      "is_test": "true — a sandbox invoice (dev shop): the money is not real, do not include it in live reconciliation.",
+      "memo": "XLM (Stellar) only: numeric memo (type ID) the customer MUST include in the transfer — the \"memo\" field on an exchange or in a wallet. Empty on other networks.",
+      "merchant_amount": "How much is (or will be) credited to you: amount_paid − commission. The network costs of collecting the deposit are borne by the gateway — they are NOT deducted from this amount.",
+      "network": "Blockchain network (for example, tron).",
+      "order_id": "Your order number, passed at creation.",
+      "paid_at": "Moment of the actual payment — crediting of the last confirmed transfer (ISO 8601). null until the payment arrives. Distinguish it from updated_at, which shifts on any invoice change.",
+      "payer_address": "Address the first confirmed deposit came FROM — on account-based networks (EVM/Tron/Solana/TON); empty on UTXO. ⚠ This is NOT necessarily a refund address: the sender may be an exchange, the change of a UTXO transaction or the hot omnibus of a crypto on-ramp if the buyer paid by card. Check payer_address_is_refundable before refunding funds here.",
+      "payer_address_is_refundable": "true — payer_address belongs to the payer and address may be omitted in /v1/payment/refund (we refund to it). false — the refund address is unknown (UTXO/XRP, card payment via an on-ramp, address not recorded): ask the buyer for an address and pass address explicitly, otherwise the request is rejected with refund.no_address.",
+      "payer_amount": "How much must be sent in the payment crypto.",
+      "payer_currency": "Currency the customer pays in (for example, USDT). Empty for a currency-agnostic invoice (is_multi) until the customer picks a coin — it has no settlement currency yet.",
+      "payer_email": "Payer e-mail, if you passed one.",
+      "rate_expires_at": "When the rate will be refreshed (ISO 8601; the rate holds for ~5 min).",
+      "required_confirmations": "How many confirmations are needed for crediting (depends on the amount and the network).",
+      "status": "Status: select (the customer is choosing a currency) | created (waiting for payment) | confirm_check (payment seen, waiting for confirmations; with amount_remaining > 0 it is partial and the remainder is awaited) | paid | paid_over (overpayment) | wrong_amount (underpayment, deadline passed) | expired | cancelled.",
+      "tx_list": "All confirmed transfers that paid the invoice. Partial payment in several transfers is the regular wrong_amount scenario; the single txid at the top level is only the last one seen.",
+      "tx_list.amount": "Transfer amount in the payment currency.",
+      "tx_list.created_at": "When the transfer was credited (ISO 8601).",
+      "tx_list.height": "Height of the block the transfer was confirmed in.",
+      "tx_list.network": "Network the transfer arrived on. On EVM it may differ from the invoice network: a deposit is credited on another chain with the same address too.",
+      "tx_list.txid": "Transaction hash.",
+      "txid": "Hash of the incoming transaction (once it is seen).",
+      "updated_at": "Time of the last change (ISO 8601).",
+      "url": "Link to the hosted payment page.",
+      "url_return": "\"Back to shop\" link shown before payment.",
+      "url_success": "Where to redirect after successful payment.",
+      "uuid": "Our payment id (use it in info/refund)."
+    },
+    "POST /v1/payment/link": {
+      "document_url": "Signed link to a PDF poster with the payment QR (for printing at the till). Empty if document generation is not enabled.",
+      "link_id": "Link id.",
+      "url": "Public URL of the payment page — give it to the buyer as a button, in an email or as a QR code."
+    },
+    "POST /v1/payment/refund": {
+      "address": "Address the funds were returned to.",
+      "amount": "Refund amount in the payment coin.",
+      "currency": "Refund currency (the payment coin).",
+      "is_final": "true — the refund is in a terminal status.",
+      "order_id": "order_id of the payment the refund was made for.",
+      "payment_uuid": "Id of the payment being refunded.",
+      "status": "Coarse status of the refund payout: check | process | paid | fail | cancel.",
+      "uuid": "Refund id (it is a payout)."
+    },
+    "POST /v1/payout": {
+      "address": "Recipient address.",
+      "amount": "Payout amount in currency, debited from your balance.",
+      "approval_required": "true — the payout is awaiting approval (internal scenarios; always false for an API key).",
+      "commission": "Network fee withheld, in the payout currency. 0 — the gateway absorbed the fee.",
+      "created_at": "Creation time (ISO 8601).",
+      "currency": "Payout currency code.",
+      "document_url": "Signed link to the PDF cheque for this operation — opens without an API key, can be attached to an email or handed to the recipient. Empty if document generation is not enabled.",
+      "fee_bearer": "Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the debited amount was increased by the fee and the recipient receives the requested amount in full (is_subtract=true, payout link with fee_bearer=merchant); recipient — the fee was withheld from the payout and the recipient receives less than requested.",
+      "is_final": "true — the status is final (paid / fail / cancel).",
+      "is_refund": "true — this is a payment refund, not a regular payout.",
+      "memo": "Destination tag/memo passed at creation (TON Jetton, exchange memo). Empty — no memo.",
+      "network": "Blockchain network.",
+      "order_id": "Your payout number (reference). null for a refund: a refund has no identifier of yours, see payment_order_id.",
+      "payer_amount": "How much actually goes to the recipient's address: amount − commission.",
+      "payment_order_id": "Your order_id of the payment the refund was made for (null for a regular payout). A refund has no order_id of its own — it comes back null, and a refund must be reconciled with the order by this field.",
+      "refund_for": "Id of the payment being refunded (null if this is not a refund).",
+      "source": "api (via the integration) | manual (from the cabinet).",
+      "status": "Coarse status: check (created, waiting) | process (being sent/waiting for confirmations) | paid (confirmed — done) | awaiting_cosign (waiting for the second signature) | fail | cancel.",
+      "txid": "On-chain transaction hash (appears after sending).",
+      "updated_at": "Time of the last change (ISO 8601).",
+      "uuid": "Payout id."
+    },
+    "POST /v1/payout/batch": {
+      "batch_id": "Batch id — use it in POST /v1/batch/info to get the status and the results.",
+      "count": "How many items were accepted for processing.",
+      "kind": "Batch kind: payment | refund | payout | transfer.",
+      "status": "Initial status — always pending."
+    },
+    "POST /v1/payout/info": {
+      "address": "Recipient address.",
+      "amount": "Payout amount in currency, debited from your balance.",
+      "approval_required": "true — the payout is awaiting approval (internal scenarios; always false for an API key).",
+      "commission": "Network fee withheld, in the payout currency. 0 — the gateway absorbed the fee.",
+      "created_at": "Creation time (ISO 8601).",
+      "currency": "Payout currency code.",
+      "document_url": "Signed link to the PDF cheque for this operation — opens without an API key, can be attached to an email or handed to the recipient. Empty if document generation is not enabled.",
+      "fee_bearer": "Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the debited amount was increased by the fee and the recipient receives the requested amount in full (is_subtract=true, payout link with fee_bearer=merchant); recipient — the fee was withheld from the payout and the recipient receives less than requested.",
+      "is_final": "true — the status is final (paid / fail / cancel).",
+      "is_refund": "true — this is a payment refund, not a regular payout.",
+      "memo": "Destination tag/memo passed at creation (TON Jetton, exchange memo). Empty — no memo.",
+      "network": "Blockchain network.",
+      "order_id": "Your payout number (reference). null for a refund: a refund has no identifier of yours, see payment_order_id.",
+      "payer_amount": "How much actually goes to the recipient's address: amount − commission.",
+      "payment_order_id": "Your order_id of the payment the refund was made for (null for a regular payout). A refund has no order_id of its own — it comes back null, and a refund must be reconciled with the order by this field.",
+      "refund_for": "Id of the payment being refunded (null if this is not a refund).",
+      "source": "api (via the integration) | manual (from the cabinet).",
+      "status": "Coarse status: check (created, waiting) | process (being sent/waiting for confirmations) | paid (confirmed — done) | awaiting_cosign (waiting for the second signature) | fail | cancel.",
+      "txid": "On-chain transaction hash (appears after sending).",
+      "updated_at": "Time of the last change (ISO 8601).",
+      "uuid": "Payout id."
+    },
+    "POST /v1/refund/batch": {
+      "batch_id": "Batch id — use it in POST /v1/batch/info to get the status and the results.",
+      "count": "How many items were accepted for processing.",
+      "kind": "Batch kind: payment | refund | payout | transfer.",
+      "status": "Initial status — always pending."
+    },
+    "POST /v1/wallet": {
+      "address": "Permanent address for top-ups. On XRP it is the classic r-address of the SHARED wallet; a top-up must carry destination_tag.",
+      "address_muxed": "XLM only: address and memo in one string (muxed M…, SEP-23).",
+      "address_xaddress": "XRP only: address and tag in one string (X-address, XLS-5).",
+      "currency": "Top-up currency.",
+      "destination_tag": "XRP only: numeric destination tag of this wallet — the customer must include it in every transfer.",
+      "memo": "XLM only: numeric memo (type ID) of this wallet — the customer must include it in every transfer.",
+      "network": "Blockchain network.",
+      "order_id": "Your customer identifier the address is pinned to (part of the currency+network+order_id idempotency triple).",
+      "url": "Reserved (usually empty).",
+      "uuid": "Static wallet id."
+    },
+    "POST /v1/webhooks": {
+      "endpoint_id": "Endpoint id.",
+      "secret": "The secret is shown ONCE — save it so you can verify callback signatures.",
+      "url": "Registered callback URL."
+    },
+    "POST /v1/webhooks/rotate-secret": {
+      "previous_secret_valid_until": "Until this moment deliveries are additionally signed with the old secret (X-Webhook-Signature-Prev).",
+      "secret": "New signing secret — shown only here."
+    }
+  }
+}

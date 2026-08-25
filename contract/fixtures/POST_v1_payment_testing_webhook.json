@@ -1,0 +1,21 @@
+{
+ "route": "POST /v1/payment/testing-webhook",
+ "status": 200,
+ "request": {
+  "status": "paid",
+  "url": "http://127.0.0.1:45233/hook"
+ },
+ "response": {
+  "result": {
+   "duration_ms": 0,
+   "ok": true,
+   "signed": true,
+   "status_code": 200,
+   "url": "http://127.0.0.1:45233/hook"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

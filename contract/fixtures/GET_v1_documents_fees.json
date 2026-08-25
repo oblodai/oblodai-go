@@ -1,0 +1,9 @@
+{
+ "route": "GET /v1/documents/fees",
+ "status": 200,
+ "headers": {
+  "Content-Disposition": "inline; filename=\"oblodai-fees-83595a3e.pdf\"",
+  "Content-Length": "46",
+  "Content-Type": "application/pdf"
+ }
+}

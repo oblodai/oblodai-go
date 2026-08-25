@@ -1,0 +1,45 @@
+{
+ "route": "POST /v1/link/{id}/checkout",
+ "status": 200,
+ "request": {
+  "currency": "USDT",
+  "network": "tron",
+  "payer_email": "buyer@example.com"
+ },
+ "response": {
+  "result": {
+   "address": "sandbox:a1dae733-06f1-46cb-9450-5612dde26d60",
+   "address_muxed": "",
+   "address_qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAABlBMVEX///8AAABVwtN+AAAB8klEQVR42uyYsbHmIAyElyEgpARKoTP7d2eUQgmEBIz3RoI3D9/90UXGY4X2l8iWVivhjTfe+L/YSbKGRGa4Em2FaV6e8VkAAFNDssyAT83xA5/Gi3UASx41kMymejYEAci8IIBoy08RmrYqEBJ83oVj3h8JaE0CDdjg0wD+Kdq7A0Mfms+b6kM4vgvIrYGfsCV8AFCAr6J+a2BHT2rogwAsON2k1U8AMJTDFhgWsGKzCnxWAnZb4tFHkpSnZd4sCTcJyAoAmTaXRcw3x8SKnQWY0lwC0JLLEZ5SZyRPS5o6yeBTgNMxiXFwBQ2BDdHw8h1uD8gsMhVxAEA4JNVJB5cAJE2ICwqHctiAOAvIEoBlMsyR0lklamcxnb/24CEAi2St7k3EXLcInghcCRguiMPSjTRNXQ5ImyO7mMssgi1x9tVLALZbHPisv44K/LWQPgCQmgTir/Fmr9LPUgB82nUJkjf6pHniYlmXAHSwdusjT7dek1gKaJJmkBVUfLVmexmszwB6hNQAvR5UmCYNNo3mBYDpeChN1hzZfLq03grAOB7C62C1FbummfelgHE8VM5zbHSseCwwDlZSk+brd7g7oP77IyOJWf/m5IKWALqJk/Whj6Rxr+ZawM/xUFY5JrUHVzF/BPDGG29c408AAAD//8bjq9ymvnLfAAAAAElFTkSuQmCC",
+   "address_xaddress": "",
+   "amount": "10.000000",
+   "amount_paid": "0.000000",
+   "amount_remaining": "10.000000",
+   "confirmations": 0,
+   "created_at": "2026-08-25T22:08:57Z",
+   "currency": "USDT",
+   "destination_tag": "",
+   "expired_at": "2026-08-25T23:08:57Z",
+   "is_final": false,
+   "is_multi": false,
+   "memo": "",
+   "network": "tron",
+   "order_id": "",
+   "payer_amount": "10.000000",
+   "payer_currency": "USDT",
+   "rate_expires_at": "2026-08-25T22:13:57Z",
+   "required_confirmations": 20,
+   "status": "created",
+   "txid": "",
+   "updated_at": "2026-08-25T22:08:57Z",
+   "url": "http://127.0.0.1:39381/pay/a1dae733-06f1-46cb-9450-5612dde26d60",
+   "url_return": "",
+   "url_success": "",
+   "uuid": "a1dae733-06f1-46cb-9450-5612dde26d60"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

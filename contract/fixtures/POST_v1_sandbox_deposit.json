@@ -1,0 +1,22 @@
+{
+ "route": "POST /v1/sandbox/deposit",
+ "status": 200,
+ "request": {
+  "amount": "25",
+  "confirmations": 20,
+  "invoice_id": "c65b4740-6f19-4d56-a314-8c151b8a3f83",
+  "txid": "sdk-tx-1"
+ },
+ "response": {
+  "result": {
+   "amount": "25.000000",
+   "confirmations": 20,
+   "invoice_id": "c65b4740-6f19-4d56-a314-8c151b8a3f83",
+   "txid": "sandbox:sdk-tx-1"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

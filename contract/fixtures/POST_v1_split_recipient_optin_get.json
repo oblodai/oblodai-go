@@ -1,0 +1,14 @@
+{
+ "route": "POST /v1/split/recipient/optin/get",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "enabled": true
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

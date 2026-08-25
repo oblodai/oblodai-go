@@ -1,0 +1,23 @@
+{
+ "route": "POST /v1/transfer/to-user",
+ "status": 200,
+ "request": {
+  "amount": "1",
+  "currency": "USDT",
+  "order_id": "sdk-tr-2",
+  "to_user_id": "2c8f9d3b-5e4a-4b7c-8d2e-3f4a5b6c7d8e"
+ },
+ "response": {
+  "result": {
+   "amount": "1.000000",
+   "currency": "USDT",
+   "document_url": "http://127.0.0.1:39381/v1/documents/transfer/63483305-061e-497b-9e3f-7477294960ec?exp=1787699337\u0026sig=96d2727595b45d374867a09ebf3ed049c2a80c59f2503bb40743c7c40f37ab9d",
+   "to_user_id": "2c8f9d3b-5e4a-4b7c-8d2e-3f4a5b6c7d8e",
+   "uuid": "63483305-061e-497b-9e3f-7477294960ec"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

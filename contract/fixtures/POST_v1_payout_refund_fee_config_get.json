@@ -1,0 +1,15 @@
+{
+ "route": "POST /v1/payout/refund-fee-config/get",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "configured": true,
+   "fee_on_customer": true
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

@@ -1,0 +1,28 @@
+{
+ "route": "POST /v1/payment/link/info",
+ "status": 200,
+ "request": {
+  "link_id": "158d7c35-4b11-4008-8000-6dcce0bf92d1"
+ },
+ "response": {
+  "result": {
+   "active": true,
+   "amount_fixed": "10",
+   "amount_mode": "fixed",
+   "created_at": "2026-08-25T22:08:57Z",
+   "currency": "USDT",
+   "description": "Tip jar",
+   "document_url": "http://127.0.0.1:39381/v1/documents/paylink/158d7c35-4b11-4008-8000-6dcce0bf92d1?exp=1787699337\u0026sig=4f9505eef92d72342381a58721fcad052fba1018e8feb95d7774fdc6150ec3b1",
+   "expires_at": "2026-08-26T22:08:57Z",
+   "link_id": "158d7c35-4b11-4008-8000-6dcce0bf92d1",
+   "payments": [],
+   "pinned_network": "tron",
+   "title": "Support",
+   "url": "http://127.0.0.1:39381/link/158d7c35-4b11-4008-8000-6dcce0bf92d1"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

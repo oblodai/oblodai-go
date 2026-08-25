@@ -1,0 +1,21 @@
+{
+ "route": "POST /v1/balance",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "balance": {
+    "merchant": [
+     {
+      "currency": "USDT",
+      "balance": "1040.892500"
+     }
+    ]
+   }
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

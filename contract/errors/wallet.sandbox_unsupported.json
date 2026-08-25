@@ -1,0 +1,20 @@
+{
+ "route": "POST /v1/wallet",
+ "status": 403,
+ "request": {
+  "currency": "USDT",
+  "network": "tron",
+  "order_id": "sdk-w-0"
+ },
+ "response": {
+  "error": {
+   "code": "wallet.sandbox_unsupported",
+   "message": "static wallets are not available to a dev store's test key; simulate a deposit on an invoice instead",
+   "retryable": false,
+   "request_id": "7e59fee5-2dbd-4561-8118-478b3ff9f359"
+  }
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

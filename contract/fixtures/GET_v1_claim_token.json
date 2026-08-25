@@ -1,0 +1,24 @@
+{
+ "route": "GET /v1/claim/{token}",
+ "status": 200,
+ "response": {
+  "result": {
+   "amount": "5.000000",
+   "claimable": true,
+   "commission": "0.000000",
+   "currency": "USDT",
+   "expires_at": "2026-08-25T23:08:57Z",
+   "fee_bearer": "recipient",
+   "fee_type": "exact",
+   "network": "tron",
+   "note": "Thanks",
+   "payer_amount": "5.000000",
+   "status": "funded",
+   "title": "Bonus"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

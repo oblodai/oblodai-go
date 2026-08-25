@@ -1,0 +1,21 @@
+{
+ "route": "POST /v1/auto-withdraw/list",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "items": [
+    {
+     "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+     "currency": "USDT",
+     "min_amount": "100.000000",
+     "network": "tron"
+    }
+   ]
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

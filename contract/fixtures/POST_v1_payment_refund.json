@@ -1,0 +1,39 @@
+{
+ "route": "POST /v1/payment/refund",
+ "status": 200,
+ "request": {
+  "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+  "amount": "5",
+  "reference": "sdk-ref-1",
+  "uuid": "c65b4740-6f19-4d56-a314-8c151b8a3f83"
+ },
+ "response": {
+  "result": {
+   "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+   "amount": "5.000000",
+   "approval_required": false,
+   "commission": "0.000000",
+   "created_at": "2026-08-25T22:08:57Z",
+   "currency": "USDT",
+   "document_url": "http://127.0.0.1:39381/v1/documents/payout/ec907bbc-44e1-4226-8965-8c2a121f11d3?exp=1787699337\u0026sig=0e4a18b65565d515c6d697a28ca5c0ec1756e9c598e2eab0e2e46d069dda94ca",
+   "fee_bearer": "gateway",
+   "is_final": false,
+   "is_refund": true,
+   "memo": "",
+   "network": "tron",
+   "order_id": null,
+   "payer_amount": "5.000000",
+   "payment_order_id": "sdk-inv-1",
+   "refund_for": "c65b4740-6f19-4d56-a314-8c151b8a3f83",
+   "source": "api",
+   "status": "approved",
+   "txid": "",
+   "updated_at": "2026-08-25T22:08:57Z",
+   "uuid": "ec907bbc-44e1-4226-8965-8c2a121f11d3"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

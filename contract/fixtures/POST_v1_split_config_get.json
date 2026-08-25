@@ -1,0 +1,14 @@
+{
+ "route": "POST /v1/split/config/get",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "refund_hold_seconds": 3600
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

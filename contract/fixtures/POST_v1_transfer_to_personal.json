@@ -1,0 +1,23 @@
+{
+ "route": "POST /v1/transfer/to-personal",
+ "status": 200,
+ "request": {
+  "amount": "1",
+  "currency": "USDT",
+  "order_id": "sdk-tr-1"
+ },
+ "response": {
+  "result": {
+   "amount": "1.000000",
+   "currency": "USDT",
+   "direction": "to_personal",
+   "document_url": "http://127.0.0.1:39381/v1/documents/transfer/52532072-597b-4d2e-97a1-311809aadc07?exp=1787699337\u0026sig=97fbf700f84070dd2bac1078e83a62ffd231191e2cc0e19aee434e144026afc8",
+   "personal_balance": "1.000000",
+   "uuid": "52532072-597b-4d2e-97a1-311809aadc07"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

@@ -1,0 +1,31 @@
+{
+ "route": "POST /v1/merchants/{id}/sandbox",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "merchant_id": "b82ccf71-350f-4a72-8a8f-3bfcd82c79e2",
+   "project_id": "eb751031-73a2-487a-82e6-cb713e7d08bf",
+   "api_key": {
+    "public_id": "test_oblodai_b0b8bfbd0947627c24f6",
+    "secret": "oblodai_test_1f7800f0804fb3ff4dd0acfdf4e66074c04026bf357f65c82fc46ee554dc788b",
+    "kind": "api"
+   },
+   "payment_key": {
+    "public_id": "test_oblodai_b0b8bfbd0947627c24f6",
+    "secret": "oblodai_test_1f7800f0804fb3ff4dd0acfdf4e66074c04026bf357f65c82fc46ee554dc788b",
+    "kind": "api"
+   },
+   "payout_key": {
+    "public_id": "test_oblodai_b0b8bfbd0947627c24f6",
+    "secret": "oblodai_test_1f7800f0804fb3ff4dd0acfdf4e66074c04026bf357f65c82fc46ee554dc788b",
+    "kind": "api"
+   },
+   "created": true
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

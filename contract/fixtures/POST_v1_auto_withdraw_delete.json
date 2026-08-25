@@ -1,0 +1,16 @@
+{
+ "route": "POST /v1/auto-withdraw/delete",
+ "status": 200,
+ "request": {
+  "currency": "USDT"
+ },
+ "response": {
+  "result": {
+   "items": []
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

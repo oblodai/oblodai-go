@@ -1,0 +1,17 @@
+{
+ "route": "POST /v1/sandbox/webhooks/replay",
+ "status": 200,
+ "request": {
+  "delivery_id": "c1a93eea-89cf-47b3-becd-905d2a3db1bf"
+ },
+ "response": {
+  "result": {
+   "delivery_id": "c1a93eea-89cf-47b3-becd-905d2a3db1bf",
+   "ok": true
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

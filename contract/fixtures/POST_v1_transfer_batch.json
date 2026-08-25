@@ -1,0 +1,27 @@
+{
+ "route": "POST /v1/transfer/batch",
+ "status": 200,
+ "request": {
+  "on_error": "continue",
+  "transfers": [
+   {
+    "amount": "1",
+    "currency": "USDT",
+    "order_id": "sdk-tr-3",
+    "to_user_id": "2c8f9d3b-5e4a-4b7c-8d2e-3f4a5b6c7d8e"
+   }
+  ]
+ },
+ "response": {
+  "result": {
+   "batch_id": "0565630b-3007-460e-a271-54daeda8c778",
+   "count": 1,
+   "kind": "transfer",
+   "status": "pending"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

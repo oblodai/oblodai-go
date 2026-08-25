@@ -1,0 +1,17 @@
+{
+ "route": "POST /v1/api-allowlist/remove",
+ "status": 200,
+ "request": {
+  "cidr": "203.0.113.0/24"
+ },
+ "response": {
+  "result": {
+   "enabled": false,
+   "items": []
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

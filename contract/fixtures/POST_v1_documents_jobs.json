@@ -1,0 +1,31 @@
+{
+ "route": "POST /v1/documents/jobs",
+ "status": 200,
+ "request": {
+  "format": "csv",
+  "from": "2026-01-01",
+  "kind": "statement",
+  "lang": "en",
+  "to": "2026-08-25"
+ },
+ "response": {
+  "result": {
+   "created_at": "2026-08-25T22:08:57Z",
+   "format": "csv",
+   "job_id": "7791f8cf-2403-40fa-884d-8eee61b58812",
+   "kind": "statement",
+   "lang": "en",
+   "period": {
+    "from": "2026-01-01",
+    "to": "2026-08-25"
+   },
+   "ready_within": "24h",
+   "status": "queued",
+   "updated_at": "2026-08-25T22:08:57Z"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

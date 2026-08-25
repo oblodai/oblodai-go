@@ -1,0 +1,16 @@
+{
+ "route": "POST /v1/payment/fee-config/set",
+ "status": 200,
+ "request": {
+  "payer_pays_percent": 100
+ },
+ "response": {
+  "result": {
+   "payer_pays_percent": 100
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

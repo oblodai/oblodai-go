@@ -1,0 +1,16 @@
+{
+ "route": "GET /v1/pay/{id}/qr",
+ "status": 200,
+ "response": {
+  "result": {
+   "address": "",
+   "image": "",
+   "is_uri": false,
+   "payload": ""
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

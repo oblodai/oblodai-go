@@ -1,0 +1,14 @@
+{
+ "route": "POST /v1/vrcs",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "enabled": false
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "route": "POST /v1/payment/send-email",
+ "status": 200,
+ "request": {
+  "email": "buyer@example.com",
+  "uuid": "c65b4740-6f19-4d56-a314-8c151b8a3f83"
+ },
+ "response": {
+  "result": {
+   "email": "buyer@example.com",
+   "ok": true,
+   "uuid": "c65b4740-6f19-4d56-a314-8c151b8a3f83"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

@@ -1,0 +1,1180 @@
+{
+ "route": "GET /v1/currencies",
+ "status": 200,
+ "response": {
+  "result": {
+   "currencies": [
+    {
+     "currency": "AVAX",
+     "decimals": 18,
+     "networks": [
+      {
+       "network": "avalanche",
+       "kind": "native",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "BCH",
+     "decimals": 8,
+     "networks": [
+      {
+       "network": "bitcoincash",
+       "kind": "native",
+       "min_confirmations": 6,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "BNB",
+     "decimals": 18,
+     "networks": [
+      {
+       "network": "bsc",
+       "kind": "native",
+       "min_confirmations": 15,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "BONK",
+     "decimals": 5,
+     "networks": [
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": false
+      }
+     ]
+    },
+    {
+     "currency": "BTC",
+     "decimals": 8,
+     "networks": [
+      {
+       "network": "bitcoin",
+       "kind": "native",
+       "min_confirmations": 3,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "CBBTC",
+     "decimals": 8,
+     "networks": [
+      {
+       "network": "base",
+       "kind": "token",
+       "contract": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+       "min_confirmations": 10,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "ethereum",
+       "kind": "token",
+       "contract": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+       "min_confirmations": 12,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "DAI",
+     "decimals": 18,
+     "networks": [
+      {
+       "network": "arbitrum",
+       "kind": "token",
+       "contract": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
+       "min_confirmations": 10,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "base",
+       "kind": "token",
+       "contract": "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
+       "min_confirmations": 10,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "ethereum",
+       "kind": "token",
+       "contract": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+       "min_confirmations": 12,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "polygon",
+       "kind": "token",
+       "contract": "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
+       "min_confirmations": 32,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "DASH",
+     "decimals": 8,
+     "networks": [
+      {
+       "network": "dash",
+       "kind": "native",
+       "min_confirmations": 6,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "DOGE",
+     "decimals": 8,
+     "networks": [
+      {
+       "network": "dogecoin",
+       "kind": "native",
+       "min_confirmations": 20,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "ETH",
+     "decimals": 18,
+     "networks": [
+      {
+       "network": "ethereum",
+       "kind": "native",
+       "min_confirmations": 12,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "EURC",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "avalanche",
+       "kind": "token",
+       "contract": "0xC891EB4cbdEFf6e073e859e987815Ed1505c2ACD",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "base",
+       "kind": "token",
+       "contract": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
+       "min_confirmations": 10,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "ethereum",
+       "kind": "token",
+       "contract": "0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c",
+       "min_confirmations": 12,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "FDUSD",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "bsc",
+       "kind": "token",
+       "contract": "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409",
+       "min_confirmations": 15,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "JTO",
+     "decimals": 9,
+     "networks": [
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": false
+      }
+     ]
+    },
+    {
+     "currency": "JUP",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": false
+      }
+     ]
+    },
+    {
+     "currency": "LTC",
+     "decimals": 8,
+     "networks": [
+      {
+       "network": "litecoin",
+       "kind": "native",
+       "min_confirmations": 6,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "NOT",
+     "decimals": 9,
+     "networks": [
+      {
+       "network": "ton",
+       "kind": "token",
+       "contract": "EQAvlWFDxGF2lXm67y4yzC17wYKD9A0guwPkMs1gOsM__NOT",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": false
+      }
+     ]
+    },
+    {
+     "currency": "PENGU",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": false
+      }
+     ]
+    },
+    {
+     "currency": "POL",
+     "decimals": 18,
+     "networks": [
+      {
+       "network": "ethereum",
+       "kind": "token",
+       "contract": "0x455e53CBB86018Ac2B8092FdCd39d8444aFFC3F6",
+       "min_confirmations": 12,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "polygon",
+       "kind": "native",
+       "min_confirmations": 32,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "PUMP",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": false
+      }
+     ]
+    },
+    {
+     "currency": "PYUSD",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "ethereum",
+       "kind": "token",
+       "contract": "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8",
+       "min_confirmations": 12,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "RAY",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": false
+      }
+     ]
+    },
+    {
+     "currency": "SOL",
+     "decimals": 9,
+     "networks": [
+      {
+       "network": "solana",
+       "kind": "native",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "TON",
+     "decimals": 9,
+     "networks": [
+      {
+       "network": "ton",
+       "kind": "native",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "TRUMP",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": false
+      }
+     ]
+    },
+    {
+     "currency": "TRX",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "tron",
+       "kind": "native",
+       "min_confirmations": 20,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "USD1",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "bsc",
+       "kind": "token",
+       "contract": "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d",
+       "min_confirmations": 15,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "USDC",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "arbitrum",
+       "kind": "token",
+       "contract": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+       "min_confirmations": 10,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "avalanche",
+       "kind": "token",
+       "contract": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "base",
+       "kind": "token",
+       "contract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+       "min_confirmations": 10,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "bsc",
+       "kind": "token",
+       "contract": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+       "min_confirmations": 15,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "ethereum",
+       "kind": "token",
+       "contract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+       "min_confirmations": 12,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "polygon",
+       "kind": "token",
+       "contract": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+       "min_confirmations": 32,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "USDG",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "ethereum",
+       "kind": "token",
+       "contract": "0xe343167631d89B6Ffc58B88d6b7fB0228795491D",
+       "min_confirmations": 12,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "USDT",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "arbitrum",
+       "kind": "token",
+       "contract": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+       "min_confirmations": 10,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "avalanche",
+       "kind": "token",
+       "contract": "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "base",
+       "kind": "token",
+       "contract": "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
+       "min_confirmations": 10,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "bsc",
+       "kind": "token",
+       "contract": "0x55d398326f99059fF775485246999027B3197955",
+       "min_confirmations": 15,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "ethereum",
+       "kind": "token",
+       "contract": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+       "min_confirmations": 12,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "polygon",
+       "kind": "token",
+       "contract": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+       "min_confirmations": 32,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "ton",
+       "kind": "token",
+       "contract": "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      },
+      {
+       "network": "tron",
+       "kind": "token",
+       "contract": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+       "min_confirmations": 20,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "WBTC",
+     "decimals": 8,
+     "networks": [
+      {
+       "network": "ethereum",
+       "kind": "token",
+       "contract": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+       "min_confirmations": 12,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "WIF",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "solana",
+       "kind": "token",
+       "contract": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": false
+      }
+     ]
+    },
+    {
+     "currency": "XLM",
+     "decimals": 7,
+     "networks": [
+      {
+       "network": "stellar",
+       "kind": "native",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    },
+    {
+     "currency": "XMR",
+     "decimals": 12,
+     "networks": [
+      {
+       "network": "monero",
+       "kind": "native",
+       "min_confirmations": 10,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": false
+      }
+     ]
+    },
+    {
+     "currency": "XRP",
+     "decimals": 6,
+     "networks": [
+      {
+       "network": "xrp",
+       "kind": "native",
+       "min_confirmations": 1,
+       "available": false,
+       "deposit_available": false,
+       "payout_available": false,
+       "default_offer": true
+      }
+     ]
+    }
+   ],
+   "pricing_currencies": [
+    {
+     "currency": "AED",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "ARS",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "AUD",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "AVAX",
+     "decimals": 18,
+     "fiat": false
+    },
+    {
+     "currency": "BCH",
+     "decimals": 8,
+     "fiat": false
+    },
+    {
+     "currency": "BDT",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "BHD",
+     "decimals": 3,
+     "fiat": true
+    },
+    {
+     "currency": "BMD",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "BNB",
+     "decimals": 18,
+     "fiat": false
+    },
+    {
+     "currency": "BONK",
+     "decimals": 5,
+     "fiat": false
+    },
+    {
+     "currency": "BRL",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "BTC",
+     "decimals": 8,
+     "fiat": false
+    },
+    {
+     "currency": "CAD",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "CBBTC",
+     "decimals": 8,
+     "fiat": false
+    },
+    {
+     "currency": "CHF",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "CLP",
+     "decimals": 0,
+     "fiat": true
+    },
+    {
+     "currency": "CNY",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "CZK",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "DAI",
+     "decimals": 18,
+     "fiat": false
+    },
+    {
+     "currency": "DASH",
+     "decimals": 8,
+     "fiat": false
+    },
+    {
+     "currency": "DKK",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "DOGE",
+     "decimals": 8,
+     "fiat": false
+    },
+    {
+     "currency": "ETH",
+     "decimals": 18,
+     "fiat": false
+    },
+    {
+     "currency": "EUR",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "EURC",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "FDUSD",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "GBP",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "GEL",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "HKD",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "HUF",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "IDR",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "ILS",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "INR",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "JPY",
+     "decimals": 0,
+     "fiat": true
+    },
+    {
+     "currency": "JTO",
+     "decimals": 9,
+     "fiat": false
+    },
+    {
+     "currency": "JUP",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "KRW",
+     "decimals": 0,
+     "fiat": true
+    },
+    {
+     "currency": "KWD",
+     "decimals": 3,
+     "fiat": true
+    },
+    {
+     "currency": "LKR",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "LTC",
+     "decimals": 8,
+     "fiat": false
+    },
+    {
+     "currency": "MMK",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "MXN",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "MYR",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "NGN",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "NOK",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "NOT",
+     "decimals": 9,
+     "fiat": false
+    },
+    {
+     "currency": "NZD",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "PENGU",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "PHP",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "PKR",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "PLN",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "POL",
+     "decimals": 18,
+     "fiat": false
+    },
+    {
+     "currency": "PUMP",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "PYUSD",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "RAY",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "RUB",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "SAR",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "SEK",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "SGD",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "SOL",
+     "decimals": 9,
+     "fiat": false
+    },
+    {
+     "currency": "THB",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "TON",
+     "decimals": 9,
+     "fiat": false
+    },
+    {
+     "currency": "TRUMP",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "TRX",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "TRY",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "TWD",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "UAH",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "USD",
+     "decimals": 2,
+     "fiat": true
+    },
+    {
+     "currency": "USD1",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "USDC",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "USDG",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "USDT",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "VND",
+     "decimals": 0,
+     "fiat": true
+    },
+    {
+     "currency": "WBTC",
+     "decimals": 8,
+     "fiat": false
+    },
+    {
+     "currency": "WIF",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "XLM",
+     "decimals": 7,
+     "fiat": false
+    },
+    {
+     "currency": "XMR",
+     "decimals": 12,
+     "fiat": false
+    },
+    {
+     "currency": "XRP",
+     "decimals": 6,
+     "fiat": false
+    },
+    {
+     "currency": "ZAR",
+     "decimals": 2,
+     "fiat": true
+    }
+   ]
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

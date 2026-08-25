@@ -1,0 +1,38 @@
+{
+ "route": "POST /v1/wallet/blocked-address-refund",
+ "status": 200,
+ "request": {
+  "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+  "uuid": "6561a06b-8b6b-43cb-87fa-9f9f623777a9"
+ },
+ "response": {
+  "result": {
+   "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+   "amount": "7.000000",
+   "approval_required": false,
+   "commission": "0.000000",
+   "created_at": "2026-08-25T22:08:57Z",
+   "currency": "USDT",
+   "document_url": "http://127.0.0.1:39381/v1/documents/payout/3b1c283c-cd56-4710-bf12-300607d2c4bf?exp=1787699337\u0026sig=c5141120947c2fe25b6e9c558aff896c2aa822e5ef49c693175c188ef8acf1b0",
+   "fee_bearer": "gateway",
+   "is_final": false,
+   "is_refund": false,
+   "memo": "",
+   "network": "tron",
+   "order_id": "refund-wallet:6561a06b-8b6b-43cb-87fa-9f9f623777a9",
+   "payer_amount": "7.000000",
+   "payment_order_id": null,
+   "refund_for": null,
+   "source": "api",
+   "status": "approved",
+   "txid": "",
+   "updated_at": "2026-08-25T22:08:57Z",
+   "uuid": "3b1c283c-cd56-4710-bf12-300607d2c4bf",
+   "wallet_uuid": "6561a06b-8b6b-43cb-87fa-9f9f623777a9"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

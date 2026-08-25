@@ -1,0 +1,32 @@
+{
+ "route": "POST /v1/documents/jobs/info",
+ "status": 200,
+ "request": {
+  "job_id": "7791f8cf-2403-40fa-884d-8eee61b58812"
+ },
+ "response": {
+  "result": {
+   "created_at": "2026-08-25T22:08:57Z",
+   "file": {
+    "download_url": "/v1/documents/jobs/file?job_id=7791f8cf-2403-40fa-884d-8eee61b58812",
+    "expires_at": "2026-08-25T22:08:57Z",
+    "rows": 16,
+    "size_bytes": 1049
+   },
+   "format": "csv",
+   "job_id": "7791f8cf-2403-40fa-884d-8eee61b58812",
+   "kind": "statement",
+   "lang": "en",
+   "period": {
+    "from": "2026-01-01",
+    "to": "2026-08-25"
+   },
+   "status": "done",
+   "updated_at": "2026-08-25T22:08:57Z"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

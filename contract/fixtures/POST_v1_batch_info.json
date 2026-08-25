@@ -1,0 +1,57 @@
+{
+ "route": "POST /v1/batch/info",
+ "status": 200,
+ "request": {
+  "batch_id": "d3938249-8435-4910-b62f-8e60048c9d92",
+  "limit": 100,
+  "offset": 0
+ },
+ "response": {
+  "result": {
+   "batch_id": "d3938249-8435-4910-b62f-8e60048c9d92",
+   "created_at": "2026-08-25T22:08:57Z",
+   "failed": 0,
+   "items": [
+    {
+     "idx": 0,
+     "ok": true,
+     "order_id": "sdk-batch-po-1",
+     "result": {
+      "memo": "",
+      "txid": "",
+      "uuid": "3199c0a2-35fc-4d8f-9e0d-7eee40b98318",
+      "amount": "1.000000",
+      "source": "api",
+      "status": "approved",
+      "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+      "network": "tron",
+      "currency": "USDT",
+      "is_final": false,
+      "order_id": "sdk-batch-po-1",
+      "is_refund": false,
+      "commission": "0.000000",
+      "created_at": "2026-08-25T22:08:57Z",
+      "fee_bearer": "gateway",
+      "refund_for": null,
+      "updated_at": "2026-08-25T22:08:57Z",
+      "document_url": "http://127.0.0.1:39381/v1/documents/payout/3199c0a2-35fc-4d8f-9e0d-7eee40b98318?exp=1787699337\u0026sig=8ab08b52c15c7e01b906b749f10e70e133d8349b2c8460dd2320d9c0e0d6d458",
+      "payer_amount": "1.000000",
+      "payment_order_id": null,
+      "approval_required": false
+     },
+     "status": "done"
+    }
+   ],
+   "kind": "payout",
+   "on_error": "continue",
+   "status": "completed",
+   "succeeded": 1,
+   "total": 1,
+   "updated_at": "2026-08-25T22:08:57Z"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

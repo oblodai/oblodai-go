@@ -1,0 +1,19 @@
+{
+ "route": "POST /v1/wallet/blocked-address-refund",
+ "status": 400,
+ "request": {
+  "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+  "uuid": "6561a06b-8b6b-43cb-87fa-9f9f623777a9"
+ },
+ "response": {
+  "error": {
+   "code": "refund.nothing_to_refund",
+   "message": "no funds received on this wallet",
+   "retryable": false,
+   "request_id": "b8c67a08-ec71-411a-9765-e6cc2ac86acf"
+  }
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

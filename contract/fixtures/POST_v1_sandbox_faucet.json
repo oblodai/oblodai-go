@@ -1,0 +1,20 @@
+{
+ "route": "POST /v1/sandbox/faucet",
+ "status": 200,
+ "request": {
+  "amount": "1000",
+  "asset": "USDT",
+  "idempotency_key": "sdk-faucet-1"
+ },
+ "response": {
+  "result": {
+   "amount": "1000.000000",
+   "asset": "USDT",
+   "journal_id": "2efa9925-b0cf-4d0c-bf37-7453b228e7bb"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

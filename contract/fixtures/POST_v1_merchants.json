@@ -1,0 +1,33 @@
+{
+ "route": "POST /v1/merchants",
+ "status": 201,
+ "request": {
+  "email": "sdk-onboard-4cf8f72d@example.com",
+  "name": "SDK Onboard"
+ },
+ "response": {
+  "result": {
+   "merchant_id": "cf995a82-870b-4f18-86db-45283b9af04d",
+   "project_id": "b3990823-906b-451e-ae97-ef0072decabb",
+   "api_key": {
+    "public_id": "oblodai_4ed50838556ad76fe779",
+    "secret": "oblodai_live_497a15923b27318ff5e035ecc6b835169a766a8f4485e54536878566e3fa073a",
+    "kind": "api"
+   },
+   "payment_key": {
+    "public_id": "oblodai_4ed50838556ad76fe779",
+    "secret": "oblodai_live_497a15923b27318ff5e035ecc6b835169a766a8f4485e54536878566e3fa073a",
+    "kind": "api"
+   },
+   "payout_key": {
+    "public_id": "oblodai_4ed50838556ad76fe779",
+    "secret": "oblodai_live_497a15923b27318ff5e035ecc6b835169a766a8f4485e54536878566e3fa073a",
+    "kind": "api"
+   }
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

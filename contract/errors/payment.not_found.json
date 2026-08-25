@@ -1,0 +1,18 @@
+{
+ "route": "POST /v1/payment/info",
+ "status": 404,
+ "request": {
+  "uuid": "00000000-0000-0000-0000-000000000000"
+ },
+ "response": {
+  "error": {
+   "code": "payment.not_found",
+   "message": "payment not found",
+   "retryable": false,
+   "request_id": "44ee4130-f114-4469-94e1-da986bbbefbe"
+  }
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

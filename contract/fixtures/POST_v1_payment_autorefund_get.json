@@ -1,0 +1,16 @@
+{
+ "route": "POST /v1/payment/autorefund/get",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "configured": true,
+   "overpay": true,
+   "underpay": true
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

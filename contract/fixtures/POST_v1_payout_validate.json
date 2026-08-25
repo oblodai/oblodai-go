@@ -1,0 +1,26 @@
+{
+ "route": "POST /v1/payout/validate",
+ "status": 200,
+ "request": {
+  "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+  "amount": "10",
+  "currency": "USDT",
+  "network": "tron"
+ },
+ "response": {
+  "result": {
+   "amount": "10.000000",
+   "commission": "0.000000",
+   "currency": "USDT",
+   "fee_bearer": "gateway",
+   "maturity_note": "checks available balance; the payout also holds back not-yet-reorg-safe deposits",
+   "network": "tron",
+   "payer_amount": "10.000000",
+   "valid": true
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

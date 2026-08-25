@@ -1,0 +1,16 @@
+{
+ "route": "POST /v1/wallet/qr",
+ "status": 200,
+ "request": {
+  "address": "T90ebc5efe274593567156a24dc8ef28914"
+ },
+ "response": {
+  "result": {
+   "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAABlBMVEX///8AAABVwtN+AAABmUlEQVR42uyYMRKrMAxE15OCkiNwFI5mH81H4QguKRjvn5VN8vOh/hNr2CKF8xokS1oLjx49+lnNlHasCZgKEOv7yBWwAXjtWFkBLOTnyBewshrAY+K2MuznkU9An77kSO+AKQangF3hWddZZZsUh5trPzrQGtKcYzimsmTF4a6JDQ6cWg0jrVXdaWxg3hCD/kpnHFiWPCCAakk1LEdNzzVVZwD00WpBKZDcEKtLQG01HJgbtmSQ8kLhcAjYYTB7oHBcJo4HAJD/IfFSg00t6XAGyPjUF4s6FYs5eHO23gDzP3qbnJZoUhx4wBdgH93isMNaVVm+pqcP4JTSTWYYxnBxQWMDc69US7qKt5m9rx7lAFAEeExlTfpVuncz8AdcAW3iNDdoPt6ynvDPSPpx4OQy+nKgVeilNgcHPo+qZnz6cuC68hoceL+azSRkBIvD9wvFA9B3ICpH9SOLy92SxAMwZ/TirbaM/XugOALQL3LrtDnermGHBs71lbIsuifdGdA3WkzNuhNTWXhtxYMDjx49+u/6EwAA//+bkecZ1XnIIgAAAABJRU5ErkJggg=="
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

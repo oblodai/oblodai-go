@@ -1,0 +1,9 @@
+{
+ "route": "GET /v1/documents/split",
+ "status": 200,
+ "headers": {
+  "Content-Disposition": "inline; filename=\"oblodai-split-c65b4740.pdf\"",
+  "Content-Length": "46",
+  "Content-Type": "application/pdf"
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "route": "POST /v1/payout/fee-config/get",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "configured": true,
+   "fee_on_recipient": true
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

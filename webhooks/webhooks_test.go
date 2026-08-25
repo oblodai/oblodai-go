@@ -1,0 +1,262 @@
+package webhooks_test
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/oblodai/oblodai-go"
+	"github.com/oblodai/oblodai-go/internal/fixtures"
+	"github.com/oblodai/oblodai-go/webhooks"
+)
+
+// The deliveries in contract/webhook-samples.json were sent by the core's own dispatcher and
+// recorded byte for byte, signed with the endpoint secret in force at that moment — the one the
+// recorded rotate-secret call returned. If verification passes here, it passes in production.
+
+func endpointSecret(t *testing.T) string {
+	t.Helper()
+	rotated := fixtures.LoadFixtures(t)["POST /v1/webhooks/rotate-secret"]
+	var result struct {
+		Secret string `json:"secret"`
+	}
+	if err := json.Unmarshal(rotated.Response.Result, &result); err != nil {
+		t.Fatalf("cannot read the recorded endpoint secret: %v", err)
+	}
+	if result.Secret == "" {
+		t.Fatal("the recorded rotate-secret call carries no secret")
+	}
+	return result.Secret
+}
+
+func headersOf(sample fixtures.Sample) http.Header {
+	header := http.Header{}
+	for name, value := range sample.Headers {
+		header.Set(name, value)
+	}
+	return header
+}
+
+func TestVerifyRealDeliveries(t *testing.T) {
+	secret := endpointSecret(t)
+	samples := fixtures.LoadWebhookSamples(t)
+	if len(samples) == 0 {
+		t.Fatal("no recorded deliveries to verify")
+	}
+	for i, sample := range samples {
+		eventName := sample.Headers[webhooks.HeaderEvent]
+		t.Run(strconv.Itoa(i)+" "+eventName, func(t *testing.T) {
+			ts, err := strconv.ParseInt(sample.Headers[webhooks.HeaderTimestamp], 10, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			at := func() time.Time { return time.Unix(ts, 0) }
+			raw := []byte(sample.Raw)
+
+			delivery, err := webhooks.VerifyDelivery(raw, headersOf(sample), webhooks.Options{Secret: secret, Now: at})
+			if err != nil {
+				t.Fatalf("a real delivery failed verification: %v", err)
+			}
+			if delivery.ID != sample.Headers[webhooks.HeaderID] {
+				t.Errorf("delivery id = %q", delivery.ID)
+			}
+			if string(delivery.EventType) != eventName {
+				t.Errorf("event type = %q, want %q", delivery.EventType, eventName)
+			}
+			var body struct {
+				UUID string              `json:"uuid"`
+				Type oblodai.WebhookKind `json:"type"`
+			}
+			if err := json.Unmarshal(raw, &body); err != nil {
+				t.Fatal(err)
+			}
+			if delivery.Event.ID() != body.UUID || delivery.Event.Kind() != body.Type {
+				t.Errorf("event = %s/%s, want %s/%s", delivery.Event.Kind(), delivery.Event.ID(), body.Type, body.UUID)
+			}
+			if delivery.Event.Seq() <= 0 {
+				t.Errorf("sequence = %d", delivery.Event.Seq())
+			}
+
+			// The same bytes under any other secret must fail.
+			if _, err := webhooks.Verify(raw, headersOf(sample), webhooks.Options{
+				Secret: "some-other-secret", PreviousSecret: "another", Now: at,
+			}); !oblodai.IsSignature(err) {
+				t.Fatalf("a wrong secret was accepted: %v", err)
+			}
+			// So must a body that differs by one byte.
+			tampered := append(bytes.TrimSuffix(raw, []byte("}")), []byte(`,"x":1}`)...)
+			if _, err := webhooks.Verify(tampered, headersOf(sample), webhooks.Options{Secret: secret, Now: at}); err == nil {
+				t.Fatal("a tampered body was accepted")
+			}
+		})
+	}
+}
+
+// signed builds a delivery signed with secret.
+func signed(t *testing.T, secret string, ts int64, body string, extra map[string]string) http.Header {
+	t.Helper()
+	header := http.Header{}
+	header.Set(webhooks.HeaderTimestamp, strconv.FormatInt(ts, 10))
+	header.Set(webhooks.HeaderSignature, oblodai.SignWebhook(secret, ts, []byte(body)))
+	for name, value := range extra {
+		header.Set(name, value)
+	}
+	return header
+}
+
+const sampleBody = `{"type":"payment","uuid":"u1","order_id":"o","status":"paid","is_final":true,` +
+	`"sequence":7,"event_at":"2026-01-01T00:00:00Z","txid":""}`
+
+func TestVerifyRules(t *testing.T) {
+	const ts = int64(1_755_600_000)
+	at := func() time.Time { return time.Unix(ts, 0) }
+
+	t.Run("accepts a valid signature with case-insensitive headers", func(t *testing.T) {
+		header := signed(t, "whsec", ts, sampleBody, nil)
+		lowercase := http.Header{}
+		for name, values := range header {
+			lowercase[name] = values // http.Header canonicalizes on Set/Get, which is the point
+		}
+		event, err := webhooks.Verify([]byte(sampleBody), lowercase, webhooks.Options{Secret: "whsec", Now: at})
+		if err != nil {
+			t.Fatalf("Verify: %v", err)
+		}
+		if event.Kind() != oblodai.WebhookKindPayment || !event.Final() {
+			t.Fatalf("unexpected event: %+v", event)
+		}
+		payment, ok := event.(*oblodai.PaymentEvent)
+		if !ok || payment.Status != oblodai.PaymentStatusPaid {
+			t.Fatalf("expected a payment event with status paid, got %#v", event)
+		}
+	})
+
+	t.Run("rejects a wrong secret, a tampered body and a missing header", func(t *testing.T) {
+		header := signed(t, "whsec", ts, sampleBody, nil)
+		if _, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{Secret: "other", Now: at}); !oblodai.IsCode(err, oblodai.CodeWebhookBadSignature) {
+			t.Fatalf("wrong secret: %v", err)
+		}
+		tampered := []byte(`{"type":"payment","uuid":"u1","status":"paid_over","sequence":7}`)
+		if _, err := webhooks.Verify(tampered, header, webhooks.Options{Secret: "whsec", Now: at}); !oblodai.IsCode(err, oblodai.CodeWebhookBadSignature) {
+			t.Fatalf("tampered body: %v", err)
+		}
+		bare := http.Header{}
+		bare.Set(webhooks.HeaderSignature, "aa")
+		if _, err := webhooks.Verify([]byte(sampleBody), bare, webhooks.Options{Secret: "whsec"}); !oblodai.IsCode(err, oblodai.CodeWebhookMissingHeader) {
+			t.Fatalf("missing header: %v", err)
+		}
+	})
+
+	t.Run("rejects stale deliveries unless the check is disabled", func(t *testing.T) {
+		header := signed(t, "whsec", ts, sampleBody, nil)
+		late := func() time.Time { return time.Unix(ts+600, 0) }
+		if _, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{Secret: "whsec", Now: late}); !oblodai.IsCode(err, oblodai.CodeWebhookStaleTimestamp) {
+			t.Fatalf("stale delivery: %v", err)
+		}
+		event, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{
+			Secret: "whsec", Now: late, SkipTimestampCheck: true,
+		})
+		if err != nil || event.ID() != "u1" {
+			t.Fatalf("with the check disabled: %v", err)
+		}
+		// A wider tolerance accepts it too.
+		if _, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{
+			Secret: "whsec", Now: late, Tolerance: 20 * time.Minute,
+		}); err != nil {
+			t.Fatalf("with a wider tolerance: %v", err)
+		}
+	})
+
+	t.Run("verifies through a secret rotation", func(t *testing.T) {
+		header := signed(t, "new", ts, sampleBody, map[string]string{
+			webhooks.HeaderSignaturePrev: oblodai.SignWebhook("old", ts, []byte(sampleBody)),
+		})
+		// Not swapped yet: the stored secret is the old one, which signs the Prev header.
+		if _, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{Secret: "old", Now: at}); err != nil {
+			t.Fatalf("before the swap: %v", err)
+		}
+		// Already swapped: the stored secret is the new one.
+		if _, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{Secret: "new", Now: at}); err != nil {
+			t.Fatalf("after the swap: %v", err)
+		}
+		// Keeping the outgoing secret explicitly works too.
+		if _, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{
+			Secret: "unrelated", PreviousSecret: "old", Now: at,
+		}); err != nil {
+			t.Fatalf("with PreviousSecret: %v", err)
+		}
+	})
+
+	t.Run("verifies an http.Request end to end", func(t *testing.T) {
+		header := signed(t, "whsec", ts, sampleBody, map[string]string{
+			webhooks.HeaderID:        "d-1",
+			webhooks.HeaderEvent:     "invoice.paid",
+			webhooks.HeaderEventTime: strconv.FormatInt(ts, 10),
+		})
+		request := httptest.NewRequest(http.MethodPost, "/hook", bytes.NewBufferString(sampleBody))
+		request.Header = header
+		delivery, err := webhooks.VerifyRequest(request, webhooks.Options{Secret: "whsec", Now: at})
+		if err != nil {
+			t.Fatalf("VerifyRequest: %v", err)
+		}
+		if delivery.ID != "d-1" || delivery.EventType != "invoice.paid" {
+			t.Fatalf("unexpected delivery: %+v", delivery)
+		}
+		if !delivery.EventTime.Equal(time.Unix(ts, 0).UTC()) || !delivery.SentAt.Equal(time.Unix(ts, 0).UTC()) {
+			t.Fatalf("times = %s / %s", delivery.EventTime, delivery.SentAt)
+		}
+		if string(delivery.Raw) != sampleBody {
+			t.Fatal("Raw must be the exact bytes that were verified")
+		}
+	})
+
+	t.Run("parses the event union and detects stale sequences", func(t *testing.T) {
+		event, err := webhooks.Parse([]byte(sampleBody))
+		if err != nil {
+			t.Fatalf("Parse: %v", err)
+		}
+		if !webhooks.IsStale(event, 7) || webhooks.IsStale(event, 6) {
+			t.Fatal("sequence 7 is stale against 7 and fresh against 6")
+		}
+		if _, err := webhooks.Parse([]byte(`{"type":"alien","uuid":"x"}`)); !oblodai.IsSignature(err) {
+			t.Fatalf("an unknown event type must be refused: %v", err)
+		}
+		if _, err := webhooks.Parse([]byte(`{"uuid":"x"}`)); err == nil {
+			t.Fatal("a body without a type must be refused")
+		}
+		if _, err := webhooks.Parse([]byte(`not json`)); err == nil {
+			t.Fatal("a non-JSON body must be refused")
+		}
+	})
+}
+
+func TestEveryEventKindDecodesToItsOwnType(t *testing.T) {
+	seen := map[oblodai.WebhookKind]bool{}
+	for _, sample := range fixtures.LoadWebhookSamples(t) {
+		event, err := webhooks.Parse([]byte(sample.Raw))
+		if err != nil {
+			t.Fatalf("Parse: %v", err)
+		}
+		seen[event.Kind()] = true
+		switch event.Kind() {
+		case oblodai.WebhookKindPayment:
+			if _, ok := event.(*oblodai.PaymentEvent); !ok {
+				t.Fatalf("a payment event decoded as %T", event)
+			}
+		case oblodai.WebhookKindPayout:
+			if _, ok := event.(*oblodai.PayoutEvent); !ok {
+				t.Fatalf("a payout event decoded as %T", event)
+			}
+		case oblodai.WebhookKindWallet:
+			if _, ok := event.(*oblodai.WalletEvent); !ok {
+				t.Fatalf("a wallet event decoded as %T", event)
+			}
+		}
+	}
+	if len(seen) < 2 {
+		t.Fatalf("the recorded deliveries cover only %v", seen)
+	}
+}
