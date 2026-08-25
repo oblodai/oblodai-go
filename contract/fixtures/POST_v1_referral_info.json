@@ -1,0 +1,26 @@
+{
+ "route": "POST /v1/referral/info",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "code": "EGBQK6SV",
+   "earnings_by_asset": {},
+   "link": "http://127.0.0.1:39381/?ref=EGBQK6SV",
+   "referred_count": 0,
+   "tier_bps": [
+    3000,
+    2000,
+    1000
+   ],
+   "week": {
+    "earnings_by_asset": {},
+    "referred_count": 0
+   }
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

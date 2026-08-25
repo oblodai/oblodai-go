@@ -1,0 +1,21 @@
+{
+ "route": "POST /v1/transfer/to-user",
+ "status": 403,
+ "request": {
+  "amount": "1",
+  "currency": "USDT",
+  "order_id": "sdk-tr-0",
+  "to_user_id": "2c8f9d3b-5e4a-4b7c-8d2e-3f4a5b6c7d8e"
+ },
+ "response": {
+  "error": {
+   "code": "sandbox.transfer_not_available",
+   "message": "a dev store's test balance cannot fund transfers or holds to real users",
+   "retryable": false,
+   "request_id": "4b27aabc-b9a7-498e-bafb-7e2790c6e635"
+  }
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

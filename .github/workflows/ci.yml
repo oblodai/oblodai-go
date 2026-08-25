@@ -11,7 +11,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-      - run: test -z "$(gofmt -l .)" || (gofmt -l .; echo 'run gofmt -w .'; exit 1)
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l .; echo 'run gofmt -w .'; exit 1)
+      - name: contract drift
+        run: go run ./internal/codegen -check
       - run: go build ./...
       - run: go vet ./...
+      - name: staticcheck
+        uses: dominikh/staticcheck-action@v1
+        with:
+          version: latest
+          install-go: false
       - run: go test ./...

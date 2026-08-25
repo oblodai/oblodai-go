@@ -1,0 +1,230 @@
+package oblodai
+
+import (
+	"context"
+	"encoding/json"
+	"net/url"
+	"strconv"
+)
+
+// Offset pagination over the core's {items, paginate} lists. paginate.has_pages is the server's
+// own "there is more" flag; iteration stops on it, or on a short page, whichever comes first.
+//
+// A list method returns a *List, which has requested nothing yet: Page fetches the first page,
+// Pager walks every page one request at a time, All collects them. Nothing here starts work on
+// its own, so an unused list costs nothing and a failing one cannot surprise the program.
+
+// DefaultPageLimit is the page size used when a list call does not set one.
+const DefaultPageLimit = 50
+
+// List is a lazy handle on a paged list route.
+type List[T any] struct {
+	ctx    context.Context
+	fetch  func(ctx context.Context, limit, offset int) (*Page[T], error)
+	limit  int
+	offset int
+
+	first    *Page[T]
+	firstErr error
+	fetched  bool
+}
+
+// Page fetches the first page. Calling it twice does not repeat the request.
+func (l *List[T]) Page() (*Page[T], error) {
+	page, err := l.pageAt(l.offset)
+	return page, err
+}
+
+// All walks every page and collects the items. maxItems caps the result; 0 means no cap.
+func (l *List[T]) All(maxItems int) ([]T, error) {
+	out := []T{}
+	p := l.Pager()
+	// The cap is checked before advancing, so a bounded walk never fetches a page it will not use.
+	for maxItems <= 0 || len(out) < maxItems {
+		if !p.Next() {
+			break
+		}
+		out = append(out, p.Item())
+	}
+	return out, p.Err()
+}
+
+// Pager walks every item across pages, fetching at most one page per call to Next:
+//
+//	p := client.Payments.History(ctx, params).Pager()
+//	for p.Next() {
+//		invoice := p.Item()
+//	}
+//	if err := p.Err(); err != nil { … }
+func (l *List[T]) Pager() *Pager[T] {
+	return &Pager[T]{list: l, offset: l.offset}
+}
+
+// pageAt fetches one page, reusing the memoized first page when it is the one asked for.
+func (l *List[T]) pageAt(offset int) (*Page[T], error) {
+	if offset == l.offset {
+		if !l.fetched {
+			l.first, l.firstErr = l.fetch(l.ctx, l.limit, offset)
+			l.fetched = true
+		}
+		return l.first, l.firstErr
+	}
+	return l.fetch(l.ctx, l.limit, offset)
+}
+
+// Pager iterates the items of a list across pages. It is not safe for concurrent use.
+type Pager[T any] struct {
+	list   *List[T]
+	page   *Page[T]
+	cur    T
+	idx    int
+	offset int
+	err    error
+	done   bool
+}
+
+// Next advances to the next item, fetching the next page when the current one runs out. It
+// returns false at the end of the list and on the first error, which Err then reports.
+func (p *Pager[T]) Next() bool {
+	if p.done || p.err != nil {
+		return false
+	}
+	for {
+		if p.page != nil && p.idx < len(p.page.Items) {
+			p.cur = p.page.Items[p.idx]
+			p.idx++
+			return true
+		}
+		if p.page != nil {
+			if len(p.page.Items) == 0 || !p.page.Paginate.HasPages {
+				p.done = true
+				return false
+			}
+			p.offset += len(p.page.Items)
+		}
+		page, err := p.list.pageAt(p.offset)
+		if err != nil {
+			p.err = err
+			p.done = true
+			return false
+		}
+		p.page, p.idx = page, 0
+		if len(page.Items) == 0 {
+			p.done = true
+			return false
+		}
+	}
+}
+
+// Item is the item Next stopped on.
+func (p *Pager[T]) Item() T { return p.cur }
+
+// Page is the page the current item came from, including its paginate block.
+func (p *Pager[T]) Page() *Page[T] { return p.page }
+
+// Err reports why iteration stopped, if it was not the end of the list.
+func (p *Pager[T]) Err() error { return p.err }
+
+// newList builds the lazy list handle for a paged route. Limit and offset are taken from the
+// caller's params (the core documents them on every list DTO) and then driven by the pager, so a
+// caller-set limit survives while the offset advances page by page.
+func newList[T any](ctx context.Context, t *transport, key string, params any, opts []RequestOption) *List[T] {
+	fields, err := toFields(params)
+	limit, offset := DefaultPageLimit, 0
+	if v, ok := intField(fields, "limit"); ok && v > 0 {
+		limit = v
+	}
+	if v, ok := intField(fields, "offset"); ok && v > 0 {
+		offset = v
+	}
+	delete(fields, "limit")
+	delete(fields, "offset")
+
+	o := applyRequestOptions(opts)
+	// One idempotency key per page would be wrong on both sides: the core would replay page one
+	// for ever. A list is a read, and reads are safe to repeat without a key.
+	o.idempotencyKey = ""
+
+	r := route(key)
+	return &List[T]{
+		ctx:    ctx,
+		limit:  limit,
+		offset: offset,
+		fetch: func(ctx context.Context, limit, offset int) (*Page[T], error) {
+			if err != nil {
+				return nil, err
+			}
+			pageOpts := o
+			body := map[string]any{}
+			for k, v := range fields {
+				body[k] = v
+			}
+			body["limit"] = limit
+			body["offset"] = offset
+			if r.Method == "GET" {
+				query := url.Values{}
+				for k, v := range body {
+					query.Set(k, queryValue(v))
+				}
+				pageOpts.query = query
+			} else {
+				pageOpts.body = body
+			}
+			return call[Page[T]](ctx, t, key, pageOpts)
+		},
+	}
+}
+
+// toFields renders a params struct as a field map so pagination can override limit and offset
+// without every list method having to expose them separately.
+func toFields(params any) (map[string]any, error) {
+	fields := map[string]any{}
+	if params == nil {
+		return fields, nil
+	}
+	encoded, err := json.Marshal(params)
+	if err != nil {
+		return fields, newConfigError(CodeBadConfig, "the list parameters cannot be encoded as JSON: "+err.Error(), "")
+	}
+	if string(encoded) == "null" {
+		return fields, nil
+	}
+	if err := json.Unmarshal(encoded, &fields); err != nil {
+		return fields, newConfigError(CodeBadConfig, "the list parameters must encode to a JSON object", "")
+	}
+	return fields, nil
+}
+
+func intField(fields map[string]any, name string) (int, bool) {
+	switch v := fields[name].(type) {
+	case float64:
+		return int(v), true
+	case int:
+		return v, true
+	default:
+		return 0, false
+	}
+}
+
+// queryValue renders a decoded JSON value for a query string.
+func queryValue(v any) string {
+	switch t := v.(type) {
+	case string:
+		return t
+	case bool:
+		return strconv.FormatBool(t)
+	case float64:
+		if t == float64(int64(t)) {
+			return strconv.FormatInt(int64(t), 10)
+		}
+		return strconv.FormatFloat(t, 'f', -1, 64)
+	case nil:
+		return ""
+	default:
+		encoded, err := json.Marshal(t)
+		if err != nil {
+			return ""
+		}
+		return string(encoded)
+	}
+}

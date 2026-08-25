@@ -1,0 +1,421 @@
+{
+ "route": "POST /v1/payment/services",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "items": [
+    {
+     "network": "tron",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "ethereum",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "bsc",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "polygon",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "avalanche",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "solana",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "ton",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "base",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "arbitrum",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "ethereum",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "bsc",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "polygon",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "avalanche",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "solana",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "base",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "arbitrum",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "ethereum",
+     "currency": "DAI",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "polygon",
+     "currency": "DAI",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "base",
+     "currency": "DAI",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "arbitrum",
+     "currency": "DAI",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "ethereum",
+     "currency": "PYUSD",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "ethereum",
+     "currency": "USDG",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "solana",
+     "currency": "PYUSD",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "solana",
+     "currency": "USDG",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    },
+    {
+     "network": "base",
+     "currency": "EURC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "1.00",
+      "max_amount": "",
+      "currency": "USD"
+     },
+     "commission": {
+      "fee_amount": "0.30",
+      "percent": "1.5",
+      "currency": "USD",
+      "fee_type": "exact"
+     }
+    }
+   ],
+   "paginate": {
+    "has_pages": true,
+    "offset": 0,
+    "per_page": 25,
+    "total": 58
+   }
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

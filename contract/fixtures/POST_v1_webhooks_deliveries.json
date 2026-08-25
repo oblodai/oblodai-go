@@ -1,0 +1,134 @@
+{
+ "route": "POST /v1/webhooks/deliveries",
+ "status": 200,
+ "request": {
+  "limit": 10,
+  "offset": 0
+ },
+ "response": {
+  "result": {
+   "items": [
+    {
+     "attempts": 0,
+     "created_at": "2026-08-25T22:08:57Z",
+     "event_type": "payout.confirmed",
+     "id": "c1a93eea-89cf-47b3-becd-905d2a3db1bf",
+     "last_error": "",
+     "sequence": 42,
+     "status": "delivered",
+     "updated_at": "2026-08-25T22:08:57Z",
+     "url": "http://127.0.0.1:45233/hook"
+    },
+    {
+     "attempts": 0,
+     "created_at": "2026-08-25T22:08:57Z",
+     "event_type": "payout.confirmed",
+     "id": "6cb3f9e8-8f9f-4b53-80b8-cbdd170b6ec5",
+     "last_error": "",
+     "sequence": 41,
+     "status": "delivered",
+     "updated_at": "2026-08-25T22:08:57Z",
+     "url": "http://127.0.0.1:45233/hook"
+    },
+    {
+     "attempts": 0,
+     "created_at": "2026-08-25T22:08:57Z",
+     "event_type": "payout.sent",
+     "id": "c1aaa1f2-8fc6-41b4-a1ee-2856e0815a42",
+     "last_error": "",
+     "sequence": 40,
+     "status": "delivered",
+     "updated_at": "2026-08-25T22:08:57Z",
+     "url": "http://127.0.0.1:45233/hook"
+    },
+    {
+     "attempts": 0,
+     "created_at": "2026-08-25T22:08:57Z",
+     "event_type": "payout.broadcasting",
+     "id": "88514e64-9551-495d-b05d-3eec0450982d",
+     "last_error": "",
+     "sequence": 39,
+     "status": "delivered",
+     "updated_at": "2026-08-25T22:08:57Z",
+     "url": "http://127.0.0.1:45233/hook"
+    },
+    {
+     "attempts": 0,
+     "created_at": "2026-08-25T22:08:57Z",
+     "event_type": "payout.sent",
+     "id": "3604b589-4f03-4bab-806c-b3e154262403",
+     "last_error": "",
+     "sequence": 38,
+     "status": "delivered",
+     "updated_at": "2026-08-25T22:08:57Z",
+     "url": "http://127.0.0.1:45233/hook"
+    },
+    {
+     "attempts": 0,
+     "created_at": "2026-08-25T22:08:57Z",
+     "event_type": "payout.broadcasting",
+     "id": "10689f52-3944-44e2-a29d-8ed1a79e289e",
+     "last_error": "",
+     "sequence": 37,
+     "status": "delivered",
+     "updated_at": "2026-08-25T22:08:57Z",
+     "url": "http://127.0.0.1:45233/hook"
+    },
+    {
+     "attempts": 0,
+     "created_at": "2026-08-25T22:08:57Z",
+     "event_type": "payout.approved",
+     "id": "daa0dc95-8366-4b5e-9fe4-66733fcaf8cc",
+     "last_error": "",
+     "sequence": 32,
+     "status": "delivered",
+     "updated_at": "2026-08-25T22:08:57Z",
+     "url": "http://127.0.0.1:45233/hook"
+    },
+    {
+     "attempts": 0,
+     "created_at": "2026-08-25T22:08:57Z",
+     "event_type": "payout.approved",
+     "id": "a896718b-123d-4da8-b399-a28f60065f70",
+     "last_error": "",
+     "sequence": 31,
+     "status": "delivered",
+     "updated_at": "2026-08-25T22:08:57Z",
+     "url": "http://127.0.0.1:45233/hook"
+    },
+    {
+     "attempts": 0,
+     "created_at": "2026-08-25T22:08:57Z",
+     "event_type": "payout.confirmed",
+     "id": "d5751b99-c818-439d-a910-42380769aa75",
+     "last_error": "",
+     "sequence": 30,
+     "status": "delivered",
+     "updated_at": "2026-08-25T22:08:57Z",
+     "url": "http://127.0.0.1:45233/hook"
+    },
+    {
+     "attempts": 0,
+     "created_at": "2026-08-25T22:08:57Z",
+     "event_type": "payout.confirmed",
+     "id": "57a82c11-0833-440f-be41-1e1ef17f97d4",
+     "last_error": "",
+     "sequence": 29,
+     "status": "delivered",
+     "updated_at": "2026-08-25T22:08:57Z",
+     "url": "http://127.0.0.1:45233/hook"
+    }
+   ],
+   "paginate": {
+    "has_pages": true,
+    "offset": 0,
+    "per_page": 10,
+    "total": 38
+   }
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

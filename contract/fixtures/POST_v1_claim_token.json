@@ -1,0 +1,25 @@
+{
+ "route": "POST /v1/claim/{token}",
+ "status": 200,
+ "request": {
+  "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx"
+ },
+ "response": {
+  "result": {
+   "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+   "amount": "5.000000",
+   "commission": "0.000000",
+   "currency": "USDT",
+   "fee_bearer": "recipient",
+   "fee_type": "exact",
+   "network": "tron",
+   "payer_amount": "5.000000",
+   "payout_id": "d0f3e5fc-0aae-45fa-a38f-0975b7873f26",
+   "status": "claimed"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

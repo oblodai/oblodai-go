@@ -1,0 +1,62 @@
+{
+ "route": "POST /v1/payment",
+ "status": 200,
+ "request": {
+  "additional_data": "sdk-contract",
+  "amount": "25",
+  "currency": "USDT",
+  "network": "tron",
+  "order_id": "sdk-inv-1",
+  "payer_email": "buyer@example.com",
+  "url_callback": "http://127.0.0.1:45233/hook",
+  "url_return": "https://shop.example/back",
+  "url_success": "https://shop.example/ok"
+ },
+ "response": {
+  "result": {
+   "additional_data": "sdk-contract",
+   "address": "sandbox:c65b4740-6f19-4d56-a314-8c151b8a3f83",
+   "address_muxed": "",
+   "address_qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAABlBMVEX///8AAABVwtN+AAAB9UlEQVR42uyZMZLzIAyFn4fCJUfgKNws4JtxFI5AScHk/SNh7yb5U21leaxmh/XXgMTjScEdd9zxt0gk2QOHr1hbdB3L8PI/XgsAsPSgy5VlrNyGL/sHO4Ajtx6KawJwIGT4QlaDAOKYywFJllEgFMeaOqL8uSSgNYkoNwteuAe+FO3ZgakPZfj6UH0I21cBOTdwxPDMAFTwvor6qYEE3VTRnHnZcXYNz/VFq68AwLWY1xoFYAM7EgWosAWoPkgKpTyx1jQQ8bpNA0ACYkYokJs1cyY1+btNE8DUiBr5E0/4svSQLwZ4Puc5YG0YCKRaCVNAcg0LK1zDY5UvdSG59N8zMAGo/wzc7cFA2AZE5bIpAIh893Jkeb75hwsAkkZAjbeegyiHViktAYksabogKUR2PBzL0RaZAZwqONTL6ZMENQyvxtsAoPpcf7ycSkX89NX2AX1np1uYxpts8U1hLACSu9kESXmqC/IFH5b1/ABiluVekwjZURpSmAKGL/KUUt7XFqUJUqODawEzxAVJUo8qJZktAUffzRY2tjhWcvjyerNMAHN4WFwLss0x24f/JjlnB/ZWzrWwda+Wbh/tXhEoWoX7wEp7vWQPOPyDAMs03jQF7MNDN5VuF3NzwK4P0HE7nf4YcgjedYA77rjjPf4FAAD//4HmP/CyXTutAAAAAElFTkSuQmCC",
+   "address_xaddress": "",
+   "amount": "25.000000",
+   "amount_paid": "0.000000",
+   "amount_remaining": "25.000000",
+   "commission": "0.000000",
+   "confirmations": 0,
+   "created_at": "2026-08-25T22:08:56Z",
+   "currency": "USDT",
+   "destination_tag": "",
+   "document_url": "http://127.0.0.1:39381/v1/documents/payment/c65b4740-6f19-4d56-a314-8c151b8a3f83?exp=1787699336\u0026sig=0fb4de7d990247438041510f7d0edcb87937551a0870ccc4a7d1b50113944c90",
+   "exchange_rate": "1",
+   "expired_at": "2026-08-25T23:08:56Z",
+   "is_final": false,
+   "is_multi": false,
+   "is_test": true,
+   "memo": "",
+   "merchant_amount": "0.000000",
+   "network": "tron",
+   "order_id": "sdk-inv-1",
+   "paid_at": null,
+   "payer_address": "",
+   "payer_address_is_refundable": false,
+   "payer_amount": "25.000000",
+   "payer_currency": "USDT",
+   "payer_email": "buyer@example.com",
+   "rate_expires_at": "2026-08-25T22:13:56Z",
+   "required_confirmations": 20,
+   "status": "created",
+   "tx_list": [],
+   "txid": "",
+   "updated_at": "2026-08-25T22:08:56Z",
+   "url": "http://127.0.0.1:39381/pay/c65b4740-6f19-4d56-a314-8c151b8a3f83",
+   "url_return": "https://shop.example/back",
+   "url_success": "https://shop.example/ok",
+   "uuid": "c65b4740-6f19-4d56-a314-8c151b8a3f83"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

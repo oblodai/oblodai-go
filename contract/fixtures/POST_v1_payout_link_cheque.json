@@ -1,0 +1,13 @@
+{
+ "route": "POST /v1/payout/link/cheque",
+ "status": 200,
+ "request": {
+  "claim_token": "q4WjteYzBslccSn9K3iAxFZkYm1t8LYn619T9cl07Fc",
+  "lang": "en"
+ },
+ "headers": {
+  "Content-Disposition": "inline; filename=\"oblodai-cheque-5c709dc4.pdf\"",
+  "Content-Length": "46",
+  "Content-Type": "application/pdf"
+ }
+}

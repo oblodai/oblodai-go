@@ -1,0 +1,15 @@
+{
+ "route": "POST /v1/payment/accuracy/get",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "accuracy_percent": 2,
+   "enabled": true
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

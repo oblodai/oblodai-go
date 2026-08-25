@@ -1,0 +1,19 @@
+{
+ "route": "GET /v1/link/{id}",
+ "status": 200,
+ "response": {
+  "result": {
+   "amount_fixed": "10",
+   "amount_mode": "fixed",
+   "currency": "USDT",
+   "description": "Tip jar",
+   "link_id": "158d7c35-4b11-4008-8000-6dcce0bf92d1",
+   "pinned_network": "tron",
+   "title": "Support"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

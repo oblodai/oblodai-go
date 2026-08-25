@@ -1,0 +1,21 @@
+{
+ "route": "POST /v1/payment/accepted/set",
+ "status": 200,
+ "request": {
+  "accepted": [
+   {
+    "currency": "USDT",
+    "network": "tron"
+   }
+  ]
+ },
+ "response": {
+  "result": {
+   "ok": true
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

@@ -1,0 +1,24 @@
+{
+ "route": "POST /v1/payout/calculate",
+ "status": 200,
+ "request": {
+  "amount": "10",
+  "currency": "USDT",
+  "network": "tron"
+ },
+ "response": {
+  "result": {
+   "amount": "10.000000",
+   "commission": "0.000000",
+   "currency": "USDT",
+   "fee_bearer": "gateway",
+   "fee_type": "exact",
+   "network": "tron",
+   "payer_amount": "10.000000"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

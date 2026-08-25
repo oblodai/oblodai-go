@@ -1,550 +1,220 @@
 package oblodai
 
 import (
-	"bytes"
 	"context"
-	cryptorand "crypto/rand"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"log/slog"
-	"math"
-	"math/rand"
-	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
+	"runtime"
 	"time"
 )
 
-const (
-	defaultBaseURL = "https://api.oblodai.com"
-	defaultTimeout = 30 * time.Second
-
-	// maxRetryAfter — абсолютный потолок для серверного Retry-After. Заголовок уважается как есть
-	// (даже выше RetryConfig.MaxDelay), но не дольше 5 минут — иначе один ответ мог бы усыпить
-	// вызывающего надолго.
-	maxRetryAfter = 300 * time.Second
-
-	// Переменные окружения для NewFromEnv.
-	envPublicID = "OBLODAI_PUBLIC_ID"
-	envSecret   = "OBLODAI_SECRET"
-	envBaseURL  = "OBLODAI_BASE_URL" // необязательная — переопределяет базовый URL
-
-	// envLog — необязательная переменная для opt-in логирования, если Config.Logger не задан.
-	// Значения: debug/info/warn/error. Любое иное (или пусто) — логирование выключено.
-	envLog = "OBLODAI_LOG"
-)
-
-// envLogger разбирает переменную окружения OBLODAI_LOG один раз и возвращает text-логгер slog
-// в stderr на заданном уровне, либо nil если переменная не задана/некорректна.
-var (
-	envLoggerOnce sync.Once
-	envLoggerVal  *slog.Logger
-)
-
-func envLogger() *slog.Logger {
-	envLoggerOnce.Do(func() {
-		level, ok := parseLogLevel(os.Getenv(envLog))
-		if !ok {
-			return
-		}
-		envLoggerVal = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
-	})
-	return envLoggerVal
-}
-
-// parseLogLevel сопоставляет строку уровню slog. ok=false — строка не распознана.
-func parseLogLevel(s string) (slog.Level, bool) {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "debug":
-		return slog.LevelDebug, true
-	case "info":
-		return slog.LevelInfo, true
-	case "warn":
-		return slog.LevelWarn, true
-	case "error":
-		return slog.LevelError, true
-	default:
-		return 0, false
-	}
-}
-
-// RetryConfig — настройки повторов с экспоненциальным backoff.
-type RetryConfig struct {
-	MaxAttempts  int           // максимум попыток (включая первую)
-	InitialDelay time.Duration // начальная задержка
-	MaxDelay     time.Duration // потолок задержки
-}
-
-// DefaultRetry возвращает разумные настройки повторов по умолчанию.
-// С v1.1.0 передавать его не обязательно: nil в Config.Retry означает те же дефолтные повторы.
-func DefaultRetry() *RetryConfig {
-	return &RetryConfig{MaxAttempts: 4, InitialDelay: 500 * time.Millisecond, MaxDelay: 30 * time.Second}
-}
-
-// NoRetry отключает автоматические повторы (ровно одна попытка на вызов).
-//
-// С v1.1.0 повторы включены по умолчанию (Retry: nil == DefaultRetry()), как и в остальных SDK
-// Oblodai. Отключайте их осознанно: Config{Retry: oblodai.NoRetry()}.
-func NoRetry() *RetryConfig {
-	return &RetryConfig{MaxAttempts: 1}
-}
-
-// Config — конфигурация клиента.
-type Config struct {
-	PublicID   string        // public_id (несекретный идентификатор ключа) — обязателен
-	Secret     string        // secret для подписи запросов — обязателен
-	BaseURL    string        // базовый URL API (по умолчанию https://api.oblodai.com)
-	Timeout    time.Duration // таймаут запроса (по умолчанию 30с)
-	Retry      *RetryConfig  // настройки повторов; nil = DefaultRetry(); отключить — NoRetry()
-	HTTPClient *http.Client  // кастомный HTTP-клиент (по умолчанию свой)
-	// Logger — необязательный slog-логгер. nil (по умолчанию) отключает логирование. Если nil, но
-	// задана переменная окружения OBLODAI_LOG (debug/info/warn/error), клиент создаёт text-логгер в
-	// stderr на этом уровне. Логи никогда не содержат секрет, подпись или тело запроса/ответа.
-	Logger *slog.Logger
-}
-
-// Client — клиент Oblodai API. Создаётся через New. Ресурсы доступны как поля:
-// Payments, Payouts, Batches, PaymentLinks (алиас Links), Splits, PayoutLinks, Wallets, Account,
-// Webhooks, Settings, Rates, Sandbox.
+// Client is the Oblodai API client. One instance per key pair; it is safe to share across
+// goroutines and should be created once and reused, so connections and the learned clock offset
+// are shared.
 type Client struct {
-	publicID string
-	secret   string
-	baseURL  string
-	retry    *RetryConfig
-	hc       *http.Client
-	logger   *slog.Logger
+	transport *transport
 
-	Payments *PaymentsResource
-	Payouts  *PayoutsResource
-	Batches  *BatchesResource
-	// PaymentLinks — переиспользуемые платёжные ссылки. Каноническое имя ресурса, единое во всех
-	// SDK Oblodai (payment_links / paymentLinks / PaymentLinks), — переносите код между языками
-	// без переименований.
-	PaymentLinks *LinksResource
-	// Links — задокументированный алиас PaymentLinks: тот же самый объект ресурса (сравнение
-	// c.Links == c.PaymentLinks истинно). Оставлен навсегда ради обратной совместимости.
-	Links       *LinksResource
-	Splits      *SplitsResource
-	PayoutLinks *PayoutLinksResource
-	Wallets     *WalletsResource
-	Account     *AccountResource
-	Webhooks    *WebhooksResource
-	Settings    *SettingsResource
-	Rates       *RatesResource
-	Sandbox     *SandboxResource
+	// Payments creates and looks up invoices, and serves the payer-facing checkout endpoints.
+	Payments *PaymentsService
+	// Refunds refunds paid invoices and resolves underpaid ones.
+	Refunds *RefundsService
+	// Payouts sends funds to external addresses.
+	Payouts *PayoutsService
+	// PayoutLinks mints claimable cheques backed by reserved funds.
+	PayoutLinks *PayoutLinksService
+	// PaymentLinks manages reusable payment links.
+	PaymentLinks *PaymentLinksService
+	// Batches reports the progress of asynchronous batches.
+	Batches *BatchesService
+	// Transfers moves funds between platform balances.
+	Transfers *TransfersService
+	// Wallets manages static deposit addresses.
+	Wallets *WalletsService
+	// Webhooks registers endpoints and inspects deliveries. Verification lives in the
+	// github.com/oblodai/oblodai-go/webhooks sub-package.
+	Webhooks *WebhooksService
+	// Documents downloads generated PDF and CSV documents.
+	Documents *DocumentsService
+	// Splits forwards a share of every payment to a partner.
+	Splits *SplitsService
+	// Settings is merchant-level configuration exposed over the API.
+	Settings *SettingsService
+	// Account reads balances and account-level facts.
+	Account *AccountService
+	// Catalog is public reference data: currencies, networks and exchange rates.
+	Catalog *CatalogService
+	// Sandbox is the developer sandbox: fake money, simulated deposits, a webhook inspector.
+	Sandbox *SandboxService
+	// Merchants provisions merchants on a platform or a self-hosted gateway.
+	Merchants *MerchantsService
 }
 
-// isLoopbackHost сообщает, что хост — локальная петля (localhost, 127.0.0.0/8, ::1). Порт должен
-// быть уже отрезан.
-func isLoopbackHost(host string) bool {
-	host = strings.Trim(host, "[]") // ::1 приходит в скобках
-	if strings.EqualFold(host, "localhost") || strings.HasSuffix(strings.ToLower(host), ".localhost") {
-		return true
-	}
-	if ip := net.ParseIP(host); ip != nil {
-		return ip.IsLoopback()
-	}
-	return false
-}
-
-// validateBaseURL запрещает передавать подпись запроса (X-Signature) по незашифрованному каналу.
+// New builds a client. With no options it reads OBLODAI_PUBLIC_ID and OBLODAI_SECRET from the
+// environment and talks to the production API:
 //
-// Схема обязана быть https. Единственное исключение — http на локальную петлю (localhost,
-// 127.0.0.1, ::1): по ней работают локальные стенды шлюза, там перехватывать нечего.
-func validateBaseURL(baseURL string) error {
-	u, err := url.Parse(baseURL)
-	if err != nil || u.Host == "" {
-		return fmt.Errorf("oblodai: некорректный Config.BaseURL %q — ожидается абсолютный URL вида https://api.oblodai.com", baseURL)
-	}
-	switch strings.ToLower(u.Scheme) {
-	case "https":
-		return nil
-	case "http":
-		if isLoopbackHost(u.Hostname()) {
-			return nil // локальный стенд, например http://localhost:8095
-		}
-		return fmt.Errorf(
-			"oblodai: небезопасный Config.BaseURL %q — по http подпись запроса (X-Signature) и заголовки уходят открытым текстом. "+
-				"Используйте https://; http допустим только для локального стенда на localhost / 127.0.0.1 / [::1]", baseURL)
-	default:
-		return fmt.Errorf("oblodai: неподдерживаемая схема в Config.BaseURL %q — ожидается https:// (или http:// для локального стенда)", baseURL)
-	}
-}
-
-// New создаёт клиента. Возвращает ошибку, если не заданы обязательные поля конфигурации либо
-// BaseURL небезопасен (не-https на внешний хост — см. validateBaseURL).
-func New(cfg Config) (*Client, error) {
-	if cfg.PublicID == "" {
-		return nil, errors.New("oblodai: Config.PublicID обязателен")
-	}
-	if cfg.Secret == "" {
-		return nil, errors.New("oblodai: Config.Secret обязателен")
-	}
-	baseURL := cfg.BaseURL
-	if baseURL == "" {
-		baseURL = defaultBaseURL
-	}
-	baseURL = strings.TrimRight(baseURL, "/")
-	if err := validateBaseURL(baseURL); err != nil {
+//	client, err := oblodai.New()
+//	client, err := oblodai.New(
+//		oblodai.WithCredentials(publicID, secret),
+//		oblodai.WithPayoutCredentials(payoutID, payoutSecret),
+//	)
+//
+// It fails only on unusable configuration (a malformed base URL, half a key pair); missing
+// credentials surface later, on the first call that needs them.
+func New(opts ...Option) (*Client, error) {
+	cfg, err := resolve(opts)
+	if err != nil {
 		return nil, err
 	}
 
-	hc := cfg.HTTPClient
-	if hc == nil {
-		timeout := cfg.Timeout
-		if timeout == 0 {
-			timeout = defaultTimeout
-		}
-		hc = &http.Client{Timeout: timeout}
+	httpClient := *cfg.httpClient
+	// A signed request must never be replayed against another origin, and a redirect would strip
+	// the body on top of that: surface it as an error instead of following it.
+	httpClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	httpClient.Timeout = 0 // the per-attempt context timeout owns this
+
+	t := &transport{
+		baseURL:    cfg.baseURL,
+		httpClient: &httpClient,
+		timeout:    cfg.timeout,
+		budget:     cfg.budget,
+		retry:      cfg.retry,
+		clock:      newSkewClock(cfg.now),
+		logger:     cfg.logger,
+		headers:    cfg.headers,
+		adminToken: cfg.adminToken,
+		random:     cfg.random,
+		userAgent: fmt.Sprintf("oblodai-go/%s (contract %s; %s)",
+			Version, ContractHash[:12], runtime.Version()),
+	}
+	if cfg.publicID != "" {
+		t.creds = &credentials{publicID: cfg.publicID, secret: cfg.secret}
+	}
+	if cfg.payoutPublicID != "" {
+		t.payoutCreds = &credentials{publicID: cfg.payoutPublicID, secret: cfg.payoutSecret}
 	}
 
-	// С v1.1.0 nil означает дефолтные повторы (как во всех SDK Oblodai). Отключить — NoRetry().
-	retry := cfg.Retry
-	if retry == nil {
-		retry = DefaultRetry()
-	}
-
-	// Логгер: явный из конфига имеет приоритет; иначе — env-based opt-in (OBLODAI_LOG), разбираемый
-	// один раз. nil остаётся nil (логирование выключено).
-	logger := cfg.Logger
-	if logger == nil {
-		logger = envLogger()
-	}
-
-	c := &Client{
-		publicID: cfg.PublicID,
-		secret:   cfg.Secret,
-		baseURL:  baseURL,
-		retry:    retry,
-		hc:       hc,
-		logger:   logger,
-	}
-	c.Payments = &PaymentsResource{c}
-	c.Payouts = &PayoutsResource{c}
-	c.Batches = &BatchesResource{c}
-	c.PaymentLinks = &LinksResource{c}
-	c.Links = c.PaymentLinks // алиас: тот же объект, не копия
-	c.Splits = &SplitsResource{c}
-	c.PayoutLinks = &PayoutLinksResource{c}
-	c.Wallets = &WalletsResource{c}
-	c.Account = &AccountResource{c}
-	c.Webhooks = &WebhooksResource{c}
-	c.Settings = &SettingsResource{c}
-	c.Rates = &RatesResource{c}
-	c.Sandbox = &SandboxResource{c}
+	c := &Client{transport: t}
+	c.Payments = &PaymentsService{c: c}
+	c.Refunds = &RefundsService{c: c}
+	c.Payouts = &PayoutsService{c: c}
+	c.PayoutLinks = &PayoutLinksService{c: c}
+	c.PaymentLinks = &PaymentLinksService{c: c}
+	c.Batches = &BatchesService{c: c}
+	c.Transfers = &TransfersService{c: c}
+	c.Wallets = &WalletsService{c: c}
+	c.Webhooks = &WebhooksService{c: c}
+	c.Documents = &DocumentsService{c: c}
+	c.Splits = &SplitsService{c: c}
+	c.Settings = &SettingsService{c: c}
+	c.Account = &AccountService{c: c}
+	c.Catalog = &CatalogService{c: c}
+	c.Sandbox = &SandboxService{c: c}
+	c.Merchants = &MerchantsService{c: c}
 	return c, nil
 }
 
-// NewFromEnv создаёт клиента из переменных окружения: OBLODAI_PUBLIC_ID и OBLODAI_SECRET
-// (обязательны), OBLODAI_BASE_URL (необязательна). Поля переданного cfg перекрывают окружение
-// (кроме PublicID/Secret, которые всегда берутся из окружения). Возвращает ошибку, если обязательная
-// переменная не задана.
-//
-//	client, err := oblodai.NewFromEnv(oblodai.Config{})
-func NewFromEnv(cfg Config) (*Client, error) {
-	publicID := os.Getenv(envPublicID)
-	if publicID == "" {
-		return nil, errors.New("oblodai: переменная окружения " + envPublicID + " не задана")
-	}
-	secret := os.Getenv(envSecret)
-	if secret == "" {
-		return nil, errors.New("oblodai: переменная окружения " + envSecret + " не задана")
-	}
-	cfg.PublicID = publicID
-	cfg.Secret = secret
-	if cfg.BaseURL == "" {
-		cfg.BaseURL = os.Getenv(envBaseURL) // пусто → New подставит дефолт
-	}
-	return New(cfg)
+// BaseURL reports the API origin the client talks to.
+func (c *Client) BaseURL() string { return c.transport.baseURL }
+
+// ClockOffset reports the correction the client learned from the API's Date header after a
+// signature failure. A non-zero value means this host's clock drifts.
+func (c *Client) ClockOffset() time.Duration { return c.transport.clock.currentOffset() }
+
+// RequestOption tunes one call.
+type RequestOption func(*callOptions)
+
+// WithIdempotencyKey supplies your own idempotency key, so a retry survives a process restart.
+// Create routes generate one automatically when you do not. Routes the core does not deduplicate
+// reject a key with sdk.idempotency_unsupported rather than pretend a re-send would be safe.
+func WithIdempotencyKey(key string) RequestOption {
+	return func(o *callOptions) { o.idempotencyKey = key }
 }
 
-// logf пишет структурированную запись в логгер клиента. No-op, если логгер не задан.
-// НИКОГДА не передавайте сюда секрет, подпись или тело запроса/ответа — только метаданные
-// (method/path/status/attempt/delay/ms/code).
-func (c *Client) logf(level slog.Level, msg string, args ...any) {
-	if c.logger == nil {
-		return
-	}
-	c.logger.Log(context.Background(), level, msg, args...)
+// WithRequestTimeout overrides the per-attempt timeout for one call.
+func WithRequestTimeout(d time.Duration) RequestOption {
+	return func(o *callOptions) { o.timeout = d }
 }
 
-// retryReason классифицирует ошибку для лога повтора: "429 rate limit" / "5xx" / "network".
-func retryReason(err error) string {
-	var apiErr *APIError
-	if errors.As(err, &apiErr) {
-		if apiErr.Status == 429 {
-			return "429 rate limit"
-		}
-		return "5xx"
-	}
-	return "network"
+// WithRequestBudget overrides the overall budget (attempts plus retry pauses) for one call.
+func WithRequestBudget(d time.Duration) RequestOption {
+	return func(o *callOptions) { o.budget = d }
 }
 
-// newIdempotencyKey генерирует UUID v4 (RFC 4122) из crypto/rand — ключ идемпотентности для
-// заголовка Idempotency-Key. Без внешних зависимостей.
-func newIdempotencyKey() string {
-	var b [16]byte
-	_, _ = cryptorand.Read(b[:]) // crypto/rand.Read не возвращает частичного чтения
-	b[6] = (b[6] & 0x0f) | 0x40  // версия 4
-	b[8] = (b[8] & 0x3f) | 0x80  // вариант RFC 4122
-	h := hex.EncodeToString(b[:])
-	return h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
+// WithPayoutKey signs a route that accepts either key kind with the payout key — for example
+// Batches.Info for a batch created by a payout key.
+func WithPayoutKey() RequestOption {
+	return func(o *callOptions) { o.preferPayoutKey = true }
 }
 
-// request выполняет подписанный POST-запрос и разбирает result из конверта в out.
-func (c *Client) request(ctx context.Context, path string, payload any, out any) error {
-	return c.execute(ctx, http.MethodPost, path, payload, true, "", out)
-}
-
-// requestIdem выполняет подписанный POST-запрос НА СОЗДАЮЩИЙ эндпоинт (обёрнутый бэкендом в
-// withIdempotency) с заголовком Idempotency-Key.
-//
-// Ключ генерируется ОДИН РАЗ, до цикла повторов, — все внутренние ретраи шлют один и тот же
-// заголовок, и шлюз дедуплицирует повтор неидемпотентного POST (без риска двойного платежа или
-// выплаты). Заголовок НЕ входит в подпись запроса (подписываются только timestamp/метод/путь/тело).
-//
-// Свой ключ можно передать полем body["idempotency_key"]: оно вырезается из тела (в копии — карта
-// вызывающего не мутируется) и уходит заголовком.
-func (c *Client) requestIdem(ctx context.Context, path string, body Params, out any) error {
-	key := ""
-	if v, ok := body["idempotency_key"]; ok {
-		if s, isStr := v.(string); isStr && strings.TrimSpace(s) != "" {
-			key = strings.TrimSpace(s)
-		}
-		// Служебное поле не должно уйти в тело — вырезаем его из ПОВЕРХНОСТНОЙ КОПИИ,
-		// исходную карту вызывающего не трогаем.
-		clean := make(Params, len(body))
-		for k, val := range body {
-			if k != "idempotency_key" {
-				clean[k] = val
-			}
-		}
-		body = clean
-	}
-	return c.requestIdemKey(ctx, path, body, key, out)
-}
-
-// requestIdemKey — как requestIdem, но тело произвольного типа (структура, срез), а ключ
-// передаётся ОТДЕЛЬНЫМ аргументом, а не служебным полем тела. Нужен там, где тело — типизированная
-// структура (напр. PayoutLinkParams) и вырезать из неё поле нельзя.
-//
-// Пустой key — сгенерировать UUID v4. Как и в requestIdem, ключ фиксируется ДО цикла повторов:
-// все внутренние ретраи одного вызова шлют один и тот же заголовок.
-func (c *Client) requestIdemKey(ctx context.Context, path string, body any, key string, out any) error {
-	key = strings.TrimSpace(key)
-	if key == "" {
-		key = newIdempotencyKey()
-	}
-	return c.execute(ctx, http.MethodPost, path, body, true, key, out)
-}
-
-// requestPublic выполняет запрос БЕЗ подписи (публичные эндпоинты).
-func (c *Client) requestPublic(ctx context.Context, path string, payload any, out any) error {
-	return c.execute(ctx, http.MethodPost, path, payload, false, "", out)
-}
-
-// requestPublicGET выполняет публичный GET-запрос без подписи (напр. GET /v1/currencies).
-func (c *Client) requestPublicGET(ctx context.Context, path string, out any) error {
-	return c.execute(ctx, http.MethodGet, path, nil, false, "", out)
-}
-
-// requestSignedGET выполняет ПОДПИСАННЫЙ GET-запрос (напр. GET /v1/sandbox/webhooks).
-// Каноническая строка подписи та же, что у POST — "{ts}\nGET\n{path}\n{body}" — с пустым телом.
-func (c *Client) requestSignedGET(ctx context.Context, path string, out any) error {
-	return c.execute(ctx, http.MethodGet, path, nil, true, "", out)
-}
-
-func (c *Client) execute(ctx context.Context, method, path string, payload any, signed bool, idemKey string, out any) error {
-	attempts := 1
-	if c.retry != nil && c.retry.MaxAttempts > 1 {
-		attempts = c.retry.MaxAttempts
-	}
-
-	var lastErr error
-	for attempt := 1; attempt <= attempts; attempt++ {
-		c.logf(slog.LevelDebug, "oblodai: request", "method", method, "path", path, "attempt", attempt, "attempts", attempts)
-		result, err := c.once(ctx, method, path, payload, signed, idemKey)
-		if err == nil {
-			if out != nil && len(result) > 0 {
-				if jsonErr := json.Unmarshal(result, out); jsonErr != nil {
-					return fmt.Errorf("oblodai: не удалось разобрать ответ: %w", jsonErr)
-				}
-			}
-			return nil
-		}
-		lastErr = err
-		if !isRetriable(err) || attempt == attempts {
-			var apiErr *APIError
-			if errors.As(err, &apiErr) {
-				c.logf(slog.LevelWarn, "oblodai: request failed", "status", apiErr.Status, "code", apiErr.Code, "method", method, "path", path)
-			}
-			return err
-		}
-		// Уважаем Retry-After от сервера (напр. 429), иначе — собственный backoff.
-		delay := c.backoff(attempt)
-		var apiErr *APIError
-		if errors.As(err, &apiErr) && apiErr.RetryAfter > 0 {
-			// Уважаем серверный Retry-After как есть (не зажимаем к MaxDelay), но зажимаем в
-			// диапазон [0, maxRetryAfter]: верхняя граница — против чрезмерного ожидания, нижняя —
-			// против отрицательной длительности (например, при переполнении time.Duration), из-за
-			// которой time.After сработал бы мгновенно и дал busy-retry.
-			delay = apiErr.RetryAfter
-			if delay > maxRetryAfter {
-				delay = maxRetryAfter
-			}
-			if delay < 0 {
-				delay = 0
-			}
-		}
-		c.logf(slog.LevelWarn, "oblodai: retrying", "method", method, "path", path, "delay_ms", delay.Milliseconds(), "reason", retryReason(err), "next_attempt", attempt+1)
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(delay):
+func applyRequestOptions(opts []RequestOption) callOptions {
+	var o callOptions
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&o)
 		}
 	}
-	return lastErr
+	return o
 }
 
-// once делает один HTTP-запрос и возвращает сырой result (или ошибку).
-func (c *Client) once(ctx context.Context, method, path string, payload any, signed bool, idemKey string) ([]byte, error) {
-	var bodyBytes []byte
-	if method != http.MethodGet {
-		if payload == nil {
-			payload = map[string]any{}
-		}
-		var err error
-		bodyBytes, err = json.Marshal(payload)
-		if err != nil {
-			return nil, fmt.Errorf("oblodai: не удалось сериализовать тело: %w", err)
-		}
-	}
+// The helpers below are what every resource method is built from. Keeping them here means a
+// resource file contains only the route it calls and the shape it sends.
 
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bytes.NewReader(bodyBytes))
+// post calls an envelope route with a JSON body.
+func post[T any](ctx context.Context, c *Client, key string, body any, opts []RequestOption) (*T, error) {
+	o := applyRequestOptions(opts)
+	o.body = body
+	return call[T](ctx, c.transport, key, o)
+}
+
+// postPath calls an envelope route with a JSON body and path parameters.
+func postPath[T any](ctx context.Context, c *Client, key string, pathParams map[string]string, body any, opts []RequestOption) (*T, error) {
+	o := applyRequestOptions(opts)
+	o.body = body
+	o.pathParams = pathParams
+	return call[T](ctx, c.transport, key, o)
+}
+
+// get calls an envelope route with a query string.
+func get[T any](ctx context.Context, c *Client, key string, query url.Values, pathParams map[string]string, opts []RequestOption) (*T, error) {
+	o := applyRequestOptions(opts)
+	o.query = query
+	o.pathParams = pathParams
+	return call[T](ctx, c.transport, key, o)
+}
+
+// file calls a bare route and returns the document bytes.
+func file(ctx context.Context, c *Client, key string, query url.Values, pathParams map[string]string, body any, opts []RequestOption) (*FileResult, error) {
+	o := applyRequestOptions(opts)
+	o.query = query
+	o.pathParams = pathParams
+	o.body = body
+	return callFile(ctx, c.transport, key, o)
+}
+
+// items calls a plain list route (an {items} result with no paginate block) and returns the items.
+func items[T any](ctx context.Context, c *Client, key string, body any, opts []RequestOption) ([]T, error) {
+	result, err := post[struct {
+		Items []T `json:"items"`
+	}](ctx, c, key, body, opts)
 	if err != nil {
-		return nil, &ConnectionError{Message: "не удалось создать запрос", Cause: err}
+		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	if idemKey != "" {
-		// Ключ идемпотентности стабилен между повторами (сгенерирован до цикла в requestIdem)
-		// и НЕ входит в подпись — подписываются только timestamp/метод/путь/тело.
-		req.Header.Set("Idempotency-Key", idemKey)
-	}
-
-	if signed {
-		// Для GET bodyBytes == nil → string(nil) == "" — подписывается пустое тело.
-		ts, sig := signRequest(c.secret, method, path, string(bodyBytes), "")
-		req.Header.Set("X-Public-Id", c.publicID)
-		req.Header.Set("X-Timestamp", ts)
-		req.Header.Set("X-Signature", sig)
-	}
-
-	start := time.Now()
-	resp, err := c.hc.Do(req)
-	if err != nil {
-		return nil, &ConnectionError{Message: "сетевая ошибка при запросе " + path, Cause: err}
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, &ConnectionError{Message: "не удалось прочитать ответ", Cause: err}
-	}
-	c.logf(slog.LevelDebug, "oblodai: response", "status", resp.StatusCode, "method", method, "path", path, "ms", time.Since(start).Milliseconds())
-
-	return parseResponse(resp.StatusCode, respBody, parseRetryAfter(resp.Header.Get("Retry-After")))
+	return result.Items, nil
 }
 
-// parseRetryAfter разбирает заголовок Retry-After в длительность. Поддерживает форму «секунды»
-// (как отдаёт шлюз на 429: Retry-After: 60). HTTP-date форму не используем. 0 — заголовка нет.
-func parseRetryAfter(header string) time.Duration {
-	if header == "" {
-		return 0
-	}
-	secs, err := strconv.Atoi(strings.TrimSpace(header))
-	if err != nil || secs < 0 {
-		return 0
-	}
-	// Зажимаем к потолку ДО умножения: огромное значение секунд иначе переполнило бы time.Duration
-	// (int64 наносекунд) и могло дать отрицательную длительность → time.After сработал бы мгновенно
-	// (busy-retry). Результат всегда в диапазоне [0, maxRetryAfter].
-	if secs > int(maxRetryAfter/time.Second) {
-		return maxRetryAfter
-	}
-	return time.Duration(secs) * time.Second
+// listOf builds the lazy handle a paged list route returns.
+func listOf[T any](ctx context.Context, c *Client, key string, params any, opts []RequestOption) *List[T] {
+	return newList[T](ctx, c.transport, key, params, opts)
 }
 
-// parseResponse разбирает ответ: возвращает result из конверта или *APIError.
-func parseResponse(status int, body []byte, retryAfter time.Duration) ([]byte, error) {
-	// Пытаемся разобрать как объект с полями error/result.
-	var envelope map[string]json.RawMessage
-	if len(body) > 0 {
-		if err := json.Unmarshal(body, &envelope); err != nil {
-			// Не JSON-объект (может быть массив или мусор).
-			if status >= 200 && status < 300 {
-				return body, nil // вернём как есть — вызывающий разберёт (напр. массив)
-			}
-			return nil, &APIError{Code: "response.not_json", Message: fmt.Sprintf("ответ не является JSON-объектом (HTTP %d)", status), Status: status, Raw: body}
+// query builds a query string from name/value pairs, skipping empty values.
+func query(pairs ...string) url.Values {
+	values := url.Values{}
+	for i := 0; i+1 < len(pairs); i += 2 {
+		if pairs[i+1] != "" {
+			values.Set(pairs[i], pairs[i+1])
 		}
 	}
-
-	// Конверт ошибки.
-	if errRaw, ok := envelope["error"]; ok {
-		var e struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		}
-		_ = json.Unmarshal(errRaw, &e)
-		if e.Code == "" {
-			e.Code = "unknown"
-		}
-		return nil, &APIError{Code: e.Code, Message: e.Message, Status: status, Raw: body, RetryAfter: retryAfter}
-	}
-
-	// Не-2xx без конверта ошибки. Сюда попадает и 429 (тело {"state":1,"message":"rate limit exceeded"}
-	// без ключа "error") — достаём message из тела и учитываем Retry-After.
-	if status < 200 || status >= 300 {
-		msg := fmt.Sprintf("HTTP %d", status)
-		if raw, ok := envelope["message"]; ok {
-			var m string
-			if json.Unmarshal(raw, &m) == nil && m != "" {
-				msg = m
-			}
-		}
-		return nil, &APIError{Code: "http." + strconv.Itoa(status), Message: msg, Status: status, Raw: body, RetryAfter: retryAfter}
-	}
-
-	// Успешный конверт { state: 0, result: ... }.
-	if result, ok := envelope["result"]; ok {
-		return result, nil
-	}
-
-	// Ответ без конверта (например, POST /v1/webhooks) — возвращаем всё тело.
-	return body, nil
-}
-
-func isRetriable(err error) bool {
-	var apiErr *APIError
-	if errors.As(err, &apiErr) {
-		return apiErr.IsRetriable()
-	}
-	var connErr *ConnectionError
-	if errors.As(err, &connErr) {
-		return true
-	}
-	return false
-}
-
-func (c *Client) backoff(attempt int) time.Duration {
-	r := c.retry
-	base := math.Min(float64(r.InitialDelay)*math.Pow(2, float64(attempt-1)), float64(r.MaxDelay))
-	jitter := rand.Float64() * float64(r.InitialDelay) / 2
-	return time.Duration(base + jitter)
+	return values
 }

@@ -1,0 +1,19 @@
+{
+ "route": "POST /v1/payment/qr",
+ "status": 200,
+ "request": {
+  "uuid": "c65b4740-6f19-4d56-a314-8c151b8a3f83"
+ },
+ "response": {
+  "result": {
+   "address": "",
+   "image": "",
+   "is_uri": false,
+   "payload": ""
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

@@ -1,0 +1,22 @@
+{
+ "route": "POST /v1/test-webhook/payout",
+ "status": 200,
+ "request": {
+  "currency": "USDT",
+  "network": "tron",
+  "order_id": "sdk-tw-2",
+  "status": "confirmed",
+  "url_callback": "http://127.0.0.1:45233/hook"
+ },
+ "response": {
+  "result": {
+   "ok": true,
+   "signed": true,
+   "status_code": 200
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

@@ -1,0 +1,33 @@
+{
+ "route": "POST /v1/split/rule/list",
+ "status": 200,
+ "request": {
+  "limit": 10,
+  "offset": 0
+ },
+ "response": {
+  "result": {
+   "items": [
+    {
+     "active": true,
+     "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+     "network": "tron",
+     "note": "partner",
+     "percent": "10.00",
+     "reversible": false,
+     "rule_id": "bf26ab20-1df3-4c5f-b754-029579be667a"
+    }
+   ],
+   "paginate": {
+    "has_pages": false,
+    "offset": 0,
+    "per_page": 10,
+    "total": 1
+   }
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

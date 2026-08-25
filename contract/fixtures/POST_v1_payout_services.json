@@ -1,0 +1,396 @@
+{
+ "route": "POST /v1/payout/services",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "items": [
+    {
+     "network": "tron",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDT",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "ethereum",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDT",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "bsc",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDT",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "polygon",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDT",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "avalanche",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDT",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "solana",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDT",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "ton",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDT",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "base",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDT",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "arbitrum",
+     "currency": "USDT",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDT",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "ethereum",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDC",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "bsc",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDC",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "polygon",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDC",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "avalanche",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDC",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "solana",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDC",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "base",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDC",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "arbitrum",
+     "currency": "USDC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDC",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "ethereum",
+     "currency": "DAI",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "DAI",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "polygon",
+     "currency": "DAI",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "DAI",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "base",
+     "currency": "DAI",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "DAI",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "arbitrum",
+     "currency": "DAI",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "DAI",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "ethereum",
+     "currency": "PYUSD",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "PYUSD",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "ethereum",
+     "currency": "USDG",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDG",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "solana",
+     "currency": "PYUSD",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "PYUSD",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "solana",
+     "currency": "USDG",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "USDG",
+      "fee_type": "estimated"
+     }
+    },
+    {
+     "network": "base",
+     "currency": "EURC",
+     "is_available": false,
+     "limit": {
+      "min_amount": "",
+      "max_amount": ""
+     },
+     "commission": {
+      "fee_amount": null,
+      "percent": "0",
+      "currency": "EURC",
+      "fee_type": "estimated"
+     }
+    }
+   ],
+   "paginate": {
+    "has_pages": true,
+    "offset": 0,
+    "per_page": 25,
+    "total": 58
+   }
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

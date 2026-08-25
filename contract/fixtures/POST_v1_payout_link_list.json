@@ -1,0 +1,41 @@
+{
+ "route": "POST /v1/payout/link/list",
+ "status": 200,
+ "request": {
+  "limit": 10,
+  "offset": 0
+ },
+ "response": {
+  "result": {
+   "items": [
+    {
+     "amount": "5.000000",
+     "commission": "0.000000",
+     "created_at": "2026-08-25T22:08:57Z",
+     "currency": "USDT",
+     "expires_at": "2026-08-25T23:08:57Z",
+     "fee_bearer": "recipient",
+     "fee_type": "exact",
+     "link_id": "5c709dc4-0e75-462c-822f-6a66b449f5dc",
+     "network": "tron",
+     "note": "Thanks",
+     "passcode_protected": false,
+     "payer_amount": "5.000000",
+     "reference": "sdk-pl-1",
+     "status": "funded",
+     "title": "Bonus"
+    }
+   ],
+   "paginate": {
+    "has_pages": false,
+    "offset": 0,
+    "per_page": 10,
+    "total": 1
+   }
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

@@ -1,0 +1,20 @@
+{
+ "route": "POST /v1/payment/discount/set",
+ "status": 200,
+ "request": {
+  "currency": "USDT",
+  "discount_percent": 3,
+  "network": "tron"
+ },
+ "response": {
+  "result": {
+   "currency": "USDT",
+   "discount_percent": 3,
+   "network": "tron"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

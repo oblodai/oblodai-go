@@ -1,0 +1,67 @@
+{
+ "route": "POST /v1/payout/mass",
+ "status": 200,
+ "request": {
+  "payouts": [
+   {
+    "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+    "amount": "1",
+    "currency": "USDT",
+    "network": "tron",
+    "order_id": "sdk-mass-1"
+   },
+   {
+    "address": "x",
+    "amount": "1",
+    "currency": "NOPE",
+    "order_id": "sdk-mass-2"
+   }
+  ]
+ },
+ "response": {
+  "result": {
+   "items": [
+    {
+     "idx": 0,
+     "ok": true,
+     "order_id": "sdk-mass-1",
+     "result": {
+      "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+      "amount": "1.000000",
+      "approval_required": false,
+      "commission": "0.000000",
+      "created_at": "2026-08-25T22:08:57Z",
+      "currency": "USDT",
+      "document_url": "http://127.0.0.1:39381/v1/documents/payout/77fd1cfc-8acb-4610-b271-63ca5999ab0c?exp=1787699337\u0026sig=e31925c5867164877140acc3c07d077396d11fbdd0c4dcc04178369c66045212",
+      "fee_bearer": "gateway",
+      "is_final": false,
+      "is_refund": false,
+      "memo": "",
+      "network": "tron",
+      "order_id": "sdk-mass-1",
+      "payer_amount": "1.000000",
+      "payment_order_id": null,
+      "refund_for": null,
+      "source": "api",
+      "status": "approved",
+      "txid": "",
+      "updated_at": "2026-08-25T22:08:57Z",
+      "uuid": "77fd1cfc-8acb-4610-b271-63ca5999ab0c"
+     }
+    },
+    {
+     "error_code": "request.unknown_currency",
+     "http_status": 400,
+     "idx": 1,
+     "message": "request.unknown_currency: unknown currency",
+     "ok": false,
+     "order_id": "sdk-mass-2"
+    }
+   ]
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

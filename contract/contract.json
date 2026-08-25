@@ -1,0 +1,5169 @@
+{
+ "core_commit": "7b8eb828b9ec3bbaff44755ad784881e533ec4fb",
+ "exported_at": "2026-08-25T22:08:54Z",
+ "signing": {
+  "algorithm": "HMAC-SHA256, lowercase hex",
+  "canonical": "ts\\nMETHOD\\nrequest_uri\\nidempotency_key\\nbody",
+  "headers": [
+   "X-Public-Id",
+   "X-Signature",
+   "X-Timestamp",
+   "Idempotency-Key"
+  ],
+  "max_body": 1048576,
+  "max_idempotency_key_length": 255,
+  "skew_seconds": 300,
+  "webhook": {
+   "canonical": "<ts>.<payload>",
+   "headers": [
+    "X-Webhook-Timestamp",
+    "X-Webhook-Signature",
+    "X-Webhook-Signature-Prev",
+    "X-Webhook-Event",
+    "X-Webhook-Id",
+    "X-Webhook-Event-Time"
+   ]
+  }
+ },
+ "routes": [
+  {
+   "method": "GET",
+   "path": "/docs",
+   "auth": "public",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/healthz",
+   "auth": "public",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/internal/docs",
+   "auth": "public",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/internal/openapi.json",
+   "auth": "public",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/openapi.json",
+   "auth": "public",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/readyz",
+   "auth": "public",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "POST",
+   "path": "/v1/api-allowlist/add",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "list": "plain",
+   "request_schema": {
+    "properties": {
+     "cidr": {
+      "description": "IP или подсеть в CIDR (203.0.113.7 или 203.0.113.0/24).",
+      "example": "203.0.113.0/24",
+      "type": "string"
+     }
+    },
+    "required": [
+     "cidr"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/api-allowlist/enable",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "list": "plain",
+   "request_schema": {
+    "properties": {
+     "enabled": {
+      "description": "true — принимать API-вызовы только с адресов из списка; false — список хранится, но не применяется.",
+      "example": true,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "enabled"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/api-allowlist/list",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "list": "plain"
+  },
+  {
+   "method": "POST",
+   "path": "/v1/api-allowlist/remove",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "list": "plain",
+   "request_schema": {
+    "properties": {
+     "cidr": {
+      "description": "IP или подсеть в CIDR (203.0.113.7 или 203.0.113.0/24).",
+      "example": "203.0.113.0/24",
+      "type": "string"
+     }
+    },
+    "required": [
+     "cidr"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/auto-withdraw/delete",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "currency": {
+      "description": "Актив, автовывод которого выключить.",
+      "example": "USDT",
+      "type": "string"
+     }
+    },
+    "required": [
+     "currency"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/auto-withdraw/list",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "list": "plain"
+  },
+  {
+   "method": "POST",
+   "path": "/v1/auto-withdraw/set",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "address": {
+      "description": "Адрес назначения (внешний кошелёк мерчанта).",
+      "example": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Актив, который выводить автоматически.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "min_amount": {
+      "description": "Порог: вывод срабатывает, когда доступный баланс актива не меньше этой суммы; пусто — сетевой минимум.",
+      "example": "100",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть адреса назначения.",
+      "example": "tron",
+      "type": "string"
+     }
+    },
+    "required": [
+     "currency",
+     "network",
+     "address"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/balance",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/batch/info",
+   "auth": "any",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "batch_id": {
+      "description": "Идентификатор батча из ответа на submit.",
+      "example": "9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60",
+      "type": "string"
+     },
+     "limit": {
+      "description": "Сколько элементов вернуть в items (пагинация).",
+      "example": 100,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение по элементам.",
+      "example": 0,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "batch_id"
+    ],
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "batch_id": {
+      "description": "Идентификатор батча.",
+      "example": "9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60",
+      "type": "string"
+     },
+     "created_at": {
+      "description": "Время создания батча (ISO 8601, UTC).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "failed": {
+      "description": "Завершилось ошибкой (при on_error stop сюда попадают и пропущенные элементы).",
+      "example": 2,
+      "type": "integer"
+     },
+     "items": {
+      "description": "Страница элементов с результатом или ошибкой по каждому.",
+      "items": {
+       "properties": {
+        "error_code": {
+         "description": "Машиночитаемый код ошибки — тот же, что вернул бы одиночный вызов (payment.below_minimum, payout.address_network_mismatch, …); batch.stopped / batch.key_revoked — элемент не выполнялся; только при status «error». Пусто у элементов, завершённых до ввода поля.",
+         "example": "payment.below_minimum",
+         "type": "string"
+        },
+        "http_status": {
+         "description": "HTTP-статус, которым ответил бы одиночный вызов (400, 409, …); отсутствует, если элемент не дошёл до обработчика (batch.stopped, batch.key_revoked).",
+         "example": 400,
+         "type": "integer"
+        },
+        "idx": {
+         "description": "Порядковый номер элемента в исходном массиве (с нуля).",
+         "example": 0,
+         "type": "integer"
+        },
+        "message": {
+         "description": "Человекочитаемое сообщение об ошибке; только при status «error».",
+         "example": "minimum payment on ethereum is $6.00",
+         "type": "string"
+        },
+        "ok": {
+         "description": "Итог элемента: true при status «done», false при status «error»; отсутствует, пока элемент не обработан.",
+         "example": true,
+         "type": "boolean"
+        },
+        "order_id": {
+         "description": "order_id элемента, если вы его задавали; присутствует не всегда.",
+         "example": "order-1",
+         "type": "string"
+        },
+        "result": {
+         "description": "Результат успешной операции — тот же объект, что вернул бы одиночный вызов; только при status «done»."
+        },
+        "status": {
+         "description": "Статус элемента: pending | processing | done | error.",
+         "example": "done",
+         "type": "string"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "kind": {
+      "description": "Вид батча: payment | refund | payout.",
+      "example": "payment",
+      "type": "string"
+     },
+     "on_error": {
+      "description": "Режим обработки ошибок, с которым батч был отправлен: continue | stop.",
+      "example": "continue",
+      "type": "string"
+     },
+     "status": {
+      "description": "Статус батча: pending | processing | completed | stopped. ТЕРМИНАЛЬНЫЕ — completed И stopped (опрашивайте до одного из них, не только до completed): completed = обработка дошла до конца, stopped = батч с on_error=stop остановился на первой ошибке (остальные элементы пропущены и учтены в failed). Ни один не значит «всё успешно» — смотрите succeeded/failed.",
+      "example": "completed",
+      "type": "string"
+     },
+     "succeeded": {
+      "description": "Успешно обработано.",
+      "example": 998,
+      "type": "integer"
+     },
+     "total": {
+      "description": "Всего элементов в батче; считается по всему батчу и от пагинации не зависит.",
+      "example": 1000,
+      "type": "integer"
+     },
+     "updated_at": {
+      "description": "Время последнего изменения (ISO 8601, UTC).",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v1/claim/{token}",
+   "auth": "public",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/claim/{token}",
+   "auth": "public",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "address": {
+      "description": "Адрес получателя в сети выплаты.",
+      "type": "string"
+     },
+     "memo": {
+      "description": "Memo/tag — только для сетей, где он обязателен.",
+      "type": "string"
+     },
+     "passcode": {
+      "description": "Код получения — если отправитель установил его на ссылку. После 10 неверных вводов ссылка запирается.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v1/currencies",
+   "auth": "public",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/balance",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/batch",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/fees",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "POST",
+   "path": "/v1/documents/jobs",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "format": {
+      "description": "Формат файла: pdf (по умолчанию) или csv. CSV собирается без вёрстки — для тяжёлых выписок дешевле и грузится в Excel/1С.",
+      "example": "csv",
+      "type": "string"
+     },
+     "from": {
+      "description": "Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).",
+      "example": "2025-01-01",
+      "type": "string"
+     },
+     "kind": {
+      "description": "Вид отчёта: statement (операции), fees (комиссии) или ledger (движения баланса).",
+      "example": "statement",
+      "type": "string"
+     },
+     "lang": {
+      "description": "Язык документа (по умолчанию en).",
+      "example": "ru",
+      "type": "string"
+     },
+     "to": {
+      "description": "Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня). Период — до двух лет.",
+      "example": "2026-08-19",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/jobs/file",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "POST",
+   "path": "/v1/documents/jobs/info",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "job_id": {
+      "description": "Идентификатор задачи из ответа создания.",
+      "example": "6f1c…",
+      "type": "string"
+     }
+    },
+    "required": [
+     "job_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/ledger",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/link",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/referrals",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/split",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/statement",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/wallet/statement",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "GET",
+   "path": "/v1/documents/{kind}/{id}",
+   "auth": "public",
+   "idempotent": false,
+   "bare": true
+  },
+  {
+   "method": "POST",
+   "path": "/v1/exchange-rate/list",
+   "auth": "public",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "currency_from": {
+      "description": "Код валюты. Если задан — вернётся курс только по нему. Если пусто или тело {} — по всем валютам",
+      "example": "ETH",
+      "type": "string"
+     },
+     "currency_to": {
+      "description": "Валюта котировки: по умолчанию USDT; любой прайсинговый актив, включая фиаты с прямым фидом (EUR, RUB, …)",
+      "type": "string"
+     },
+     "limit": {
+      "description": "Размер страницы, 1–100; по умолчанию 25",
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение от начала списка; по умолчанию 0",
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v1/link/{id}",
+   "auth": "public",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/link/{id}/checkout",
+   "auth": "public",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "amount": {
+      "description": "Сумма, которую ввёл покупатель, в валюте цены ссылки; обязательна для open и range, для fixed игнорируется",
+      "example": "10.00",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Валюта расчёта — монета, которой платит покупатель; нужна, только если ссылка не закрепила pinned_currency",
+      "example": "USDT",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть расчёта; нужна, только если ссылка не закрепила pinned_network",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Номер заказа магазина из встроенного виджета (data-oblodai-order-id); переносится на счёт и в вебхук для сопоставления с заказом; не ключ идемпотентности",
+      "type": "string"
+     },
+     "payer_email": {
+      "description": "Email покупателя — на него автоматически уйдёт чек после оплаты",
+      "example": "buyer@example.com",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "additional_data": {
+      "description": "Ваши приватные данные, которые вернутся в ответе и в вебхуке.",
+      "type": "string"
+     },
+     "address": {
+      "description": "Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.",
+      "type": "string"
+     },
+     "address_muxed": {
+      "description": "Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "address_qr_code": {
+      "description": "QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address (адрес+тег одной строкой).",
+      "type": "string"
+     },
+     "address_xaddress": {
+      "description": "Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма к оплате в валюте цены (например, в USD).",
+      "example": "10.00",
+      "type": "string"
+     },
+     "amount_paid": {
+      "description": "Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло).",
+      "type": "string"
+     },
+     "amount_remaining": {
+      "description": "Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает.",
+      "type": "string"
+     },
+     "commission": {
+      "description": "Наша комиссия с этого платежа, в валюте оплаты. Ставка счёта уже включает амортизированный фиксированный сбор — второй раз он не берётся. Пусто у валюто-агностичного счёта до выбора монеты; 0, пока ничего не зачислено.",
+      "example": "0.100000",
+      "type": "string"
+     },
+     "confirmations": {
+      "description": "Текущее число подтверждений входящего платежа.",
+      "type": "integer"
+     },
+     "created_at": {
+      "description": "Время создания (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько счёт СТОИТ, а не чем за него платят (это payer_currency).",
+      "example": "USD",
+      "type": "string"
+     },
+     "destination_tag": {
+      "description": "Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "document_url": {
+      "description": "Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать клиенту. Пусто, если генерация документов не включена.",
+      "type": "string"
+     },
+     "exchange_rate": {
+      "description": "Курс, зафиксированный этим счётом (сколько валюты оплаты за 1 единицу валюты цены) — по нему рассчитан payer_amount. Пусто, пока валюта не выбрана.",
+      "example": "1.000000",
+      "type": "string"
+     },
+     "expired_at": {
+      "description": "Когда истекает счёт (ISO 8601, как и все временные поля).",
+      "example": "2026-07-10T13:00:00Z",
+      "type": "string"
+     },
+     "is_final": {
+      "description": "true — статус финальный, больше не изменится.",
+      "type": "boolean"
+     },
+     "is_multi": {
+      "description": "true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.",
+      "type": "boolean"
+     },
+     "is_test": {
+      "description": "true — счёт песочницы (dev-магазина): деньги ненастоящие, в живую сверку не включайте.",
+      "type": "boolean"
+     },
+     "memo": {
+      "description": "Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле «memo» на бирже или в кошельке. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "merchant_amount": {
+      "description": "Сколько зачислено (или будет зачислено) вам: amount_paid − commission. Сетевые расходы на сбор депозита несёт шлюз — из этой суммы они НЕ вычитаются.",
+      "example": "9.900000",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть блокчейна (например, tron).",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш номер заказа, который вы передали при создании.",
+      "type": "string"
+     },
+     "paid_at": {
+      "description": "Момент фактической оплаты — зачисление последнего подтверждённого перевода (ISO 8601). null, пока оплата не пришла. Отличайте от updated_at: тот сдвигается любым изменением счёта.",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "payer_address": {
+      "description": "Адрес, С КОТОРОГО пришёл первый подтверждённый депозит — на аккаунт-сетях (EVM/Tron/Solana/TON); пусто на UTXO. ⚠ Это НЕ обязательно адрес для возврата: отправителем может быть биржа, сдача UTXO-транзакции или горячий омнибус крипто-он-рампа, если покупатель платил картой. Прежде чем возвращать деньги сюда, смотрите payer_address_is_refundable.",
+      "type": "string"
+     },
+     "payer_address_is_refundable": {
+      "description": "true — payer_address принадлежит плательщику, и в /v1/payment/refund можно опустить address (вернём на него). false — адрес возврата неизвестен (UTXO/XRP, оплата картой через он-рамп, адрес не записан): спросите адрес у покупателя и передайте address явно, иначе запрос будет отклонён с refund.no_address.",
+      "type": "boolean"
+     },
+     "payer_amount": {
+      "description": "Сколько нужно отправить в крипте оплаты.",
+      "example": "10.150000",
+      "type": "string"
+     },
+     "payer_currency": {
+      "description": "Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "payer_email": {
+      "description": "E-mail плательщика, если вы его передали.",
+      "type": "string"
+     },
+     "rate_expires_at": {
+      "description": "Когда обновится курс (ISO 8601; курс держится ~5 мин).",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "required_confirmations": {
+      "description": "Сколько подтверждений нужно для зачисления (зависит от суммы и сети).",
+      "example": 20,
+      "type": "integer"
+     },
+     "status": {
+      "description": "Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату, ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled (отменён).",
+      "example": "created",
+      "type": "string"
+     },
+     "tx_list": {
+      "description": "Все подтверждённые переводы, которыми оплачен счёт. Частичная оплата несколькими переводами — штатный сценарий wrong_amount; один txid наверху — лишь последний замеченный.",
+      "items": {
+       "properties": {
+        "amount": {
+         "description": "Сумма перевода в валюте оплаты.",
+         "example": "4.000000",
+         "type": "string"
+        },
+        "created_at": {
+         "description": "Когда перевод зачислен (ISO 8601).",
+         "example": "2026-07-10T12:05:00Z",
+         "type": "string"
+        },
+        "height": {
+         "description": "Высота блока, в котором перевод подтверждён.",
+         "example": 51234567,
+         "type": "integer"
+        },
+        "network": {
+         "description": "Сеть, в которой пришёл перевод. На EVM может отличаться от network счёта: депозит зачитывается и на другой цепочке с тем же адресом.",
+         "example": "tron",
+         "type": "string"
+        },
+        "txid": {
+         "description": "Хеш транзакции.",
+         "type": "string"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "txid": {
+      "description": "Хеш входящей транзакции (когда замечена).",
+      "type": "string"
+     },
+     "updated_at": {
+      "description": "Время последнего изменения (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "url": {
+      "description": "Ссылка на готовую страницу оплаты.",
+      "type": "string"
+     },
+     "url_return": {
+      "description": "Ссылка «вернуться в магазин» до оплаты.",
+      "type": "string"
+     },
+     "url_success": {
+      "description": "Куда перенаправить после успешной оплаты.",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Наш идентификатор платежа (используйте его в info/refund).",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/merchants",
+   "auth": "onboard",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/merchants/{id}/sandbox",
+   "auth": "onboard",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "GET",
+   "path": "/v1/pay/{id}",
+   "auth": "public",
+   "idempotent": false,
+   "bare": false,
+   "response_schema": {
+    "properties": {
+     "additional_data": {
+      "description": "Ваши приватные данные, которые вернутся в ответе и в вебхуке.",
+      "type": "string"
+     },
+     "address": {
+      "description": "Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.",
+      "type": "string"
+     },
+     "address_muxed": {
+      "description": "Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "address_qr_code": {
+      "description": "QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address (адрес+тег одной строкой).",
+      "type": "string"
+     },
+     "address_xaddress": {
+      "description": "Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма к оплате в валюте цены (например, в USD).",
+      "example": "10.00",
+      "type": "string"
+     },
+     "amount_paid": {
+      "description": "Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло).",
+      "type": "string"
+     },
+     "amount_remaining": {
+      "description": "Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает.",
+      "type": "string"
+     },
+     "commission": {
+      "description": "Наша комиссия с этого платежа, в валюте оплаты. Ставка счёта уже включает амортизированный фиксированный сбор — второй раз он не берётся. Пусто у валюто-агностичного счёта до выбора монеты; 0, пока ничего не зачислено.",
+      "example": "0.100000",
+      "type": "string"
+     },
+     "confirmations": {
+      "description": "Текущее число подтверждений входящего платежа.",
+      "type": "integer"
+     },
+     "created_at": {
+      "description": "Время создания (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько счёт СТОИТ, а не чем за него платят (это payer_currency).",
+      "example": "USD",
+      "type": "string"
+     },
+     "destination_tag": {
+      "description": "Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "document_url": {
+      "description": "Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать клиенту. Пусто, если генерация документов не включена.",
+      "type": "string"
+     },
+     "exchange_rate": {
+      "description": "Курс, зафиксированный этим счётом (сколько валюты оплаты за 1 единицу валюты цены) — по нему рассчитан payer_amount. Пусто, пока валюта не выбрана.",
+      "example": "1.000000",
+      "type": "string"
+     },
+     "expired_at": {
+      "description": "Когда истекает счёт (ISO 8601, как и все временные поля).",
+      "example": "2026-07-10T13:00:00Z",
+      "type": "string"
+     },
+     "is_final": {
+      "description": "true — статус финальный, больше не изменится.",
+      "type": "boolean"
+     },
+     "is_multi": {
+      "description": "true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.",
+      "type": "boolean"
+     },
+     "is_test": {
+      "description": "true — счёт песочницы (dev-магазина): деньги ненастоящие, в живую сверку не включайте.",
+      "type": "boolean"
+     },
+     "memo": {
+      "description": "Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле «memo» на бирже или в кошельке. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "merchant_amount": {
+      "description": "Сколько зачислено (или будет зачислено) вам: amount_paid − commission. Сетевые расходы на сбор депозита несёт шлюз — из этой суммы они НЕ вычитаются.",
+      "example": "9.900000",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть блокчейна (например, tron).",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш номер заказа, который вы передали при создании.",
+      "type": "string"
+     },
+     "paid_at": {
+      "description": "Момент фактической оплаты — зачисление последнего подтверждённого перевода (ISO 8601). null, пока оплата не пришла. Отличайте от updated_at: тот сдвигается любым изменением счёта.",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "payer_address": {
+      "description": "Адрес, С КОТОРОГО пришёл первый подтверждённый депозит — на аккаунт-сетях (EVM/Tron/Solana/TON); пусто на UTXO. ⚠ Это НЕ обязательно адрес для возврата: отправителем может быть биржа, сдача UTXO-транзакции или горячий омнибус крипто-он-рампа, если покупатель платил картой. Прежде чем возвращать деньги сюда, смотрите payer_address_is_refundable.",
+      "type": "string"
+     },
+     "payer_address_is_refundable": {
+      "description": "true — payer_address принадлежит плательщику, и в /v1/payment/refund можно опустить address (вернём на него). false — адрес возврата неизвестен (UTXO/XRP, оплата картой через он-рамп, адрес не записан): спросите адрес у покупателя и передайте address явно, иначе запрос будет отклонён с refund.no_address.",
+      "type": "boolean"
+     },
+     "payer_amount": {
+      "description": "Сколько нужно отправить в крипте оплаты.",
+      "example": "10.150000",
+      "type": "string"
+     },
+     "payer_currency": {
+      "description": "Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "payer_email": {
+      "description": "E-mail плательщика, если вы его передали.",
+      "type": "string"
+     },
+     "rate_expires_at": {
+      "description": "Когда обновится курс (ISO 8601; курс держится ~5 мин).",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "required_confirmations": {
+      "description": "Сколько подтверждений нужно для зачисления (зависит от суммы и сети).",
+      "example": 20,
+      "type": "integer"
+     },
+     "status": {
+      "description": "Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату, ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled (отменён).",
+      "example": "created",
+      "type": "string"
+     },
+     "tx_list": {
+      "description": "Все подтверждённые переводы, которыми оплачен счёт. Частичная оплата несколькими переводами — штатный сценарий wrong_amount; один txid наверху — лишь последний замеченный.",
+      "items": {
+       "properties": {
+        "amount": {
+         "description": "Сумма перевода в валюте оплаты.",
+         "example": "4.000000",
+         "type": "string"
+        },
+        "created_at": {
+         "description": "Когда перевод зачислен (ISO 8601).",
+         "example": "2026-07-10T12:05:00Z",
+         "type": "string"
+        },
+        "height": {
+         "description": "Высота блока, в котором перевод подтверждён.",
+         "example": 51234567,
+         "type": "integer"
+        },
+        "network": {
+         "description": "Сеть, в которой пришёл перевод. На EVM может отличаться от network счёта: депозит зачитывается и на другой цепочке с тем же адресом.",
+         "example": "tron",
+         "type": "string"
+        },
+        "txid": {
+         "description": "Хеш транзакции.",
+         "type": "string"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "txid": {
+      "description": "Хеш входящей транзакции (когда замечена).",
+      "type": "string"
+     },
+     "updated_at": {
+      "description": "Время последнего изменения (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "url": {
+      "description": "Ссылка на готовую страницу оплаты.",
+      "type": "string"
+     },
+     "url_return": {
+      "description": "Ссылка «вернуться в магазин» до оплаты.",
+      "type": "string"
+     },
+     "url_success": {
+      "description": "Куда перенаправить после успешной оплаты.",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Наш идентификатор платежа (используйте его в info/refund).",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v1/pay/{id}/qr",
+   "auth": "public",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/pay/{id}/select",
+   "auth": "public",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "currency": {
+      "description": "Выбранная валюта оплаты.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "network": {
+      "description": "Выбранная сеть.",
+      "example": "tron",
+      "type": "string"
+     }
+    },
+    "required": [
+     "currency",
+     "network"
+    ],
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "additional_data": {
+      "description": "Ваши приватные данные, которые вернутся в ответе и в вебхуке.",
+      "type": "string"
+     },
+     "address": {
+      "description": "Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.",
+      "type": "string"
+     },
+     "address_muxed": {
+      "description": "Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "address_qr_code": {
+      "description": "QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address (адрес+тег одной строкой).",
+      "type": "string"
+     },
+     "address_xaddress": {
+      "description": "Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма к оплате в валюте цены (например, в USD).",
+      "example": "10.00",
+      "type": "string"
+     },
+     "amount_paid": {
+      "description": "Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло).",
+      "type": "string"
+     },
+     "amount_remaining": {
+      "description": "Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает.",
+      "type": "string"
+     },
+     "commission": {
+      "description": "Наша комиссия с этого платежа, в валюте оплаты. Ставка счёта уже включает амортизированный фиксированный сбор — второй раз он не берётся. Пусто у валюто-агностичного счёта до выбора монеты; 0, пока ничего не зачислено.",
+      "example": "0.100000",
+      "type": "string"
+     },
+     "confirmations": {
+      "description": "Текущее число подтверждений входящего платежа.",
+      "type": "integer"
+     },
+     "created_at": {
+      "description": "Время создания (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько счёт СТОИТ, а не чем за него платят (это payer_currency).",
+      "example": "USD",
+      "type": "string"
+     },
+     "destination_tag": {
+      "description": "Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "document_url": {
+      "description": "Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать клиенту. Пусто, если генерация документов не включена.",
+      "type": "string"
+     },
+     "exchange_rate": {
+      "description": "Курс, зафиксированный этим счётом (сколько валюты оплаты за 1 единицу валюты цены) — по нему рассчитан payer_amount. Пусто, пока валюта не выбрана.",
+      "example": "1.000000",
+      "type": "string"
+     },
+     "expired_at": {
+      "description": "Когда истекает счёт (ISO 8601, как и все временные поля).",
+      "example": "2026-07-10T13:00:00Z",
+      "type": "string"
+     },
+     "is_final": {
+      "description": "true — статус финальный, больше не изменится.",
+      "type": "boolean"
+     },
+     "is_multi": {
+      "description": "true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.",
+      "type": "boolean"
+     },
+     "is_test": {
+      "description": "true — счёт песочницы (dev-магазина): деньги ненастоящие, в живую сверку не включайте.",
+      "type": "boolean"
+     },
+     "memo": {
+      "description": "Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле «memo» на бирже или в кошельке. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "merchant_amount": {
+      "description": "Сколько зачислено (или будет зачислено) вам: amount_paid − commission. Сетевые расходы на сбор депозита несёт шлюз — из этой суммы они НЕ вычитаются.",
+      "example": "9.900000",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть блокчейна (например, tron).",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш номер заказа, который вы передали при создании.",
+      "type": "string"
+     },
+     "paid_at": {
+      "description": "Момент фактической оплаты — зачисление последнего подтверждённого перевода (ISO 8601). null, пока оплата не пришла. Отличайте от updated_at: тот сдвигается любым изменением счёта.",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "payer_address": {
+      "description": "Адрес, С КОТОРОГО пришёл первый подтверждённый депозит — на аккаунт-сетях (EVM/Tron/Solana/TON); пусто на UTXO. ⚠ Это НЕ обязательно адрес для возврата: отправителем может быть биржа, сдача UTXO-транзакции или горячий омнибус крипто-он-рампа, если покупатель платил картой. Прежде чем возвращать деньги сюда, смотрите payer_address_is_refundable.",
+      "type": "string"
+     },
+     "payer_address_is_refundable": {
+      "description": "true — payer_address принадлежит плательщику, и в /v1/payment/refund можно опустить address (вернём на него). false — адрес возврата неизвестен (UTXO/XRP, оплата картой через он-рамп, адрес не записан): спросите адрес у покупателя и передайте address явно, иначе запрос будет отклонён с refund.no_address.",
+      "type": "boolean"
+     },
+     "payer_amount": {
+      "description": "Сколько нужно отправить в крипте оплаты.",
+      "example": "10.150000",
+      "type": "string"
+     },
+     "payer_currency": {
+      "description": "Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "payer_email": {
+      "description": "E-mail плательщика, если вы его передали.",
+      "type": "string"
+     },
+     "rate_expires_at": {
+      "description": "Когда обновится курс (ISO 8601; курс держится ~5 мин).",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "required_confirmations": {
+      "description": "Сколько подтверждений нужно для зачисления (зависит от суммы и сети).",
+      "example": 20,
+      "type": "integer"
+     },
+     "status": {
+      "description": "Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату, ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled (отменён).",
+      "example": "created",
+      "type": "string"
+     },
+     "tx_list": {
+      "description": "Все подтверждённые переводы, которыми оплачен счёт. Частичная оплата несколькими переводами — штатный сценарий wrong_amount; один txid наверху — лишь последний замеченный.",
+      "items": {
+       "properties": {
+        "amount": {
+         "description": "Сумма перевода в валюте оплаты.",
+         "example": "4.000000",
+         "type": "string"
+        },
+        "created_at": {
+         "description": "Когда перевод зачислен (ISO 8601).",
+         "example": "2026-07-10T12:05:00Z",
+         "type": "string"
+        },
+        "height": {
+         "description": "Высота блока, в котором перевод подтверждён.",
+         "example": 51234567,
+         "type": "integer"
+        },
+        "network": {
+         "description": "Сеть, в которой пришёл перевод. На EVM может отличаться от network счёта: депозит зачитывается и на другой цепочке с тем же адресом.",
+         "example": "tron",
+         "type": "string"
+        },
+        "txid": {
+         "description": "Хеш транзакции.",
+         "type": "string"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "txid": {
+      "description": "Хеш входящей транзакции (когда замечена).",
+      "type": "string"
+     },
+     "updated_at": {
+      "description": "Время последнего изменения (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "url": {
+      "description": "Ссылка на готовую страницу оплаты.",
+      "type": "string"
+     },
+     "url_return": {
+      "description": "Ссылка «вернуться в магазин» до оплаты.",
+      "type": "string"
+     },
+     "url_success": {
+      "description": "Куда перенаправить после успешной оплаты.",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Наш идентификатор платежа (используйте его в info/refund).",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment",
+   "auth": "payment",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "accuracy_payment_percent": {
+      "description": "Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта.",
+      "type": "number"
+     },
+     "additional_data": {
+      "description": "Приватные данные мерчанта, эхом в вебхуках (покупателю не видны).",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма к оплате в валюте currency.",
+      "example": "10",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Код валюты цены: любой из 23 фиатов (USD, EUR, RUB, …) или любая монета (USDT, BTC, …). У JPY и KRW ноль знаков после запятой.",
+      "example": "USD",
+      "type": "string"
+     },
+     "is_payment_multiple": {
+      "description": "Разрешить доплату остатка.",
+      "type": "boolean"
+     },
+     "is_refresh": {
+      "description": "Оживить просроченный счёт по order_id вместо создания нового.",
+      "type": "boolean"
+     },
+     "lifetime_seconds": {
+      "description": "Время жизни счёта в секундах, 300–43200; по умолчанию 3600. Значения вне диапазона обрезаются к ближайшей границе.",
+      "example": 3600,
+      "type": "integer"
+     },
+     "network": {
+      "description": "Сеть расчёта (напр. tron, ethereum). Необязательна — см. режимы выбора валюты и сети.",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется.",
+      "example": "order-1",
+      "type": "string"
+     },
+     "payer_email": {
+      "description": "Email плательщика. Если задан — после оплаты на него автоматически уходит чек; он же получатель по умолчанию у POST /v1/payment/send-email.",
+      "type": "string"
+     },
+     "subtract": {
+      "description": "Устаревшее: % сетевой наценки на плательщика (0–100); payer-facing наценки настраиваются через discount.",
+      "type": "integer"
+     },
+     "theme": {
+      "description": "Тема страницы оплаты: dark | light.",
+      "example": "dark",
+      "type": "string"
+     },
+     "to_currency": {
+      "description": "Валюта расчёта — крипта, которой платят. По умолчанию = currency (только если currency — крипта); при цене в фиате задайте явно либо опустите вместе с network.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "url_callback": {
+      "description": "Индивидуальный webhook для этого счёта. Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.",
+      "type": "string"
+     },
+     "url_return": {
+      "description": "Ссылка «назад в магазин» на странице оплаты.",
+      "type": "string"
+     },
+     "url_success": {
+      "description": "Редирект после успешной оплаты.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "amount",
+     "currency"
+    ],
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "additional_data": {
+      "description": "Ваши приватные данные, которые вернутся в ответе и в вебхуке.",
+      "type": "string"
+     },
+     "address": {
+      "description": "Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.",
+      "type": "string"
+     },
+     "address_muxed": {
+      "description": "Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "address_qr_code": {
+      "description": "QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address (адрес+тег одной строкой).",
+      "type": "string"
+     },
+     "address_xaddress": {
+      "description": "Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма к оплате в валюте цены (например, в USD).",
+      "example": "10.00",
+      "type": "string"
+     },
+     "amount_paid": {
+      "description": "Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло).",
+      "type": "string"
+     },
+     "amount_remaining": {
+      "description": "Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает.",
+      "type": "string"
+     },
+     "commission": {
+      "description": "Наша комиссия с этого платежа, в валюте оплаты. Ставка счёта уже включает амортизированный фиксированный сбор — второй раз он не берётся. Пусто у валюто-агностичного счёта до выбора монеты; 0, пока ничего не зачислено.",
+      "example": "0.100000",
+      "type": "string"
+     },
+     "confirmations": {
+      "description": "Текущее число подтверждений входящего платежа.",
+      "type": "integer"
+     },
+     "created_at": {
+      "description": "Время создания (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько счёт СТОИТ, а не чем за него платят (это payer_currency).",
+      "example": "USD",
+      "type": "string"
+     },
+     "destination_tag": {
+      "description": "Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "document_url": {
+      "description": "Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать клиенту. Пусто, если генерация документов не включена.",
+      "type": "string"
+     },
+     "exchange_rate": {
+      "description": "Курс, зафиксированный этим счётом (сколько валюты оплаты за 1 единицу валюты цены) — по нему рассчитан payer_amount. Пусто, пока валюта не выбрана.",
+      "example": "1.000000",
+      "type": "string"
+     },
+     "expired_at": {
+      "description": "Когда истекает счёт (ISO 8601, как и все временные поля).",
+      "example": "2026-07-10T13:00:00Z",
+      "type": "string"
+     },
+     "is_final": {
+      "description": "true — статус финальный, больше не изменится.",
+      "type": "boolean"
+     },
+     "is_multi": {
+      "description": "true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.",
+      "type": "boolean"
+     },
+     "is_test": {
+      "description": "true — счёт песочницы (dev-магазина): деньги ненастоящие, в живую сверку не включайте.",
+      "type": "boolean"
+     },
+     "memo": {
+      "description": "Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле «memo» на бирже или в кошельке. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "merchant_amount": {
+      "description": "Сколько зачислено (или будет зачислено) вам: amount_paid − commission. Сетевые расходы на сбор депозита несёт шлюз — из этой суммы они НЕ вычитаются.",
+      "example": "9.900000",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть блокчейна (например, tron).",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш номер заказа, который вы передали при создании.",
+      "type": "string"
+     },
+     "paid_at": {
+      "description": "Момент фактической оплаты — зачисление последнего подтверждённого перевода (ISO 8601). null, пока оплата не пришла. Отличайте от updated_at: тот сдвигается любым изменением счёта.",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "payer_address": {
+      "description": "Адрес, С КОТОРОГО пришёл первый подтверждённый депозит — на аккаунт-сетях (EVM/Tron/Solana/TON); пусто на UTXO. ⚠ Это НЕ обязательно адрес для возврата: отправителем может быть биржа, сдача UTXO-транзакции или горячий омнибус крипто-он-рампа, если покупатель платил картой. Прежде чем возвращать деньги сюда, смотрите payer_address_is_refundable.",
+      "type": "string"
+     },
+     "payer_address_is_refundable": {
+      "description": "true — payer_address принадлежит плательщику, и в /v1/payment/refund можно опустить address (вернём на него). false — адрес возврата неизвестен (UTXO/XRP, оплата картой через он-рамп, адрес не записан): спросите адрес у покупателя и передайте address явно, иначе запрос будет отклонён с refund.no_address.",
+      "type": "boolean"
+     },
+     "payer_amount": {
+      "description": "Сколько нужно отправить в крипте оплаты.",
+      "example": "10.150000",
+      "type": "string"
+     },
+     "payer_currency": {
+      "description": "Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "payer_email": {
+      "description": "E-mail плательщика, если вы его передали.",
+      "type": "string"
+     },
+     "rate_expires_at": {
+      "description": "Когда обновится курс (ISO 8601; курс держится ~5 мин).",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "required_confirmations": {
+      "description": "Сколько подтверждений нужно для зачисления (зависит от суммы и сети).",
+      "example": 20,
+      "type": "integer"
+     },
+     "status": {
+      "description": "Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату, ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled (отменён).",
+      "example": "created",
+      "type": "string"
+     },
+     "tx_list": {
+      "description": "Все подтверждённые переводы, которыми оплачен счёт. Частичная оплата несколькими переводами — штатный сценарий wrong_amount; один txid наверху — лишь последний замеченный.",
+      "items": {
+       "properties": {
+        "amount": {
+         "description": "Сумма перевода в валюте оплаты.",
+         "example": "4.000000",
+         "type": "string"
+        },
+        "created_at": {
+         "description": "Когда перевод зачислен (ISO 8601).",
+         "example": "2026-07-10T12:05:00Z",
+         "type": "string"
+        },
+        "height": {
+         "description": "Высота блока, в котором перевод подтверждён.",
+         "example": 51234567,
+         "type": "integer"
+        },
+        "network": {
+         "description": "Сеть, в которой пришёл перевод. На EVM может отличаться от network счёта: депозит зачитывается и на другой цепочке с тем же адресом.",
+         "example": "tron",
+         "type": "string"
+        },
+        "txid": {
+         "description": "Хеш транзакции.",
+         "type": "string"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "txid": {
+      "description": "Хеш входящей транзакции (когда замечена).",
+      "type": "string"
+     },
+     "updated_at": {
+      "description": "Время последнего изменения (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "url": {
+      "description": "Ссылка на готовую страницу оплаты.",
+      "type": "string"
+     },
+     "url_return": {
+      "description": "Ссылка «вернуться в магазин» до оплаты.",
+      "type": "string"
+     },
+     "url_success": {
+      "description": "Куда перенаправить после успешной оплаты.",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Наш идентификатор платежа (используйте его в info/refund).",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/accepted/list",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "limit": {
+      "description": "Размер страницы, 1–100; вне диапазона — 25.",
+      "example": 25,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение от начала списка.",
+      "example": 0,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/accepted/set",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "accepted": {
+      "description": "Полный список пар валюта+сеть, которыми разрешено платить; пустой список — принимать всё из каталога.",
+      "items": {
+       "properties": {
+        "currency": {
+         "description": "Код актива.",
+         "example": "USDT",
+         "type": "string"
+        },
+        "network": {
+         "description": "Сеть актива.",
+         "example": "tron",
+         "type": "string"
+        }
+       },
+       "required": [
+        "currency",
+        "network"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    "required": [
+     "accepted"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/accuracy/get",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/accuracy/set",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "accuracy_percent": {
+      "description": "Допуск в процентах, 1–5. Обязателен при enabled: true; при enabled: false игнорируется (сбрасывается в 0). Кэп 5 %",
+      "example": 2,
+      "type": "integer"
+     },
+     "enabled": {
+      "description": "Включить/выключить допуск",
+      "example": true,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "enabled"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/autorefund/get",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/autorefund/set",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "overpay": {
+      "description": "Возвращать излишек при переплате (paid_over)",
+      "example": true,
+      "type": "boolean"
+     },
+     "underpay": {
+      "description": "Возвращать средства при истёкшей недоплате (wrong_amount)",
+      "example": true,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "overpay",
+     "underpay"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/batch",
+   "auth": "payment",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "on_error": {
+      "description": "Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.",
+      "example": "continue",
+      "type": "string"
+     },
+     "payments": {
+      "description": "Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payment; задавайте order_id каждому элементу: по нему сопоставляются результаты и он защищает от дублей.",
+      "items": {
+       "properties": {
+        "accuracy_payment_percent": {
+         "description": "Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта.",
+         "type": "number"
+        },
+        "additional_data": {
+         "description": "Приватные данные мерчанта, эхом в вебхуках (покупателю не видны).",
+         "type": "string"
+        },
+        "amount": {
+         "description": "Сумма к оплате в валюте currency.",
+         "example": "10",
+         "type": "string"
+        },
+        "currency": {
+         "description": "Код валюты цены: любой из 23 фиатов (USD, EUR, RUB, …) или любая монета (USDT, BTC, …). У JPY и KRW ноль знаков после запятой.",
+         "example": "USD",
+         "type": "string"
+        },
+        "is_payment_multiple": {
+         "description": "Разрешить доплату остатка.",
+         "type": "boolean"
+        },
+        "is_refresh": {
+         "description": "Оживить просроченный счёт по order_id вместо создания нового.",
+         "type": "boolean"
+        },
+        "lifetime_seconds": {
+         "description": "Время жизни счёта в секундах, 300–43200; по умолчанию 3600. Значения вне диапазона обрезаются к ближайшей границе.",
+         "example": 3600,
+         "type": "integer"
+        },
+        "network": {
+         "description": "Сеть расчёта (напр. tron, ethereum). Необязательна — см. режимы выбора валюты и сети.",
+         "example": "tron",
+         "type": "string"
+        },
+        "order_id": {
+         "description": "Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется.",
+         "example": "order-1",
+         "type": "string"
+        },
+        "payer_email": {
+         "description": "Email плательщика. Если задан — после оплаты на него автоматически уходит чек; он же получатель по умолчанию у POST /v1/payment/send-email.",
+         "type": "string"
+        },
+        "subtract": {
+         "description": "Устаревшее: % сетевой наценки на плательщика (0–100); payer-facing наценки настраиваются через discount.",
+         "type": "integer"
+        },
+        "theme": {
+         "description": "Тема страницы оплаты: dark | light.",
+         "example": "dark",
+         "type": "string"
+        },
+        "to_currency": {
+         "description": "Валюта расчёта — крипта, которой платят. По умолчанию = currency (только если currency — крипта); при цене в фиате задайте явно либо опустите вместе с network.",
+         "example": "USDT",
+         "type": "string"
+        },
+        "url_callback": {
+         "description": "Индивидуальный webhook для этого счёта. Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.",
+         "type": "string"
+        },
+        "url_return": {
+         "description": "Ссылка «назад в магазин» на странице оплаты.",
+         "type": "string"
+        },
+        "url_success": {
+         "description": "Редирект после успешной оплаты.",
+         "type": "string"
+        }
+       },
+       "required": [
+        "amount",
+        "currency"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    "required": [
+     "payments"
+    ],
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "batch_id": {
+      "description": "Идентификатор батча — с ним идите в POST /v1/batch/info за статусом и результатами.",
+      "example": "9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60",
+      "type": "string"
+     },
+     "count": {
+      "description": "Сколько элементов принято в обработку.",
+      "example": 2,
+      "type": "integer"
+     },
+     "kind": {
+      "description": "Вид батча: payment | refund | payout | transfer.",
+      "example": "payment",
+      "type": "string"
+     },
+     "status": {
+      "description": "Стартовый статус — всегда pending.",
+      "example": "pending",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/cancel",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "order_id": {
+      "description": "Ваша ссылка на заказ.",
+      "example": "order-1",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "additional_data": {
+      "description": "Ваши приватные данные, которые вернутся в ответе и в вебхуке.",
+      "type": "string"
+     },
+     "address": {
+      "description": "Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.",
+      "type": "string"
+     },
+     "address_muxed": {
+      "description": "Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "address_qr_code": {
+      "description": "QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address (адрес+тег одной строкой).",
+      "type": "string"
+     },
+     "address_xaddress": {
+      "description": "Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма к оплате в валюте цены (например, в USD).",
+      "example": "10.00",
+      "type": "string"
+     },
+     "amount_paid": {
+      "description": "Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло).",
+      "type": "string"
+     },
+     "amount_remaining": {
+      "description": "Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает.",
+      "type": "string"
+     },
+     "commission": {
+      "description": "Наша комиссия с этого платежа, в валюте оплаты. Ставка счёта уже включает амортизированный фиксированный сбор — второй раз он не берётся. Пусто у валюто-агностичного счёта до выбора монеты; 0, пока ничего не зачислено.",
+      "example": "0.100000",
+      "type": "string"
+     },
+     "confirmations": {
+      "description": "Текущее число подтверждений входящего платежа.",
+      "type": "integer"
+     },
+     "created_at": {
+      "description": "Время создания (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько счёт СТОИТ, а не чем за него платят (это payer_currency).",
+      "example": "USD",
+      "type": "string"
+     },
+     "destination_tag": {
+      "description": "Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "document_url": {
+      "description": "Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать клиенту. Пусто, если генерация документов не включена.",
+      "type": "string"
+     },
+     "exchange_rate": {
+      "description": "Курс, зафиксированный этим счётом (сколько валюты оплаты за 1 единицу валюты цены) — по нему рассчитан payer_amount. Пусто, пока валюта не выбрана.",
+      "example": "1.000000",
+      "type": "string"
+     },
+     "expired_at": {
+      "description": "Когда истекает счёт (ISO 8601, как и все временные поля).",
+      "example": "2026-07-10T13:00:00Z",
+      "type": "string"
+     },
+     "is_final": {
+      "description": "true — статус финальный, больше не изменится.",
+      "type": "boolean"
+     },
+     "is_multi": {
+      "description": "true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.",
+      "type": "boolean"
+     },
+     "is_test": {
+      "description": "true — счёт песочницы (dev-магазина): деньги ненастоящие, в живую сверку не включайте.",
+      "type": "boolean"
+     },
+     "memo": {
+      "description": "Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле «memo» на бирже или в кошельке. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "merchant_amount": {
+      "description": "Сколько зачислено (или будет зачислено) вам: amount_paid − commission. Сетевые расходы на сбор депозита несёт шлюз — из этой суммы они НЕ вычитаются.",
+      "example": "9.900000",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть блокчейна (например, tron).",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш номер заказа, который вы передали при создании.",
+      "type": "string"
+     },
+     "paid_at": {
+      "description": "Момент фактической оплаты — зачисление последнего подтверждённого перевода (ISO 8601). null, пока оплата не пришла. Отличайте от updated_at: тот сдвигается любым изменением счёта.",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "payer_address": {
+      "description": "Адрес, С КОТОРОГО пришёл первый подтверждённый депозит — на аккаунт-сетях (EVM/Tron/Solana/TON); пусто на UTXO. ⚠ Это НЕ обязательно адрес для возврата: отправителем может быть биржа, сдача UTXO-транзакции или горячий омнибус крипто-он-рампа, если покупатель платил картой. Прежде чем возвращать деньги сюда, смотрите payer_address_is_refundable.",
+      "type": "string"
+     },
+     "payer_address_is_refundable": {
+      "description": "true — payer_address принадлежит плательщику, и в /v1/payment/refund можно опустить address (вернём на него). false — адрес возврата неизвестен (UTXO/XRP, оплата картой через он-рамп, адрес не записан): спросите адрес у покупателя и передайте address явно, иначе запрос будет отклонён с refund.no_address.",
+      "type": "boolean"
+     },
+     "payer_amount": {
+      "description": "Сколько нужно отправить в крипте оплаты.",
+      "example": "10.150000",
+      "type": "string"
+     },
+     "payer_currency": {
+      "description": "Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "payer_email": {
+      "description": "E-mail плательщика, если вы его передали.",
+      "type": "string"
+     },
+     "rate_expires_at": {
+      "description": "Когда обновится курс (ISO 8601; курс держится ~5 мин).",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "required_confirmations": {
+      "description": "Сколько подтверждений нужно для зачисления (зависит от суммы и сети).",
+      "example": 20,
+      "type": "integer"
+     },
+     "status": {
+      "description": "Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату, ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled (отменён).",
+      "example": "created",
+      "type": "string"
+     },
+     "tx_list": {
+      "description": "Все подтверждённые переводы, которыми оплачен счёт. Частичная оплата несколькими переводами — штатный сценарий wrong_amount; один txid наверху — лишь последний замеченный.",
+      "items": {
+       "properties": {
+        "amount": {
+         "description": "Сумма перевода в валюте оплаты.",
+         "example": "4.000000",
+         "type": "string"
+        },
+        "created_at": {
+         "description": "Когда перевод зачислен (ISO 8601).",
+         "example": "2026-07-10T12:05:00Z",
+         "type": "string"
+        },
+        "height": {
+         "description": "Высота блока, в котором перевод подтверждён.",
+         "example": 51234567,
+         "type": "integer"
+        },
+        "network": {
+         "description": "Сеть, в которой пришёл перевод. На EVM может отличаться от network счёта: депозит зачитывается и на другой цепочке с тем же адресом.",
+         "example": "tron",
+         "type": "string"
+        },
+        "txid": {
+         "description": "Хеш транзакции.",
+         "type": "string"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "txid": {
+      "description": "Хеш входящей транзакции (когда замечена).",
+      "type": "string"
+     },
+     "updated_at": {
+      "description": "Время последнего изменения (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "url": {
+      "description": "Ссылка на готовую страницу оплаты.",
+      "type": "string"
+     },
+     "url_return": {
+      "description": "Ссылка «вернуться в магазин» до оплаты.",
+      "type": "string"
+     },
+     "url_success": {
+      "description": "Куда перенаправить после успешной оплаты.",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Наш идентификатор платежа (используйте его в info/refund).",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/discount/list",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "limit": {
+      "description": "Размер страницы, 1–100; вне диапазона — 25.",
+      "example": 25,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение от начала списка.",
+      "example": 0,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/discount/set",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "currency": {
+      "description": "Валюта. Пусто = глобальный дефолт для всех монет",
+      "example": "USDT",
+      "type": "string"
+     },
+     "discount_percent": {
+      "description": "Процент, от -99 до 99. Плюс — скидка, минус — наценка",
+      "example": 3,
+      "type": "integer"
+     },
+     "network": {
+      "description": "Сеть. Пусто = любая сеть данной валюты",
+      "example": "tron",
+      "type": "string"
+     }
+    },
+    "required": [
+     "discount_percent"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/fee-config/get",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/fee-config/set",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "payer_pays_percent": {
+      "description": "Доля НАШЕЙ комиссии, которую платит покупатель: 0 — платит мерчант (как сейчас), 100 — платит покупатель, счёт выставляется с наценкой. Действует на счета, созданные ПОСЛЕ изменения.",
+      "example": 100,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "payer_pays_percent"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/history",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "kind": {
+      "description": "Только для /v1/payout/history: payout — обычные выплаты, refund — возвраты; пусто — всё.",
+      "example": "payout",
+      "type": "string"
+     },
+     "limit": {
+      "description": "Размер страницы, 1–100; вне диапазона — 25.",
+      "example": 25,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение от начала списка (новые сверху).",
+      "example": 0,
+      "type": "integer"
+     },
+     "status": {
+      "description": "Фильтр по статусу (точное значение из словаря статусов); пусто — все.",
+      "example": "paid",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/info",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "order_id": {
+      "description": "Ваша ссылка на заказ.",
+      "example": "order-1",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "additional_data": {
+      "description": "Ваши приватные данные, которые вернутся в ответе и в вебхуке.",
+      "type": "string"
+     },
+     "address": {
+      "description": "Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.",
+      "type": "string"
+     },
+     "address_muxed": {
+      "description": "Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "address_qr_code": {
+      "description": "QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address (адрес+тег одной строкой).",
+      "type": "string"
+     },
+     "address_xaddress": {
+      "description": "Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его же кодирует QR. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма к оплате в валюте цены (например, в USD).",
+      "example": "10.00",
+      "type": "string"
+     },
+     "amount_paid": {
+      "description": "Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло).",
+      "type": "string"
+     },
+     "amount_remaining": {
+      "description": "Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает.",
+      "type": "string"
+     },
+     "commission": {
+      "description": "Наша комиссия с этого платежа, в валюте оплаты. Ставка счёта уже включает амортизированный фиксированный сбор — второй раз он не берётся. Пусто у валюто-агностичного счёта до выбора монеты; 0, пока ничего не зачислено.",
+      "example": "0.100000",
+      "type": "string"
+     },
+     "confirmations": {
+      "description": "Текущее число подтверждений входящего платежа.",
+      "type": "integer"
+     },
+     "created_at": {
+      "description": "Время создания (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько счёт СТОИТ, а не чем за него платят (это payer_currency).",
+      "example": "USD",
+      "type": "string"
+     },
+     "destination_tag": {
+      "description": "Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "document_url": {
+      "description": "Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать клиенту. Пусто, если генерация документов не включена.",
+      "type": "string"
+     },
+     "exchange_rate": {
+      "description": "Курс, зафиксированный этим счётом (сколько валюты оплаты за 1 единицу валюты цены) — по нему рассчитан payer_amount. Пусто, пока валюта не выбрана.",
+      "example": "1.000000",
+      "type": "string"
+     },
+     "expired_at": {
+      "description": "Когда истекает счёт (ISO 8601, как и все временные поля).",
+      "example": "2026-07-10T13:00:00Z",
+      "type": "string"
+     },
+     "is_final": {
+      "description": "true — статус финальный, больше не изменится.",
+      "type": "boolean"
+     },
+     "is_multi": {
+      "description": "true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.",
+      "type": "boolean"
+     },
+     "is_test": {
+      "description": "true — счёт песочницы (dev-магазина): деньги ненастоящие, в живую сверку не включайте.",
+      "type": "boolean"
+     },
+     "memo": {
+      "description": "Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле «memo» на бирже или в кошельке. Пусто на остальных сетях.",
+      "type": "string"
+     },
+     "merchant_amount": {
+      "description": "Сколько зачислено (или будет зачислено) вам: amount_paid − commission. Сетевые расходы на сбор депозита несёт шлюз — из этой суммы они НЕ вычитаются.",
+      "example": "9.900000",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть блокчейна (например, tron).",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш номер заказа, который вы передали при создании.",
+      "type": "string"
+     },
+     "paid_at": {
+      "description": "Момент фактической оплаты — зачисление последнего подтверждённого перевода (ISO 8601). null, пока оплата не пришла. Отличайте от updated_at: тот сдвигается любым изменением счёта.",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "payer_address": {
+      "description": "Адрес, С КОТОРОГО пришёл первый подтверждённый депозит — на аккаунт-сетях (EVM/Tron/Solana/TON); пусто на UTXO. ⚠ Это НЕ обязательно адрес для возврата: отправителем может быть биржа, сдача UTXO-транзакции или горячий омнибус крипто-он-рампа, если покупатель платил картой. Прежде чем возвращать деньги сюда, смотрите payer_address_is_refundable.",
+      "type": "string"
+     },
+     "payer_address_is_refundable": {
+      "description": "true — payer_address принадлежит плательщику, и в /v1/payment/refund можно опустить address (вернём на него). false — адрес возврата неизвестен (UTXO/XRP, оплата картой через он-рамп, адрес не записан): спросите адрес у покупателя и передайте address явно, иначе запрос будет отклонён с refund.no_address.",
+      "type": "boolean"
+     },
+     "payer_amount": {
+      "description": "Сколько нужно отправить в крипте оплаты.",
+      "example": "10.150000",
+      "type": "string"
+     },
+     "payer_currency": {
+      "description": "Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "payer_email": {
+      "description": "E-mail плательщика, если вы его передали.",
+      "type": "string"
+     },
+     "rate_expires_at": {
+      "description": "Когда обновится курс (ISO 8601; курс держится ~5 мин).",
+      "example": "2026-07-10T12:05:00Z",
+      "type": "string"
+     },
+     "required_confirmations": {
+      "description": "Сколько подтверждений нужно для зачисления (зависит от суммы и сети).",
+      "example": 20,
+      "type": "integer"
+     },
+     "status": {
+      "description": "Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату, ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled (отменён).",
+      "example": "created",
+      "type": "string"
+     },
+     "tx_list": {
+      "description": "Все подтверждённые переводы, которыми оплачен счёт. Частичная оплата несколькими переводами — штатный сценарий wrong_amount; один txid наверху — лишь последний замеченный.",
+      "items": {
+       "properties": {
+        "amount": {
+         "description": "Сумма перевода в валюте оплаты.",
+         "example": "4.000000",
+         "type": "string"
+        },
+        "created_at": {
+         "description": "Когда перевод зачислен (ISO 8601).",
+         "example": "2026-07-10T12:05:00Z",
+         "type": "string"
+        },
+        "height": {
+         "description": "Высота блока, в котором перевод подтверждён.",
+         "example": 51234567,
+         "type": "integer"
+        },
+        "network": {
+         "description": "Сеть, в которой пришёл перевод. На EVM может отличаться от network счёта: депозит зачитывается и на другой цепочке с тем же адресом.",
+         "example": "tron",
+         "type": "string"
+        },
+        "txid": {
+         "description": "Хеш транзакции.",
+         "type": "string"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "txid": {
+      "description": "Хеш входящей транзакции (когда замечена).",
+      "type": "string"
+     },
+     "updated_at": {
+      "description": "Время последнего изменения (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "url": {
+      "description": "Ссылка на готовую страницу оплаты.",
+      "type": "string"
+     },
+     "url_return": {
+      "description": "Ссылка «вернуться в магазин» до оплаты.",
+      "type": "string"
+     },
+     "url_success": {
+      "description": "Куда перенаправить после успешной оплаты.",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Наш идентификатор платежа (используйте его в info/refund).",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/link",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "amount_fixed": {
+      "description": "Сумма — для режима fixed; обязательна в этом режиме",
+      "example": "25.00",
+      "type": "string"
+     },
+     "amount_mode": {
+      "description": "Режим суммы: fixed | open | range",
+      "example": "open",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Валюта цены — фиат (USD, EUR, RUB, …) или монета; список — pricing_currencies из GET /v1/currencies",
+      "example": "USD",
+      "type": "string"
+     },
+     "description": {
+      "description": "Описание на странице оплаты",
+      "type": "string"
+     },
+     "expires_in_seconds": {
+      "description": "Срок жизни ссылки, секунд от момента создания; 0 (по умолчанию) — ссылка бессрочная",
+      "type": "integer"
+     },
+     "max_amount": {
+      "description": "Верхняя граница — для range; обязательна в этом режиме",
+      "example": "1000.00",
+      "type": "string"
+     },
+     "min_amount": {
+      "description": "Нижняя граница: необязательный «пол» для open, обязательный минимум для range",
+      "example": "1.00",
+      "type": "string"
+     },
+     "pinned_currency": {
+      "description": "Валюта расчёта (монета), закреплённая за ссылкой; пусто — монету выбирает покупатель",
+      "example": "USDT",
+      "type": "string"
+     },
+     "pinned_network": {
+      "description": "Сеть расчёта, закреплённая за ссылкой; пусто — сеть выбирает покупатель",
+      "example": "tron",
+      "type": "string"
+     },
+     "title": {
+      "description": "Заголовок на странице оплаты",
+      "example": "Поддержать проект",
+      "type": "string"
+     }
+    },
+    "required": [
+     "amount_mode",
+     "currency"
+    ],
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "document_url": {
+      "description": "Подписанная ссылка на PDF-плакат с QR оплаты (печать на кассу). Пусто, если генерация документов не включена.",
+      "type": "string"
+     },
+     "link_id": {
+      "description": "Идентификатор ссылки",
+      "example": "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40",
+      "type": "string"
+     },
+     "url": {
+      "description": "Публичный URL страницы оплаты — его вы даёте покупателю: кнопкой, в письме, QR-кодом",
+      "example": "https://pay.oblodai.com/link/5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/link/info",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "limit": {
+      "description": "Размер страницы платежей по ссылке, 1–100; вне диапазона — 25.",
+      "example": 25,
+      "type": "integer"
+     },
+     "link_id": {
+      "description": "Идентификатор платёжной ссылки.",
+      "example": "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40",
+      "type": "string"
+     },
+     "offset": {
+      "description": "Смещение страницы платежей.",
+      "example": 0,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "link_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/link/list",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "limit": {
+      "description": "Размер страницы, 1–100; вне диапазона — 25.",
+      "example": 25,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение от начала списка.",
+      "example": 0,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/link/toggle",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "active": {
+      "description": "true — ссылка принимает оплату; false — выключена (страница покажет, что ссылка неактивна).",
+      "example": false,
+      "type": "boolean"
+     },
+     "link_id": {
+      "description": "Идентификатор платёжной ссылки.",
+      "example": "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40",
+      "type": "string"
+     }
+    },
+    "required": [
+     "link_id",
+     "active"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/qr",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "order_id": {
+      "description": "Ваша ссылка на заказ.",
+      "example": "order-1",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/refund",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "address": {
+      "description": "Адрес назначения возврата. По умолчанию — payer_address платежа; обязателен только для Bitcoin/UTXO.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Частичная сумма. По умолчанию — вся полученная.",
+      "example": "10",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть.",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваша ссылка на заказ платежа. Нужен uuid или order_id.",
+      "example": "order-1",
+      "type": "string"
+     },
+     "reference": {
+      "description": "Необязательный ключ идемпотентности возврата: различает два разных возврата с одинаковыми (платёж, адрес, сумма); повтор с тем же значением дедуплицируется. Это не order_id.",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор платежа. Нужен uuid или order_id.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "address": {
+      "description": "Адрес, куда вернули деньги.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма возврата в монете платежа.",
+      "example": "10",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Валюта возврата (монета платежа).",
+      "example": "USDT",
+      "type": "string"
+     },
+     "is_final": {
+      "description": "true — возврат в терминальном статусе.",
+      "type": "boolean"
+     },
+     "order_id": {
+      "description": "order_id платежа, по которому сделан возврат.",
+      "type": "string"
+     },
+     "payment_uuid": {
+      "description": "Идентификатор платежа, который возвращаем.",
+      "type": "string"
+     },
+     "status": {
+      "description": "Укрупнённый статус выплаты-возврата: check | process | paid | fail | cancel.",
+      "example": "process",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор возврата (это выплата).",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/resend",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "order_id": {
+      "description": "Ваша ссылка на заказ.",
+      "example": "order-1",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/resolve",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "action": {
+      "description": "accept — принять частичную оплату, refund — вернуть плательщику.",
+      "example": "accept",
+      "type": "string"
+     },
+     "address": {
+      "description": "Только для refund: адрес возврата. По умолчанию — записанный payer_address платежа; если он пуст (Bitcoin/UTXO), адрес обязателен, иначе refund.no_address.",
+      "type": "string"
+     },
+     "network": {
+      "description": "Только для refund: сеть возврата, по умолчанию — сеть платежа.",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш идентификатор платежа.",
+      "example": "ord-1001",
+      "type": "string"
+     },
+     "reference": {
+      "description": "Только для refund: ваш ключ дедупликации возврата.",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "UUID платежа. Нужен uuid или order_id.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "action"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/send-email",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "email": {
+      "description": "Кому отправить. По умолчанию — payer_email, заданный у платежа.",
+      "example": "buyer@example.com",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваша ссылка на заказ.",
+      "example": "order-1",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор платежа в Oblodai. Нужен uuid или order_id.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/services",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "limit": {
+      "description": "Размер страницы, 1–100; вне диапазона — 25.",
+      "example": 25,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение от начала списка.",
+      "example": 0,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payment/testing-webhook",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "status": {
+      "description": "Статус в теле. По умолчанию paid",
+      "example": "paid",
+      "type": "string"
+     },
+     "url": {
+      "description": "Куда отправить пробное тело. Не передан — доставка уходит на зарегистрированный endpoint проекта; без endpoint — ошибка webhook.no_endpoint. Подпись — секретом endpoint'а проекта, в том числе при явном url",
+      "example": "https://shop.example/hook",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "address": {
+      "description": "Адрес получателя.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма выплаты в валюте currency.",
+      "example": "25",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Код валюты (например USDT).",
+      "example": "USDT",
+      "type": "string"
+     },
+     "from_currency": {
+      "description": "Профинансировать выплату конвертацией баланса. Только USDT → currency.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "is_subtract": {
+      "description": "Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает amount; false — получатель получает amount-fee; не передано — fee-config проекта.",
+      "type": "boolean"
+     },
+     "memo": {
+      "description": "Тег/мемо назначения (TON Jetton). Максимум 120 символов.",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями.",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш номер выплаты; ключ идемпотентности.",
+      "example": "payout-1",
+      "type": "string"
+     },
+     "source": {
+      "description": "Метка происхождения: api (по умолчанию) или manual.",
+      "type": "string"
+     },
+     "url_callback": {
+      "description": "Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "amount",
+     "currency",
+     "order_id",
+     "address"
+    ],
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "address": {
+      "description": "Адрес получателя.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма выплаты в валюте currency, списанная с вашего баланса.",
+      "example": "25",
+      "type": "string"
+     },
+     "approval_required": {
+      "description": "true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).",
+      "type": "boolean"
+     },
+     "commission": {
+      "description": "Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.",
+      "example": "1.500000",
+      "type": "string"
+     },
+     "created_at": {
+      "description": "Время создания (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Код валюты выплаты.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "document_url": {
+      "description": "Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать получателю. Пусто, если генерация документов не включена.",
+      "type": "string"
+     },
+     "fee_bearer": {
+      "description": "Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true, выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю приходит меньше запрошенного.",
+      "example": "recipient",
+      "type": "string"
+     },
+     "is_final": {
+      "description": "true — статус финальный (paid / fail / cancel).",
+      "type": "boolean"
+     },
+     "is_refund": {
+      "description": "true — это возврат платежа, а не обычная выплата.",
+      "type": "boolean"
+     },
+     "memo": {
+      "description": "Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть блокчейна.",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см. payment_order_id.",
+      "type": "string"
+     },
+     "payer_amount": {
+      "description": "Сколько реально уходит получателю на адрес: amount − commission.",
+      "example": "23.500000",
+      "type": "string"
+     },
+     "payment_order_id": {
+      "description": "Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.",
+      "type": "string"
+     },
+     "refund_for": {
+      "description": "Идентификатор возвращаемого платежа (null, если это не возврат).",
+      "type": "string"
+     },
+     "source": {
+      "description": "api (через интеграцию) | manual (из кабинета).",
+      "example": "api",
+      "type": "string"
+     },
+     "status": {
+      "description": "Укрупнённый статус: check (создана, ждёт) | process (отправляется/ждёт подтверждений) | paid (подтверждена — готово) | awaiting_cosign (ждёт второй подписи) | fail | cancel.",
+      "example": "process",
+      "type": "string"
+     },
+     "txid": {
+      "description": "Хеш транзакции в блокчейне (появляется после отправки).",
+      "type": "string"
+     },
+     "updated_at": {
+      "description": "Время последнего изменения (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор выплаты.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/approve",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "uuid": {
+      "description": "Идентификатор выплаты.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "uuid"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/batch",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "on_error": {
+      "description": "Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.",
+      "example": "continue",
+      "type": "string"
+     },
+     "payouts": {
+      "description": "Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payout; order_id у каждого элемента обязателен и служит ключом идемпотентности: повтор вернёт уже созданную выплату.",
+      "items": {
+       "properties": {
+        "address": {
+         "description": "Адрес получателя.",
+         "type": "string"
+        },
+        "amount": {
+         "description": "Сумма выплаты в валюте currency.",
+         "example": "25",
+         "type": "string"
+        },
+        "currency": {
+         "description": "Код валюты (например USDT).",
+         "example": "USDT",
+         "type": "string"
+        },
+        "from_currency": {
+         "description": "Профинансировать выплату конвертацией баланса. Только USDT → currency.",
+         "example": "USDT",
+         "type": "string"
+        },
+        "is_subtract": {
+         "description": "Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает amount; false — получатель получает amount-fee; не передано — fee-config проекта.",
+         "type": "boolean"
+        },
+        "memo": {
+         "description": "Тег/мемо назначения (TON Jetton). Максимум 120 символов.",
+         "type": "string"
+        },
+        "network": {
+         "description": "Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями.",
+         "example": "tron",
+         "type": "string"
+        },
+        "order_id": {
+         "description": "Ваш номер выплаты; ключ идемпотентности.",
+         "example": "payout-1",
+         "type": "string"
+        },
+        "source": {
+         "description": "Метка происхождения: api (по умолчанию) или manual.",
+         "type": "string"
+        },
+        "url_callback": {
+         "description": "Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.",
+         "type": "string"
+        }
+       },
+       "required": [
+        "amount",
+        "currency",
+        "order_id",
+        "address"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    "required": [
+     "payouts"
+    ],
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "batch_id": {
+      "description": "Идентификатор батча — с ним идите в POST /v1/batch/info за статусом и результатами.",
+      "example": "9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60",
+      "type": "string"
+     },
+     "count": {
+      "description": "Сколько элементов принято в обработку.",
+      "example": 2,
+      "type": "integer"
+     },
+     "kind": {
+      "description": "Вид батча: payment | refund | payout | transfer.",
+      "example": "payment",
+      "type": "string"
+     },
+     "status": {
+      "description": "Стартовый статус — всегда pending.",
+      "example": "pending",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/calculate",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "amount": {
+      "description": "Сумма выплаты, строкой.",
+      "example": "10",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Актив выплаты (USDT, BTC, …).",
+      "example": "USDT",
+      "type": "string"
+     },
+     "is_subtract": {
+      "description": "true — комиссия списывается с баланса поверх суммы (получатель получит ровно amount); false — из суммы выплаты.",
+      "type": "boolean"
+     },
+     "network": {
+      "description": "Сеть выплаты; обязательна, если актив живёт в нескольких сетях.",
+      "example": "tron",
+      "type": "string"
+     }
+    },
+    "required": [
+     "amount",
+     "currency"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/cancel",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "uuid": {
+      "description": "Идентификатор выплаты (или возврата) для отмены.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "uuid"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/fee-config/get",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/fee-config/set",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "fee_on_recipient": {
+      "description": "true — сетевую комиссию платит получатель (получает меньше); false — комиссию несёт мерчант",
+      "example": true,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "fee_on_recipient"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/history",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "kind": {
+      "description": "Только для /v1/payout/history: payout — обычные выплаты, refund — возвраты; пусто — всё.",
+      "example": "payout",
+      "type": "string"
+     },
+     "limit": {
+      "description": "Размер страницы, 1–100; вне диапазона — 25.",
+      "example": 25,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение от начала списка (новые сверху).",
+      "example": 0,
+      "type": "integer"
+     },
+     "status": {
+      "description": "Фильтр по статусу (точное значение из словаря статусов); пусто — все.",
+      "example": "paid",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/info",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "order_id": {
+      "description": "Ваша ссылка на заказ.",
+      "example": "order-1",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "address": {
+      "description": "Адрес получателя.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма выплаты в валюте currency, списанная с вашего баланса.",
+      "example": "25",
+      "type": "string"
+     },
+     "approval_required": {
+      "description": "true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).",
+      "type": "boolean"
+     },
+     "commission": {
+      "description": "Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.",
+      "example": "1.500000",
+      "type": "string"
+     },
+     "created_at": {
+      "description": "Время создания (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Код валюты выплаты.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "document_url": {
+      "description": "Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать получателю. Пусто, если генерация документов не включена.",
+      "type": "string"
+     },
+     "fee_bearer": {
+      "description": "Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true, выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю приходит меньше запрошенного.",
+      "example": "recipient",
+      "type": "string"
+     },
+     "is_final": {
+      "description": "true — статус финальный (paid / fail / cancel).",
+      "type": "boolean"
+     },
+     "is_refund": {
+      "description": "true — это возврат платежа, а не обычная выплата.",
+      "type": "boolean"
+     },
+     "memo": {
+      "description": "Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть блокчейна.",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см. payment_order_id.",
+      "type": "string"
+     },
+     "payer_amount": {
+      "description": "Сколько реально уходит получателю на адрес: amount − commission.",
+      "example": "23.500000",
+      "type": "string"
+     },
+     "payment_order_id": {
+      "description": "Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.",
+      "type": "string"
+     },
+     "refund_for": {
+      "description": "Идентификатор возвращаемого платежа (null, если это не возврат).",
+      "type": "string"
+     },
+     "source": {
+      "description": "api (через интеграцию) | manual (из кабинета).",
+      "example": "api",
+      "type": "string"
+     },
+     "status": {
+      "description": "Укрупнённый статус: check (создана, ждёт) | process (отправляется/ждёт подтверждений) | paid (подтверждена — готово) | awaiting_cosign (ждёт второй подписи) | fail | cancel.",
+      "example": "process",
+      "type": "string"
+     },
+     "txid": {
+      "description": "Хеш транзакции в блокчейне (появляется после отправки).",
+      "type": "string"
+     },
+     "updated_at": {
+      "description": "Время последнего изменения (ISO 8601).",
+      "example": "2026-07-10T12:00:00Z",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор выплаты.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/link",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "amount": {
+      "description": "Сумма в currency, строкой; больше нуля",
+      "example": "25",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Крипто-актив выплаты (USDT, BTC, …); фиат невозможен",
+      "example": "USDT",
+      "type": "string"
+     },
+     "email": {
+      "description": "Если задан — получателю уходит письмо с кнопкой «Получить средства»; сбой доставки не отменяет создание ссылки",
+      "example": "user@example.com",
+      "type": "string"
+     },
+     "expires_in_seconds": {
+      "description": "Срок жизни ссылки в секундах, клампится в диапазон 3600–2592000 (час–30 суток); без поля или при 0 ссылка живёт 1 час, а не максимум — задавайте явно",
+      "example": 604800,
+      "type": "integer"
+     },
+     "fee_bearer": {
+      "description": "Кто платит сетевую комиссию: \"recipient\" (по умолчанию — вычитается из суммы, получателю придёт меньше) или \"merchant\" (резервируется сумма плюс комиссия, получателю придёт ровно amount)",
+      "example": "merchant",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть выплаты получателю (tron, bitcoin, …)",
+      "example": "tron",
+      "type": "string"
+     },
+     "note": {
+      "description": "Сообщение получателю (видно на странице получения и в письме)",
+      "example": "Спасибо за участие",
+      "type": "string"
+     },
+     "passcode": {
+      "description": "Код получения — второй фактор к ссылке: \"auto\" — сгенерируем и вернём ОДИН раз в ответе, либо свой (6–64 видимых символа), пусто — без кода. Код передавайте получателю ОТДЕЛЬНЫМ от ссылки каналом (в письмо он не кладётся); после 10 неверных вводов ссылка запирается.",
+      "example": "auto",
+      "type": "string"
+     },
+     "reference": {
+      "description": "Ваш ключ дедупликации, уникальный на мерчанта; заголовок Idempotency-Key на этом эндпоинте не действует",
+      "example": "bonus-42",
+      "type": "string"
+     },
+     "title": {
+      "description": "Заголовок — виден получателю на странице получения",
+      "example": "Бонус",
+      "type": "string"
+     }
+    },
+    "required": [
+     "currency",
+     "network",
+     "amount"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/link/batch",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "items": {
+      "description": "До 500 ссылок за вызов; каждая проходит или падает независимо, ответ выровнен по индексам запроса.",
+      "items": {
+       "properties": {
+        "amount": {
+         "description": "Сумма в currency, строкой; больше нуля",
+         "example": "25",
+         "type": "string"
+        },
+        "currency": {
+         "description": "Крипто-актив выплаты (USDT, BTC, …); фиат невозможен",
+         "example": "USDT",
+         "type": "string"
+        },
+        "email": {
+         "description": "Если задан — получателю уходит письмо с кнопкой «Получить средства»; сбой доставки не отменяет создание ссылки",
+         "example": "user@example.com",
+         "type": "string"
+        },
+        "expires_in_seconds": {
+         "description": "Срок жизни ссылки в секундах, клампится в диапазон 3600–2592000 (час–30 суток); без поля или при 0 ссылка живёт 1 час, а не максимум — задавайте явно",
+         "example": 604800,
+         "type": "integer"
+        },
+        "fee_bearer": {
+         "description": "Кто платит сетевую комиссию: \"recipient\" (по умолчанию — вычитается из суммы, получателю придёт меньше) или \"merchant\" (резервируется сумма плюс комиссия, получателю придёт ровно amount)",
+         "example": "merchant",
+         "type": "string"
+        },
+        "network": {
+         "description": "Сеть выплаты получателю (tron, bitcoin, …)",
+         "example": "tron",
+         "type": "string"
+        },
+        "note": {
+         "description": "Сообщение получателю (видно на странице получения и в письме)",
+         "example": "Спасибо за участие",
+         "type": "string"
+        },
+        "passcode": {
+         "description": "Код получения — второй фактор к ссылке: \"auto\" — сгенерируем и вернём ОДИН раз в ответе, либо свой (6–64 видимых символа), пусто — без кода. Код передавайте получателю ОТДЕЛЬНЫМ от ссылки каналом (в письмо он не кладётся); после 10 неверных вводов ссылка запирается.",
+         "example": "auto",
+         "type": "string"
+        },
+        "reference": {
+         "description": "Ваш ключ дедупликации, уникальный на мерчанта; заголовок Idempotency-Key на этом эндпоинте не действует",
+         "example": "bonus-42",
+         "type": "string"
+        },
+        "title": {
+         "description": "Заголовок — виден получателю на странице получения",
+         "example": "Бонус",
+         "type": "string"
+        }
+       },
+       "required": [
+        "currency",
+        "network",
+        "amount"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/link/cancel",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "link_id": {
+      "description": "Идентификатор выплатной ссылки (link_id из ответа создания).",
+      "type": "string"
+     }
+    },
+    "required": [
+     "link_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/link/cheque",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": true,
+   "request_schema": {
+    "properties": {
+     "claim_token": {
+      "description": "Секрет получения из ответа создания выплатной ссылки. Хранится только хешем и повторно не выдаётся — чек можно напечатать, лишь пока токен у вас.",
+      "example": "nUqx1yG3…",
+      "type": "string"
+     },
+     "lang": {
+      "description": "Язык документа — один из 41 поддерживаемого кода (en по умолчанию); полный список — в ошибке document.unknown_lang.",
+      "example": "ru",
+      "type": "string"
+     }
+    },
+    "required": [
+     "claim_token"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/link/info",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "link_id": {
+      "description": "Идентификатор выплатной ссылки (link_id из ответа создания).",
+      "type": "string"
+     }
+    },
+    "required": [
+     "link_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/link/list",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "limit": {
+      "description": "Сколько ссылок вернуть на страницу.",
+      "example": 50,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Сдвиг от начала списка (постранично).",
+      "example": 0,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/mass",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "payouts": {
+      "description": "Массив до 100 элементов; поля каждого — как в POST /v1/payout.",
+      "items": {
+       "properties": {
+        "address": {
+         "description": "Адрес получателя.",
+         "type": "string"
+        },
+        "amount": {
+         "description": "Сумма выплаты в валюте currency.",
+         "example": "25",
+         "type": "string"
+        },
+        "currency": {
+         "description": "Код валюты (например USDT).",
+         "example": "USDT",
+         "type": "string"
+        },
+        "from_currency": {
+         "description": "Профинансировать выплату конвертацией баланса. Только USDT → currency.",
+         "example": "USDT",
+         "type": "string"
+        },
+        "is_subtract": {
+         "description": "Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает amount; false — получатель получает amount-fee; не передано — fee-config проекта.",
+         "type": "boolean"
+        },
+        "memo": {
+         "description": "Тег/мемо назначения (TON Jetton). Максимум 120 символов.",
+         "type": "string"
+        },
+        "network": {
+         "description": "Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями.",
+         "example": "tron",
+         "type": "string"
+        },
+        "order_id": {
+         "description": "Ваш номер выплаты; ключ идемпотентности.",
+         "example": "payout-1",
+         "type": "string"
+        },
+        "source": {
+         "description": "Метка происхождения: api (по умолчанию) или manual.",
+         "type": "string"
+        },
+        "url_callback": {
+         "description": "Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.",
+         "type": "string"
+        }
+       },
+       "required": [
+        "amount",
+        "currency",
+        "order_id",
+        "address"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "source": {
+      "description": "Метка происхождения, применяется ко всем элементам без своего source.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "payouts"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/refund-fee-config/get",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/refund-fee-config/set",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "fee_on_customer": {
+      "description": "true — клиент получает net (комиссию платит клиент); false — мерчант платит комиссию, клиент получает gross",
+      "example": true,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "fee_on_customer"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/services",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "limit": {
+      "description": "Размер страницы, 1–100; вне диапазона — 25.",
+      "example": 25,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение от начала списка.",
+      "example": 0,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/payout/validate",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "address": {
+      "description": "Адрес получателя.",
+      "type": "string"
+     },
+     "amount": {
+      "description": "Сумма выплаты в валюте currency.",
+      "example": "25",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Код валюты (например USDT).",
+      "example": "USDT",
+      "type": "string"
+     },
+     "from_currency": {
+      "description": "Профинансировать выплату конвертацией баланса. Только USDT → currency.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "is_subtract": {
+      "description": "Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает amount; false — получатель получает amount-fee; не передано — fee-config проекта.",
+      "type": "boolean"
+     },
+     "memo": {
+      "description": "Тег/мемо назначения (TON Jetton). Максимум 120 символов.",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями.",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш номер выплаты; ключ идемпотентности.",
+      "example": "payout-1",
+      "type": "string"
+     },
+     "source": {
+      "description": "Метка происхождения: api (по умолчанию) или manual.",
+      "type": "string"
+     },
+     "url_callback": {
+      "description": "Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "amount",
+     "currency",
+     "order_id",
+     "address"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/referral/info",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/refund/batch",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "on_error": {
+      "description": "Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.",
+      "example": "continue",
+      "type": "string"
+     },
+     "refunds": {
+      "description": "Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payment/refund; у каждого элемента обязательны reference (ключ идемпотентности) и uuid либо order_id платежа.",
+      "items": {
+       "properties": {
+        "address": {
+         "description": "Адрес назначения возврата. По умолчанию — payer_address платежа; обязателен только для Bitcoin/UTXO.",
+         "type": "string"
+        },
+        "amount": {
+         "description": "Частичная сумма. По умолчанию — вся полученная.",
+         "example": "10",
+         "type": "string"
+        },
+        "network": {
+         "description": "Сеть.",
+         "example": "tron",
+         "type": "string"
+        },
+        "order_id": {
+         "description": "Ваша ссылка на заказ платежа. Нужен uuid или order_id.",
+         "example": "order-1",
+         "type": "string"
+        },
+        "reference": {
+         "description": "Необязательный ключ идемпотентности возврата: различает два разных возврата с одинаковыми (платёж, адрес, сумма); повтор с тем же значением дедуплицируется. Это не order_id.",
+         "type": "string"
+        },
+        "uuid": {
+         "description": "Идентификатор платежа. Нужен uuid или order_id.",
+         "type": "string"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    "required": [
+     "refunds"
+    ],
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "batch_id": {
+      "description": "Идентификатор батча — с ним идите в POST /v1/batch/info за статусом и результатами.",
+      "example": "9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60",
+      "type": "string"
+     },
+     "count": {
+      "description": "Сколько элементов принято в обработку.",
+      "example": 2,
+      "type": "integer"
+     },
+     "kind": {
+      "description": "Вид батча: payment | refund | payout | transfer.",
+      "example": "payment",
+      "type": "string"
+     },
+     "status": {
+      "description": "Стартовый статус — всегда pending.",
+      "example": "pending",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/sandbox/deposit",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "amount": {
+      "description": "Сумма в валюте счёта; пусто — оплатить ровно сколько нужно, иное — способ получить недо/переплату.",
+      "example": "10",
+      "type": "string"
+     },
+     "confirmations": {
+      "description": "С каким числом подтверждений пришёл депозит; 0 — полностью подтверждён; меньше требуемого — способ проверить переход pending→confirmed (повторите тот же txid с большим числом).",
+      "example": 0,
+      "type": "integer"
+     },
+     "invoice_id": {
+      "description": "UUID тестового счёта, который «оплачивается».",
+      "type": "string"
+     },
+     "txid": {
+      "description": "Повтор того же txid проверяет вашу идемпотентность; пусто — новый txid.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "invoice_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/sandbox/faucet",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "amount": {
+      "description": "Сумма тестовых денег, строкой; потолок 1000000 за вызов.",
+      "example": "1000",
+      "type": "string"
+     },
+     "asset": {
+      "description": "Актив пополнения (USDT, BTC, …).",
+      "example": "USDT",
+      "type": "string"
+     },
+     "idempotency_key": {
+      "description": "Ключ безопасного повтора; пусто — каждый вызов даёт новое пополнение.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "asset",
+     "amount"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/sandbox/reset",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "GET",
+   "path": "/v1/sandbox/webhooks",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged"
+  },
+  {
+   "method": "POST",
+   "path": "/v1/sandbox/webhooks/replay",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "delivery_id": {
+      "description": "Идентификатор доставки из GET /v1/sandbox/webhooks.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "delivery_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/split/config/get",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/split/config/set",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "refund_hold_seconds": {
+      "description": "На сколько секунд откладывать расчёт по сплитам; диапазон 0–7776000 (до 90 суток). 0 — отправлять доли сразу: риск невозможности возврата берёте на себя.",
+      "example": 172800,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "refund_hold_seconds"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/split/recipient/optin",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "enabled": {
+      "description": "Разрешить другим мерчантам направлять доли сплитов на ваш баланс. true — включить приём, false — выключить (новые правила на вас перестанут создаваться; уже созданные продолжают исполняться).",
+      "example": true,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "enabled"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/split/recipient/optin/get",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false
+  },
+  {
+   "method": "POST",
+   "path": "/v1/split/rule",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "address": {
+      "description": "Внешний криптоадрес партнёра; доля уходит реальной транзакцией в блокчейне — необратимо. Ровно один вариант получателя: либо address+network, либо merchant_id.",
+      "type": "string"
+     },
+     "merchant_id": {
+      "description": "Идентификатор мерчанта-партнёра внутри Oblodai; доля движется по внутреннему учёту и при возврате отзывается обратно.",
+      "example": "b4c1f0e2-5a77-4d31-9f08-2c6e7a1b3d94",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть адреса. Обязательна вместе с address.",
+      "example": "tron",
+      "type": "string"
+     },
+     "note": {
+      "description": "Комментарий для себя (виден в списке правил).",
+      "type": "string"
+     },
+     "percent": {
+      "description": "Доля от каждого платежа, строкой: \"10\" = 10 %, \"2.5\" = 2.5 %. Больше 0 и не больше 100, шаг 0.01 %; сумма всех правил не может превышать 100 %.",
+      "example": "10",
+      "type": "string"
+     }
+    },
+    "required": [
+     "percent"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/split/rule/delete",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "rule_id": {
+      "description": "Идентификатор правила из POST /v1/split/rule или списка.",
+      "example": "9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60",
+      "type": "string"
+     }
+    },
+    "required": [
+     "rule_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/split/rule/list",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "limit": {
+      "description": "Размер страницы, 1–100; вне диапазона — 25.",
+      "example": 25,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение от начала списка.",
+      "example": 0,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/test-webhook/payment",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "currency": {
+      "description": "Валюта в теле",
+      "example": "USDT",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть в теле",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш order_id, который попадёт в пробное тело события",
+      "type": "string"
+     },
+     "status": {
+      "description": "Статус в теле — из словаря статусов этого типа. По умолчанию paid (для выплаты — confirmed)",
+      "example": "paid",
+      "type": "string"
+     },
+     "url_callback": {
+      "description": "Куда отправить пробное тело",
+      "example": "https://shop.example/oblodai/callback",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "UUID объекта (платежа, кошелька или выплаты), который попадёт в пробное тело события",
+      "type": "string"
+     }
+    },
+    "required": [
+     "url_callback"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/test-webhook/payout",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "currency": {
+      "description": "Валюта в теле",
+      "example": "USDT",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть в теле",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш order_id, который попадёт в пробное тело события",
+      "type": "string"
+     },
+     "status": {
+      "description": "Статус в теле — из словаря статусов этого типа. По умолчанию paid (для выплаты — confirmed)",
+      "example": "paid",
+      "type": "string"
+     },
+     "url_callback": {
+      "description": "Куда отправить пробное тело",
+      "example": "https://shop.example/oblodai/callback",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "UUID объекта (платежа, кошелька или выплаты), который попадёт в пробное тело события",
+      "type": "string"
+     }
+    },
+    "required": [
+     "url_callback"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/test-webhook/wallet",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "currency": {
+      "description": "Валюта в теле",
+      "example": "USDT",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть в теле",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш order_id, который попадёт в пробное тело события",
+      "type": "string"
+     },
+     "status": {
+      "description": "Статус в теле — из словаря статусов этого типа. По умолчанию paid (для выплаты — confirmed)",
+      "example": "paid",
+      "type": "string"
+     },
+     "url_callback": {
+      "description": "Куда отправить пробное тело",
+      "example": "https://shop.example/oblodai/callback",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "UUID объекта (платежа, кошелька или выплаты), который попадёт в пробное тело события",
+      "type": "string"
+     }
+    },
+    "required": [
+     "url_callback"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/transfer/batch",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "on_error": {
+      "description": "Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.",
+      "example": "continue",
+      "type": "string"
+     },
+     "transfers": {
+      "description": "Массив от 1 до 5000 элементов — те же поля, что у POST /v1/transfer/to-user; у каждого элемента обязательны order_id (ключ идемпотентности) и to_user_id (UUID пользователя).",
+      "items": {
+       "properties": {
+        "amount": {
+         "description": "Сумма перевода в currency.",
+         "example": "50",
+         "type": "string"
+        },
+        "currency": {
+         "description": "Код валюты (криптовалюта).",
+         "example": "USDT",
+         "type": "string"
+        },
+        "order_id": {
+         "description": "Ключ идемпотентности: повтор с тем же order_id — no-op; в батче переводов обязателен.",
+         "type": "string"
+        },
+        "to_user_id": {
+         "description": "Платформенный user id получателя (UUID, не username); username резолвится в id через публичный профиль кабинета /public/users/{username}.",
+         "type": "string"
+        }
+       },
+       "required": [
+        "to_user_id"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/transfer/to-personal",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "amount": {
+      "description": "Сумма перевода в currency.",
+      "example": "50",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Код валюты (криптовалюта).",
+      "example": "USDT",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ключ идемпотентности: повтор с тем же order_id — no-op. Настоятельно передавайте всегда, иначе повтор запроса при сетевом таймауте создаст второй перевод.",
+      "example": "transfer-1",
+      "type": "string"
+     }
+    },
+    "required": [
+     "amount",
+     "currency"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/transfer/to-user",
+   "auth": "payout",
+   "idempotent": true,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "amount": {
+      "description": "Сумма перевода в currency.",
+      "example": "50",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Код валюты (криптовалюта).",
+      "example": "USDT",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ключ идемпотентности: повтор с тем же order_id — no-op; в батче переводов обязателен.",
+      "type": "string"
+     },
+     "to_user_id": {
+      "description": "Платформенный user id получателя (UUID, не username); username резолвится в id через публичный профиль кабинета /public/users/{username}.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "to_user_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/vrcs",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "enabled": {
+      "description": "true — включить автоконвертацию волатильных поступлений в USDT, false — выключить; без поля — только прочитать текущее состояние.",
+      "example": true,
+      "type": "boolean"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/wallet",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "currency": {
+      "description": "Символ валюты приёма (USDT, BTC, ETH, …)",
+      "example": "USDT",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть приёма (tron, ethereum, bitcoin, …)",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш идентификатор клиента/заказа. Закрепляет отдельный постоянный адрес за клиентом",
+      "example": "client-42",
+      "type": "string"
+     }
+    },
+    "required": [
+     "currency",
+     "network"
+    ],
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "address": {
+      "description": "Постоянный адрес для пополнений. На XRP — классический r-адрес ОБЩЕГО кошелька; пополнение обязано нести destination_tag.",
+      "type": "string"
+     },
+     "address_muxed": {
+      "description": "Только XLM: адрес и memo одной строкой (muxed M…, SEP-23).",
+      "type": "string"
+     },
+     "address_xaddress": {
+      "description": "Только XRP: адрес и тег одной строкой (X-address, XLS-5).",
+      "type": "string"
+     },
+     "currency": {
+      "description": "Валюта пополнений.",
+      "example": "USDT",
+      "type": "string"
+     },
+     "destination_tag": {
+      "description": "Только XRP: числовой destination tag этого кошелька — клиент обязан указывать его в каждом переводе.",
+      "type": "string"
+     },
+     "memo": {
+      "description": "Только XLM: числовой memo (тип ID) этого кошелька — клиент обязан указывать его в каждом переводе.",
+      "type": "string"
+     },
+     "network": {
+      "description": "Сеть блокчейна.",
+      "example": "tron",
+      "type": "string"
+     },
+     "order_id": {
+      "description": "Ваш идентификатор клиента, за которым закреплён адрес (часть тройки идемпотентности currency+network+order_id).",
+      "type": "string"
+     },
+     "url": {
+      "description": "Зарезервировано (обычно пусто).",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор статического кошелька.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/wallet/block",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "address": {
+      "description": "Адрес статического кошелька",
+      "example": "TXk9...c3Fd",
+      "type": "string"
+     },
+     "is_force_block": {
+      "description": "true — заблокировать (значение по умолчанию, если поле опущено); false — снять блокировку",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "address"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/wallet/blocked-address-refund",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "address": {
+      "description": "Адрес назначения возврата.",
+      "type": "string"
+     },
+     "memo": {
+      "description": "Тег/мемо назначения (XRP destination tag, XLM memo id, TON comment). Обязателен для классического адреса на tag/memo-сети, если тег не встроен в X-/M-адрес.",
+      "type": "string"
+     },
+     "uuid": {
+      "description": "Идентификатор статического кошелька (из ответа /v1/wallet).",
+      "type": "string"
+     }
+    },
+    "required": [
+     "uuid",
+     "address"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/wallet/qr",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "address": {
+      "description": "Произвольный адрес для рендера в QR-код (PNG как data:-URI).",
+      "type": "string"
+     }
+    },
+    "required": [
+     "address"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/webhooks",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "request_schema": {
+    "properties": {
+     "url": {
+      "description": "HTTPS-URL коллбэка. SSRF-проверка: приватные и локальные адреса запрещены.",
+      "example": "https://shop.example/oblodai/callback",
+      "type": "string"
+     }
+    },
+    "required": [
+     "url"
+    ],
+    "type": "object"
+   },
+   "response_schema": {
+    "properties": {
+     "endpoint_id": {
+      "description": "Идентификатор endpoint.",
+      "type": "string"
+     },
+     "secret": {
+      "description": "Секрет показывается ОДИН раз — сохраните его, чтобы проверять подпись коллбэков.",
+      "type": "string"
+     },
+     "url": {
+      "description": "Зарегистрированный URL коллбэка.",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/webhooks/deliveries",
+   "auth": "payment",
+   "idempotent": false,
+   "bare": false,
+   "list": "paged",
+   "request_schema": {
+    "properties": {
+     "limit": {
+      "description": "Размер страницы, 1–100; вне диапазона — 25.",
+      "example": 25,
+      "type": "integer"
+     },
+     "offset": {
+      "description": "Смещение от начала списка.",
+      "example": 0,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/webhooks/rotate-secret",
+   "auth": "payout",
+   "idempotent": false,
+   "bare": false,
+   "response_schema": {
+    "properties": {
+     "endpoint_id": {
+      "type": "string"
+     },
+     "previous_secret_valid_until": {
+      "description": "До этого момента доставки дополнительно подписываются старым секретом (X-Webhook-Signature-Prev).",
+      "type": "string"
+     },
+     "secret": {
+      "description": "Новый секрет подписи — показывается только здесь.",
+      "type": "string"
+     },
+     "url": {
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  }
+ ],
+ "enums": {
+  "batch_on_error": [
+   "continue",
+   "stop"
+  ],
+  "delivery_status": [
+   "pending",
+   "delivered",
+   "dead"
+  ],
+  "error_kind": [
+   "invalid",
+   "unauthorized",
+   "forbidden",
+   "not_found",
+   "conflict",
+   "rate_limited",
+   "unavailable",
+   "internal"
+  ],
+  "fee_bearer": [
+   "recipient",
+   "merchant"
+  ],
+  "fee_bearer_result": [
+   "recipient",
+   "merchant",
+   "gateway"
+  ],
+  "network": [
+   "ethereum",
+   "bsc",
+   "polygon",
+   "avalanche",
+   "base",
+   "arbitrum",
+   "tron",
+   "solana",
+   "ton",
+   "bitcoin",
+   "litecoin",
+   "dogecoin",
+   "bitcoincash",
+   "dash",
+   "xrp",
+   "stellar",
+   "monero"
+  ],
+  "payment_status": [
+   "select",
+   "created",
+   "confirm_check",
+   "paid",
+   "paid_over",
+   "wrong_amount",
+   "expired",
+   "cancelled"
+  ],
+  "payout_link_status": [
+   "funded",
+   "claiming",
+   "claimed",
+   "expired",
+   "cancelled"
+  ],
+  "payout_status": [
+   "pending",
+   "approved",
+   "awaiting_cosign",
+   "broadcasting",
+   "sent",
+   "confirmed",
+   "failed",
+   "cancelled"
+  ],
+  "webhook_kind": [
+   "payment",
+   "payout",
+   "wallet"
+  ]
+ },
+ "error_codes": [
+  "accepted.no_network",
+  "accepted.unknown_method",
+  "accounting.unavailable",
+  "accuracy.out_of_range",
+  "admin.bad_request",
+  "admin.disabled",
+  "admin.unauthorized",
+  "analytics.bad_time",
+  "apiallow.bad_cidr",
+  "apiallow.empty",
+  "apiallow.last_entry",
+  "apiallow.platform_unidentifiable",
+  "apiallow.too_many",
+  "auth.bad_timestamp",
+  "auth.body_too_large",
+  "auth.ip_not_allowed",
+  "autopilot.bad_energy",
+  "autopilot.bad_usd",
+  "autopilot.energy_no_free_trx",
+  "autopilot.energy_too_large",
+  "autopilot.gas_deep_deficit",
+  "autopilot.gas_target_below_min",
+  "autopilot.usd_too_large",
+  "autowithdraw.bad_min",
+  "autowithdraw.missing",
+  "batch.bad_id",
+  "batch.bad_recipient",
+  "batch.disabled",
+  "batch.duplicate_order_id",
+  "batch.duplicate_reference",
+  "batch.empty",
+  "batch.invoice_required",
+  "batch.not_found",
+  "batch.order_id_required",
+  "batch.reference_required",
+  "batch.too_large",
+  "batch.unsupported_kind",
+  "blocklist.invalid_address",
+  "blocklist.missing_fields",
+  "blocklist.unknown_network",
+  "cheque.token_required",
+  "commission.bad_merchant",
+  "commission.fixed_out_of_range",
+  "commission.out_of_range",
+  "compliance.blocked",
+  "compliance.blocked_address",
+  "compliance.blocklist_unavailable",
+  "compliance.no_destination",
+  "compliance.no_network",
+  "confirmations.bad_tier",
+  "confirmations.no_network",
+  "confirmations.tier_too_large",
+  "db.unavailable",
+  "deposit.generation_stale",
+  "discount.out_of_range",
+  "document.bad_format",
+  "document.bad_id",
+  "document.bad_job_id",
+  "document.bad_kind",
+  "document.bad_signature",
+  "document.balance_unavailable",
+  "document.batch_unavailable",
+  "document.daily_quota",
+  "document.disabled",
+  "document.encode_failed",
+  "document.fees_unavailable",
+  "document.job_expired",
+  "document.job_failed",
+  "document.job_not_found",
+  "document.job_not_ready",
+  "document.jobs_disabled",
+  "document.ledger_unavailable",
+  "document.link_expired",
+  "document.no_split",
+  "document.not_found",
+  "document.render_failed",
+  "document.render_rejected",
+  "document.render_unavailable",
+  "document.too_many_jobs",
+  "document.unknown_kind",
+  "document.unknown_lang",
+  "document.wallet_abandoned",
+  "document.wallet_blocked",
+  "email.bad_recipient",
+  "email.disabled",
+  "email.no_recipient",
+  "email.rate_limited",
+  "history.bad_merchant_id",
+  "idempotency.bad_key",
+  "idempotency.in_progress",
+  "idempotency.key_reused",
+  "idempotency.unavailable",
+  "internal",
+  "invoice.address_failed",
+  "invoice.already_paid",
+  "invoice.bad_deposit",
+  "invoice.bad_id",
+  "invoice.bad_price",
+  "invoice.bad_reversal_amount",
+  "invoice.deposit_asset_mismatch",
+  "invoice.deposit_exists",
+  "invoice.deposit_pending",
+  "invoice.expired",
+  "invoice.fiat_pay_asset",
+  "invoice.generation_stale",
+  "invoice.no_pay_asset",
+  "invoice.no_user",
+  "invoice.not_payable",
+  "invoice.not_selectable",
+  "invoice.nothing_due",
+  "invoice.partially_paid",
+  "invoice.pay_asset_not_selected",
+  "invoice.quote_failed",
+  "invoice.refresh_lease",
+  "invoice.refresh_not_expired",
+  "invoice.refresh_paid",
+  "invoice.refresh_select",
+  "killswitch.reason_required",
+  "killswitch.unavailable",
+  "ledger.asset_mismatch",
+  "ledger.idempotency_conflict",
+  "ledger.sandbox_live_mix",
+  "ledger.unavailable",
+  "merchant.already_sandbox",
+  "merchant.bad_fee_bearer",
+  "merchant.bad_id",
+  "merchant.bad_key_kind",
+  "merchant.bad_project_id",
+  "merchant.bad_settles_to",
+  "merchant.bad_signature",
+  "merchant.bad_subtract",
+  "merchant.close_unavailable",
+  "merchant.email_required",
+  "merchant.key_mode_mismatch",
+  "merchant.no_owner",
+  "merchant.no_personal_wallet",
+  "merchant.not_found",
+  "merchant.project_mismatch",
+  "merchant.secret_decrypt",
+  "merchant.unknown_key",
+  "merchant.wrong_key_kind",
+  "minimum.negative",
+  "minimum.no_network",
+  "onramp.admit",
+  "onramp.advance",
+  "onramp.already_delivered",
+  "onramp.bad_invoice",
+  "onramp.bad_status",
+  "onramp.captured",
+  "onramp.expire",
+  "onramp.fail_captured",
+  "onramp.for_invoice",
+  "onramp.force_completed",
+  "onramp.invoice_not_found",
+  "onramp.invoice_not_payable",
+  "onramp.money_already_landed",
+  "onramp.no_evidence",
+  "onramp.no_refund_evidence",
+  "onramp.not_captured",
+  "onramp.not_found",
+  "onramp.open",
+  "onramp.open_conflict",
+  "onramp.overdue",
+  "onramp.owner_required",
+  "onramp.refund_evidence",
+  "onramp.release",
+  "onramp.suppressed_in",
+  "onramp.suppresses",
+  "onramp.target_required",
+  "onramp.terminal",
+  "onramp.token",
+  "pay.bad_uuid",
+  "pay.below_minimum",
+  "pay.method_not_accepted",
+  "pay.minimum_unavailable",
+  "pay.not_selectable",
+  "paylink.above_max",
+  "paylink.amount_required",
+  "paylink.bad_amount",
+  "paylink.bad_bounds",
+  "paylink.bad_id",
+  "paylink.bad_max",
+  "paylink.bad_min",
+  "paylink.bad_mode",
+  "paylink.bad_range",
+  "paylink.below_min",
+  "paylink.disabled",
+  "paylink.expires_in_negative",
+  "paylink.expires_in_too_large",
+  "paylink.not_found",
+  "paylink.not_positive",
+  "paylink.order_id_invalid",
+  "paylink.order_id_too_long",
+  "paylink.rate_limited",
+  "paylink.unavailable",
+  "payment.bad_accuracy",
+  "payment.bad_amount",
+  "payment.bad_payer_email",
+  "payment.bad_redirect_url",
+  "payment.bad_status",
+  "payment.bad_subtract",
+  "payment.bad_url_callback",
+  "payment.bad_uuid",
+  "payment.below_minimum",
+  "payment.discount_unavailable",
+  "payment.minimum_unavailable",
+  "payment.network_required",
+  "payment.no_lookup",
+  "payment.not_found",
+  "payment.subtract_impossible",
+  "payment.to_currency_required",
+  "payment.unknown_to_currency",
+  "payment.unsupported_network",
+  "payout.address_network_mismatch",
+  "payout.amount_below_fee",
+  "payout.approver_is_creator",
+  "payout.asset_mismatch",
+  "payout.bad_address",
+  "payout.bad_amount",
+  "payout.bad_kind",
+  "payout.bad_memo",
+  "payout.bad_owner_kind",
+  "payout.bad_state",
+  "payout.bad_status",
+  "payout.bad_url_callback",
+  "payout.bad_user",
+  "payout.bad_uuid",
+  "payout.batch_too_large",
+  "payout.broadcast_in_flight",
+  "payout.convert_bad_amount",
+  "payout.convert_frozen",
+  "payout.convert_insufficient",
+  "payout.convert_no_rate",
+  "payout.convert_same_asset",
+  "payout.convert_unsupported",
+  "payout.destination_internal",
+  "payout.empty_batch",
+  "payout.fee_asset_mismatch",
+  "payout.freeze_unknown",
+  "payout.from_currency_unsupported",
+  "payout.frozen",
+  "payout.funds_maturing",
+  "payout.insufficient_funds",
+  "payout.memo_conflict",
+  "payout.memo_required",
+  "payout.memo_too_long",
+  "payout.no_destination",
+  "payout.no_lookup",
+  "payout.no_owner",
+  "payout.no_sender",
+  "payout.no_txid",
+  "payout.no_user",
+  "payout.not_broadcasting",
+  "payout.not_found",
+  "payout.not_pending",
+  "payout.not_sent",
+  "payout.order_id_required",
+  "payout.reference_collision",
+  "payout.release_reason_required",
+  "payout.reserved_reference",
+  "payout.test_merchant",
+  "payout_link.disabled",
+  "payoutctl.bad_body",
+  "payoutctl.bad_cap",
+  "payoutctl.bad_source",
+  "payoutctl.unavailable",
+  "payoutlink.already_claimed",
+  "payoutlink.bad_amount",
+  "payoutlink.bad_fee_bearer",
+  "payoutlink.bad_id",
+  "payoutlink.bad_passcode",
+  "payoutlink.bad_state",
+  "payoutlink.batch_too_large",
+  "payoutlink.cancelled",
+  "payoutlink.claim_in_progress",
+  "payoutlink.destination_internal",
+  "payoutlink.disabled",
+  "payoutlink.duplicate_reference",
+  "payoutlink.empty_batch",
+  "payoutlink.expired",
+  "payoutlink.funds_maturing",
+  "payoutlink.idempotency_required",
+  "payoutlink.insufficient_funds",
+  "payoutlink.no_address",
+  "payoutlink.not_found",
+  "payoutlink.not_funded",
+  "payoutlink.passcode",
+  "payoutlink.passcode_locked",
+  "payoutlink.passcode_required",
+  "payoutlink.passcode_wrong",
+  "payoutlink.reference_required",
+  "payoutlink.token",
+  "payoutlink.unavailable",
+  "payoutlink.unsupported_network",
+  "personal.amount_invalid",
+  "personal.amount_too_small",
+  "personal.asset_mismatch",
+  "personal.bad_amount",
+  "personal.bad_deposit_id",
+  "personal.bad_fund_id",
+  "personal.bad_hold_amount",
+  "personal.bad_hold_id",
+  "personal.bad_source",
+  "personal.bad_source_id",
+  "personal.bad_stake_amount",
+  "personal.conversions_frozen",
+  "personal.convert_unsupported",
+  "personal.funds_maturing",
+  "personal.hold_claimed",
+  "personal.hold_idem_reuse",
+  "personal.hold_kind",
+  "personal.hold_no_recipient",
+  "personal.hold_not_found",
+  "personal.hold_settled",
+  "personal.idempotency_conflict",
+  "personal.insufficient",
+  "personal.interest_excessive",
+  "personal.no_idem",
+  "personal.no_recipient",
+  "personal.no_user",
+  "personal.recipient_not_found",
+  "personal.self_transfer",
+  "personal.stake_not_found",
+  "postgres.lock_pool_busy",
+  "qr.no_address",
+  "quarantine.bad_amount",
+  "quarantine.credit_reversed",
+  "quarantine.not_open",
+  "quarantine.test_merchant",
+  "quarantine.unknown_asset",
+  "quarantine.unknown_merchant",
+  "rate.unavailable",
+  "rates.deviation",
+  "rates.fiat_pay_asset",
+  "rates.no_pay_asset",
+  "rates.no_source",
+  "rates.non_positive",
+  "rates.stale_rate",
+  "rates.unavailable",
+  "referral.disabled",
+  "referral.no_code",
+  "referral.no_tiers",
+  "referral.out_of_range",
+  "refund.bad_amount",
+  "refund.chain_ambiguous",
+  "refund.destination_internal",
+  "refund.dust",
+  "refund.exceeds_excess",
+  "refund.exceeds_refundable",
+  "refund.fence_check",
+  "refund.no_address",
+  "refund.nothing_to_refund",
+  "refund.paid_internally",
+  "refund.reference_collision",
+  "refund.too_many_attempts",
+  "report.too_large",
+  "request.bad_id",
+  "request.bad_json",
+  "request.body_read",
+  "request.conflicting_field",
+  "request.control_char",
+  "request.duplicate_field",
+  "request.method_not_allowed",
+  "request.missing_field",
+  "request.not_found",
+  "request.nul_byte",
+  "request.rate_limited",
+  "request.reference_invalid",
+  "request.reference_too_long",
+  "request.too_deep",
+  "request.unknown_currency",
+  "request.unreadable",
+  "resolution.already_refunded",
+  "resolution.already_resolved",
+  "resolution.bad_action",
+  "resolution.chain_ambiguous",
+  "resolution.disabled",
+  "resolution.not_underpaid",
+  "routing.awaiting_settle",
+  "routing.onramp_check_failed",
+  "routing.refund_in_flight",
+  "routing.refund_payer_unresolved",
+  "routing.share_payout_check_failed",
+  "routing.share_reattempts_exhausted",
+  "routing.underpay_unresolved",
+  "sandbox.amount_too_large",
+  "sandbox.bad_amount",
+  "sandbox.bad_asset",
+  "sandbox.bad_delivery",
+  "sandbox.bad_invoice",
+  "sandbox.convert_not_available",
+  "sandbox.delivery_not_found",
+  "sandbox.invoice_not_found",
+  "sandbox.live_key",
+  "sandbox.transfer_not_available",
+  "split.bad_destination",
+  "split.bad_hold",
+  "split.bad_id",
+  "split.bad_merchant",
+  "split.bad_percent",
+  "split.bad_reversal_claim",
+  "split.consent_check_failed",
+  "split.dest_check_failed",
+  "split.dest_not_found",
+  "split.disabled",
+  "split.duplicate_destination",
+  "split.network_required",
+  "split.not_found",
+  "split.recipient_not_opted_in",
+  "split.self_destination",
+  "statement.bad_from",
+  "statement.bad_range",
+  "statement.bad_to",
+  "statement.range_too_long",
+  "statement.unavailable",
+  "transfer.bad_amount",
+  "transfer.bad_recipient",
+  "transfer.no_recipient",
+  "transfer.recipient_not_found",
+  "treasury.already_usdt",
+  "treasury.bad_amount",
+  "treasury.bad_received",
+  "treasury.conversion_parked",
+  "treasury.convert_in_flight",
+  "treasury.empty_fill",
+  "treasury.exceeds_cold",
+  "treasury.exceeds_free",
+  "treasury.exchange_unconfigured",
+  "treasury.freeze_unknown",
+  "treasury.frozen",
+  "treasury.inflight_unparsable",
+  "treasury.no_address",
+  "treasury.no_ccy_map",
+  "treasury.no_free_balance",
+  "treasury.no_price",
+  "treasury.no_ref",
+  "treasury.no_target_hot",
+  "treasury.not_configured",
+  "treasury.payouts_frozen",
+  "treasury.ref_destination_mismatch",
+  "treasury.ref_required",
+  "treasury.ref_reused",
+  "treasury.same_asset",
+  "treasury.send_in_flight",
+  "treasury.unknown_asset",
+  "treasury.vrcs_book_missing",
+  "tron.bad_resource",
+  "tron.not_configured",
+  "tron.ref_required",
+  "usd.parse",
+  "vrcs.read",
+  "wallet.abandoned",
+  "wallet.bad_before",
+  "wallet.bad_uuid",
+  "wallet.deposits_unavailable",
+  "wallet.no_address",
+  "wallet.no_network",
+  "wallet.sandbox_unsupported",
+  "wallet.static_disabled",
+  "wallet.unsupported_network",
+  "webhook.bad_currency",
+  "webhook.bad_status",
+  "webhook.bad_url",
+  "webhook.bad_uuid",
+  "webhook.no_endpoint",
+  "webhook.no_url",
+  "webhook.rotation_in_overlap",
+  "webhook.test_failed"
+ ],
+ "event_types": [
+  "invoice.select",
+  "invoice.created",
+  "invoice.confirm_check",
+  "invoice.paid",
+  "invoice.paid_over",
+  "invoice.wrong_amount",
+  "invoice.expired",
+  "invoice.cancelled",
+  "payout.pending",
+  "payout.approved",
+  "payout.awaiting_cosign",
+  "payout.broadcasting",
+  "payout.sent",
+  "payout.confirmed",
+  "payout.failed",
+  "payout.cancelled",
+  "wallet.paid"
+ ],
+ "signing_vectors": [
+  {
+   "name": "post without idempotency key",
+   "secret": "merchant-secret",
+   "ts": 1755600000,
+   "method": "POST",
+   "request_uri": "/v1/payment",
+   "idempotency_key": "",
+   "body": "{\"amount\":\"25\",\"currency\":\"USDT\"}",
+   "canonical": "1755600000\nPOST\n/v1/payment\n\n{\"amount\":\"25\",\"currency\":\"USDT\"}",
+   "signature": "07f2f175c078cc187b53fc243ea658aa90e7ac354e2fafd0bc0adbf55fe24932"
+  },
+  {
+   "name": "post with idempotency key",
+   "secret": "merchant-secret",
+   "ts": 1755600000,
+   "method": "POST",
+   "request_uri": "/v1/payment",
+   "idempotency_key": "retry-abc-1",
+   "body": "{\"amount\":\"25\",\"currency\":\"USDT\"}",
+   "canonical": "1755600000\nPOST\n/v1/payment\nretry-abc-1\n{\"amount\":\"25\",\"currency\":\"USDT\"}",
+   "signature": "02b221424b3cac46f3c39656759d03314de5b13cacce55a06153a351b1fd56eb"
+  },
+  {
+   "name": "get with query is signed over path+query",
+   "secret": "merchant-secret",
+   "ts": 1755600000,
+   "method": "GET",
+   "request_uri": "/v1/sandbox/webhooks?limit=10&offset=0",
+   "idempotency_key": "",
+   "body": "",
+   "canonical": "1755600000\nGET\n/v1/sandbox/webhooks?limit=10&offset=0\n\n",
+   "signature": "bee977374d8e2513f05718bf5b52fc140498b289f5a48eb9b0bcf670c9e82e95"
+  },
+  {
+   "name": "empty json object body",
+   "secret": "merchant-secret",
+   "ts": 1755600000,
+   "method": "POST",
+   "request_uri": "/v1/balance",
+   "idempotency_key": "",
+   "body": "{}",
+   "canonical": "1755600000\nPOST\n/v1/balance\n\n{}",
+   "signature": "eaa91d0ca0ec6ce874e8078178717b3bf7e98de30a56de141d9ceedf96728b26"
+  },
+  {
+   "name": "unicode body bytes",
+   "secret": "merchant-secret",
+   "ts": 1755600000,
+   "method": "POST",
+   "request_uri": "/v1/payment",
+   "idempotency_key": "",
+   "body": "{\"additional_data\":\"тест → ünïcode\"}",
+   "canonical": "1755600000\nPOST\n/v1/payment\n\n{\"additional_data\":\"тест → ünïcode\"}",
+   "signature": "d9ee3affa26b781813aad945a4c1e5b344984e72f81463b173282cac6c9d7dd3"
+  }
+ ],
+ "webhook_vectors": [
+  {
+   "secret": "whsec-test",
+   "ts": 1755600000,
+   "payload": "{\"type\":\"payment\",\"status\":\"paid\"}",
+   "signature": "1a2b1d71cb28c10dcb22a1f744d87961359d228677f920edca5e43fcf6882f95"
+  },
+  {
+   "secret": "whsec-test",
+   "ts": 1755600000,
+   "payload": "{}",
+   "signature": "5dc9efc9d812d344a9a590b3b65c63ad07a6316d07e574edfc190dbcbdf895d3"
+  },
+  {
+   "secret": "whsec-test",
+   "ts": 1755600000,
+   "payload": "{\"memo\":\"тест\"}",
+   "signature": "c07c350659535ce5d665352addb637202d7212b5cbc964938c3eedee08132561"
+  }
+ ]
+}

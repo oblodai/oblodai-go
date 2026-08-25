@@ -1,0 +1,27 @@
+{
+ "route": "POST /v1/payment/batch",
+ "status": 200,
+ "request": {
+  "on_error": "continue",
+  "payments": [
+   {
+    "amount": "3",
+    "currency": "USDT",
+    "network": "tron",
+    "order_id": "sdk-batch-inv-1"
+   }
+  ]
+ },
+ "response": {
+  "result": {
+   "batch_id": "c4878468-8ccb-483a-a8b2-635e02cd1684",
+   "count": 1,
+   "kind": "payment",
+   "status": "pending"
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

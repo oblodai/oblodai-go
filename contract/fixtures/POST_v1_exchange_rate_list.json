@@ -1,0 +1,29 @@
+{
+ "route": "POST /v1/exchange-rate/list",
+ "status": 200,
+ "request": {
+  "currency_from": "BTC",
+  "limit": 5
+ },
+ "response": {
+  "result": {
+   "items": [
+    {
+     "from": "BTC",
+     "to": "USDT",
+     "course": "60000.000000"
+    }
+   ],
+   "paginate": {
+    "has_pages": false,
+    "offset": 0,
+    "per_page": 5,
+    "total": 1
+   }
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}

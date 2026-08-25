@@ -1,0 +1,15 @@
+{
+ "route": "POST /v1/sandbox/reset",
+ "status": 200,
+ "request": {},
+ "response": {
+  "result": {
+   "balances_zeroed": 1,
+   "invoices_cancelled": 3
+  },
+  "state": 0
+ },
+ "headers": {
+  "Content-Type": "application/json"
+ }
+}
