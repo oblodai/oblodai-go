@@ -51,16 +51,16 @@ type ClaimPreview struct {
 // ClaimResult is POST /v1/claim/{token} — the payout minted by a claim.
 type ClaimResult struct {
 	// PayoutID is the payout that pays the recipient; pass it to Payouts.Info.
-	PayoutID    string       `json:"payout_id"`
-	Status      PayoutStatus `json:"status"`
-	Address     string       `json:"address"`
-	Amount      Money        `json:"amount"`
-	Currency    string       `json:"currency"`
-	Network     Network      `json:"network"`
-	Commission  *Money       `json:"commission"`
-	PayerAmount *Money       `json:"payer_amount"`
-	FeeBearer   FeeBearer    `json:"fee_bearer"`
-	FeeType     string       `json:"fee_type"`
+	PayoutID    string           `json:"payout_id"`
+	Status      PayoutLinkStatus `json:"status"`
+	Address     string           `json:"address"`
+	Amount      Money            `json:"amount"`
+	Currency    string           `json:"currency"`
+	Network     Network          `json:"network"`
+	Commission  *Money           `json:"commission"`
+	PayerAmount *Money           `json:"payer_amount"`
+	FeeBearer   FeeBearer        `json:"fee_bearer"`
+	FeeType     string           `json:"fee_type"`
 }
 
 // PaymentLinkPayment is one invoice spawned by a payment link.
