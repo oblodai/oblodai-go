@@ -72,20 +72,24 @@ func (k APIKeyPair) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-// String renders the payout link with its claim token and passcode hidden — both are bearer
-// secrets: whoever reads one can claim the money.
+// String renders the payout link with its claim token, claim URL and passcode hidden — all three
+// are bearer secrets: whoever reads one can claim the money.
 func (l PayoutLink) String() string { return debugString("PayoutLink", l) }
 
 // GoString renders the payout link with its bearer secrets hidden (%#v).
 func (l PayoutLink) GoString() string { return l.String() }
 
-// MarshalJSON serializes the payout link with ClaimToken and Passcode replaced by [redacted].
-// ClaimURL keeps the token, so treat it as a secret too: send it to the recipient, do not log it.
+// MarshalJSON serializes the payout link with ClaimToken, ClaimURL and Passcode replaced by
+// [redacted]. ClaimURL is the claim page built around the token and carries it verbatim, so it is
+// hidden with it: read the field to send it to the recipient, do not log the struct.
 func (l PayoutLink) MarshalJSON() ([]byte, error) {
 	type plain PayoutLink
 	out := plain(l)
 	if out.ClaimToken != "" {
 		out.ClaimToken = redactedPlaceholder
+	}
+	if out.ClaimURL != "" {
+		out.ClaimURL = redactedPlaceholder
 	}
 	if out.Passcode != "" {
 		out.Passcode = redactedPlaceholder

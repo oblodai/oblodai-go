@@ -92,9 +92,10 @@ Verify over the raw request bytes, deduplicate on `delivery.ID`, and drop out-of
   classification; the SDK no longer infers it from the path, and `go run ./internal/codegen -check`
   fails on a contract snapshot that does not declare it.
 - **Secrets do not print.** `WebhookEndpoint.Secret`, `WebhookSecretRotated.Secret`,
-  `APIKeyPair.Secret`, `PayoutLink.ClaimToken` and `PayoutLink.Passcode` read normally as fields but
-  render as `[redacted]` in `fmt` and in `json.Marshal`. If you persisted one of these models by
-  serializing the struct, read the field instead. Log fields are redacted inside the client, before
+  `APIKeyPair.Secret`, `PayoutLink.ClaimToken`, `PayoutLink.ClaimURL` (it embeds the token) and
+  `PayoutLink.Passcode` read normally as fields but render as `[redacted]` in `fmt` and in
+  `json.Marshal`. If you persisted one of these models by serializing the struct, read the field
+  instead. Log fields are redacted inside the client, before
   they reach a logger installed with `WithLogger`.
 - **`NewIdempotencyKey` returns `(string, error)`** instead of panicking when the platform CSPRNG is
   unavailable.

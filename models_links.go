@@ -20,7 +20,8 @@ type PayoutLink struct {
 	ExpiresAt         Timestamp `json:"expires_at"`
 	CreatedAt         Timestamp `json:"created_at"`
 	// ClaimToken is the secret the recipient claims with; it comes back on create and batch-create
-	// only, and ClaimURL is the page built around it.
+	// only, and ClaimURL is the page built around it — the URL embeds the token, so both render as
+	// [redacted] in fmt and in json.Marshal.
 	ClaimToken string `json:"claim_token,omitempty"`
 	ClaimURL   string `json:"claim_url,omitempty"`
 	BatchID    string `json:"batch_id,omitempty"`

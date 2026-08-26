@@ -42,8 +42,9 @@ A rewrite generated from the gateway's own contract snapshot. See MIGRATION-1.3.
   statement that a route is read-only. The SDK no longer infers it from the path, and codegen fails
   if a contract snapshot does not declare it.
 - Secrets are redacted in both paths a Go program prints through: `WebhookEndpoint.Secret`,
-  `WebhookSecretRotated.Secret`, `APIKeyPair.Secret`, `PayoutLink.ClaimToken` and
-  `PayoutLink.Passcode` render as `[redacted]` in `fmt` (`%v`, `%+v`, `%#v`) and in
+  `WebhookSecretRotated.Secret`, `APIKeyPair.Secret`, `PayoutLink.ClaimToken`,
+  `PayoutLink.ClaimURL` (it embeds the token) and `PayoutLink.Passcode` render as `[redacted]` in
+  `fmt` (`%v`, `%+v`, `%#v`) and in
   `json.Marshal`; the fields themselves keep the real value. A `Client` never prints its keys.
 - Log field redaction happens in the client, before the value reaches any logger — including one
   installed with `WithLogger`.

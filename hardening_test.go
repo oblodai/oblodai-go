@@ -242,10 +242,18 @@ func TestSecretsAreRedactedWhenPrintedAndSerialized(t *testing.T) {
 	endpoint := WebhookEndpoint{EndpointID: "e1", URL: "https://shop.example", Secret: "whsec_live"}
 	rotated := WebhookSecretRotated{EndpointID: "e1", Secret: "whsec_new"}
 	keys := APIKeyPair{PublicID: "pk_live_1", Secret: "sk_live_1"}
-	link := PayoutLink{LinkID: "l1", ClaimToken: "cl4im-tok3n", Passcode: "1234"}
+	link := PayoutLink{
+		LinkID:     "l1",
+		ClaimToken: "cl4im-tok3n",
+		ClaimURL:   "https://pay.test/claim/cl4im-tok3n",
+		Passcode:   "1234",
+	}
 
 	if endpoint.Secret != "whsec_live" || keys.Secret != "sk_live_1" || link.Passcode != "1234" {
 		t.Fatal("the fields themselves must keep the real value")
+	}
+	if link.ClaimURL != "https://pay.test/claim/cl4im-tok3n" {
+		t.Fatal("the claim URL must stay readable as a field")
 	}
 	for _, rendered := range []string{
 		fmt.Sprintf("%v", endpoint), fmt.Sprintf("%+v", endpoint), fmt.Sprintf("%#v", endpoint),
@@ -253,13 +261,38 @@ func TestSecretsAreRedactedWhenPrintedAndSerialized(t *testing.T) {
 		mustJSON(t, endpoint), mustJSON(t, rotated), mustJSON(t, keys), mustJSON(t, link),
 		mustJSON(t, MerchantOnboarded{APIKey: keys, PaymentKey: keys, PayoutKey: keys}),
 	} {
-		for _, secret := range []string{"whsec_live", "whsec_new", "sk_live_1", "cl4im-tok3n", `"1234"`} {
+		for _, secret := range []string{"whsec_live", "whsec_new", "sk_live_1", "cl4im-tok3n", "pay.test/claim", `"1234"`} {
 			if strings.Contains(rendered, secret) {
 				t.Errorf("a secret leaked into %s", rendered)
 			}
 		}
 		if !strings.Contains(rendered, redactedPlaceholder) {
 			t.Errorf("nothing was redacted in %s", rendered)
+		}
+	}
+}
+
+// A claim URL embeds the claim token, so it is a bearer secret wherever it travels — including
+// inside a batch element, which is how a bulk mint hands links back.
+func TestAClaimURLIsRedactedInsideABatchElement(t *testing.T) {
+	link := PayoutLink{LinkID: "l1", ClaimToken: "cl4im-tok3n", ClaimURL: "https://pay.test/claim/cl4im-tok3n"}
+	element := BatchElement[PayoutLink]{Idx: 0, OK: true, OrderID: "order-1", Result: &link}
+
+	if element.Result.ClaimURL != "https://pay.test/claim/cl4im-tok3n" {
+		t.Fatal("the element's own field must keep the real value")
+	}
+	for _, rendered := range []string{
+		fmt.Sprintf("%v", element), fmt.Sprintf("%+v", element), mustJSON(t, element),
+		mustJSON(t, []BatchElement[PayoutLink]{element}),
+	} {
+		if strings.Contains(rendered, "cl4im-tok3n") || strings.Contains(rendered, "pay.test/claim") {
+			t.Errorf("a claim URL leaked into %s", rendered)
+		}
+		if !strings.Contains(rendered, redactedPlaceholder) {
+			t.Errorf("nothing was redacted in %s", rendered)
+		}
+		if !strings.Contains(rendered, "order-1") {
+			t.Errorf("the safe half of the element is gone from %s", rendered)
 		}
 	}
 }
