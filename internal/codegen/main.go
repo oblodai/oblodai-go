@@ -29,10 +29,13 @@ import (
 
 // Route is one row of the core's conformance table.
 type Route struct {
-	Method          string          `json:"method"`
-	Path            string          `json:"path"`
-	Auth            string          `json:"auth"`
-	Idempotent      bool            `json:"idempotent"`
+	Method     string `json:"method"`
+	Path       string `json:"path"`
+	Auth       string `json:"auth"`
+	Idempotent bool   `json:"idempotent"`
+	// Safe is the core's own read-only classification: a pointer so a contract that predates the
+	// field fails codegen instead of silently generating "not safe to repeat" for every route.
+	Safe            *bool           `json:"safe"`
 	Bare            bool            `json:"bare"`
 	List            string          `json:"list"`
 	RequestSchema   *Schema         `json:"request_schema"`
@@ -70,19 +73,6 @@ type Descriptions struct {
 
 // Routes outside the merchant surface: health probes, docs, internal endpoints.
 var skipPath = regexp.MustCompile(`^/(healthz|readyz|docs|openapi\.json|internal)`)
-
-// Read-only routes: a transport failure may be retried without risking a duplicate side effect.
-var safeSuffix = regexp.MustCompile(`/(info|history|list|calculate|validate|services|get|balance|qr|deliveries)$`)
-
-// Paths that look read-only but whose body can mutate state.
-var notSafe = map[string]bool{"POST /v1/vrcs": true}
-
-func isSafe(r *Route) bool {
-	if notSafe[r.key] {
-		return false
-	}
-	return r.Method == "GET" || safeSuffix.MatchString(r.Path)
-}
 
 func main() {
 	check := flag.Bool("check", false, "fail when the committed generated files are out of date")
@@ -146,6 +136,12 @@ func prepare(all []*Route) []*Route {
 			continue
 		}
 		r.key = r.Method + " " + r.Path
+		if r.Safe == nil {
+			// Retry safety is never inferred here. The core hand-classifies every route; a snapshot
+			// without the flag would make this SDK guess which writes are safe to re-send.
+			fmt.Fprintf(os.Stderr, "codegen: route %s has no \"safe\" field — re-export contract/contract.json from a core that declares it\n", r.key)
+			os.Exit(1)
+		}
 		r.baseName = routeBaseName(r.Path)
 		out = append(out, r)
 	}
@@ -187,7 +183,7 @@ func emitRoutes(routes []*Route, coreCommit string) []byte {
 			list = "ListPlain"
 		}
 		fmt.Fprintf(&b, "\t%q: {Method: %q, Path: %q, Auth: Auth%s, Idempotent: %t, Safe: %t, Bare: %t, List: %s},\n",
-			r.key, r.Method, r.Path, goName(r.Auth), r.Idempotent, isSafe(r), r.Bare, list)
+			r.key, r.Method, r.Path, goName(r.Auth), r.Idempotent, *r.Safe, r.Bare, list)
 	}
 	b.WriteString("}\n\n")
 	b.WriteString("// RouteKeys lists every key of Routes in a stable order.\nvar RouteKeys = []string{\n")

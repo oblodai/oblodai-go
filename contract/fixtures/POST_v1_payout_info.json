@@ -2,7 +2,7 @@
  "route": "POST /v1/payout/info",
  "status": 200,
  "request": {
-  "uuid": "db9a5d57-c7ac-4a56-9e57-150cb7dcf39d"
+  "uuid": "c2d3edc3-9036-4ccb-be87-c73e5f3e7634"
  },
  "response": {
   "result": {
@@ -10,9 +10,9 @@
    "amount": "10.000000",
    "approval_required": false,
    "commission": "0.000000",
-   "created_at": "2026-08-26T00:50:16Z",
+   "created_at": "2026-08-26T10:50:05Z",
    "currency": "USDT",
-   "document_url": "http://127.0.0.1:39227/v1/documents/payout/db9a5d57-c7ac-4a56-9e57-150cb7dcf39d?exp=1787709016\u0026sig=7c013992f0ee7648db109ba83090720ab28c3304d51072e285c4c0152d6e54c0",
+   "document_url": "http://127.0.0.1:45579/v1/documents/payout/c2d3edc3-9036-4ccb-be87-c73e5f3e7634?exp=1787745005\u0026sig=058cc9184b778d309085130a5229674d8f6a5b807d7a5465ce7b5b7557cfc2e8",
    "error": null,
    "error_code": null,
    "fee_bearer": "gateway",
@@ -26,9 +26,9 @@
    "refund_for": null,
    "source": "api",
    "status": "confirmed",
-   "txid": "sandboxtx_be9d1c1bced940907087c0390d4fe3c5",
-   "updated_at": "2026-08-26T00:50:16Z",
-   "uuid": "db9a5d57-c7ac-4a56-9e57-150cb7dcf39d"
+   "txid": "sandboxtx_96073fda31b8638f60c66fe229dc6bc8",
+   "updated_at": "2026-08-26T10:50:05Z",
+   "uuid": "c2d3edc3-9036-4ccb-be87-c73e5f3e7634"
   },
   "state": 0
  },

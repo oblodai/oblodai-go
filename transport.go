@@ -44,7 +44,20 @@ type callOptions struct {
 	preferPayoutKey bool
 	timeout         time.Duration
 	budget          time.Duration
+	headers         map[string]string
 }
+
+// Response size caps. A JSON answer is a document the core composed; a bare route streams a
+// generated PDF or CSV, which is legitimately larger. Past the cap the client reports a contract
+// error instead of buffering whatever a proxy decided to send.
+const (
+	maxJSONResponseBytes = 8 << 20
+	maxBareResponseBytes = 64 << 20
+)
+
+// skewCorrectionThreshold is how far the measured server offset must be from the one a request was
+// signed with before re-signing is worth an extra round trip (half the core's acceptance window).
+const skewCorrectionThreshold = (SignatureSkewSeconds / 2) * time.Second
 
 // rawResponse is one HTTP answer, fully read.
 type rawResponse struct {
@@ -143,7 +156,11 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 				r.Method, r.Path), "idempotencyKey")
 		}
 	} else if r.Idempotent {
-		idempotencyKey = NewIdempotencyKey()
+		generated, keyErr := newIdempotencyKey()
+		if keyErr != nil {
+			return nil, keyErr
+		}
+		idempotencyKey = generated
 	}
 	safeToRepeat := r.Safe || (r.Idempotent && idempotencyKey != "")
 
@@ -155,18 +172,35 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 	label := r.Method + " " + r.Path
 
 	extra := t.headers
-	if r.Auth == AuthOnboard && t.adminToken != "" {
+	if len(o.headers) > 0 {
 		extra = map[string]string{}
 		for k, v := range t.headers {
 			extra[k] = v
 		}
-		extra[HeaderAdminToken] = t.adminToken
+		// A per-call header wins over the same client-level one; both lose to the headers the
+		// client owns.
+		for k, v := range o.headers {
+			extra[k] = v
+		}
+	}
+	// The admin token gates merchant provisioning on a self-hosted gateway and goes nowhere else.
+	// It is not merged into the caller's headers: X-Admin-Token is a reserved name, so a caller
+	// cannot send one, and the client sends it on onboarding routes only.
+	adminToken := ""
+	if r.Auth == AuthOnboard {
+		adminToken = t.adminToken
+	}
+
+	limit := int64(maxJSONResponseBytes)
+	if r.Bare {
+		limit = maxBareResponseBytes
 	}
 
 	attempt := 0
 	skewTried := false
-	var skewBefore time.Duration
+	var skewBefore, skewInstalled time.Duration
 	for {
+		ts, signedOffset := t.clock.stamp()
 		req, err := buildRequest(buildInput{
 			baseURL:        t.baseURL,
 			route:          r,
@@ -175,16 +209,17 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 			body:           body,
 			creds:          t.credentialsFor(r, o.preferPayoutKey),
 			idempotencyKey: idempotencyKey,
-			ts:             t.clock.now(),
+			ts:             ts,
 			userAgent:      t.userAgent,
 			extraHeaders:   extra,
+			adminToken:     adminToken,
 		})
 		if err != nil {
 			return nil, err
 		}
 		t.logger.Debug("request", LogFields{"route": label, "attempt": attempt, "idempotencyKey": idempotencyKey})
 
-		raw, sendErr := t.send(ctx, req, o, deadline)
+		raw, sendErr := t.send(ctx, req, o, deadline, limit)
 		if sendErr != nil {
 			if shouldRetry(sendErr, attempt, safeToRepeat, t.retry) {
 				if pauseErr := t.pause(ctx, sendErr, attempt, deadline); pauseErr != nil {
@@ -206,19 +241,28 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 
 		// Clock skew: the core rejected the timestamp or the MAC. Learn its time from the Date
 		// header, re-sign once, and keep the offset only if that attempt got past authentication.
+		// The comparison is against the offset THIS request was signed with, not against whatever
+		// the shared clock holds now: another goroutine may have corrected it in between.
 		if raw.status == 401 && signatureFailureCodes[failure.Code] {
 			if !skewTried {
 				if offset, ok := t.clock.observeServerDate(raw.header.Get("Date")); ok &&
-					abs(offset-t.clock.currentOffset()) > (SignatureSkewSeconds/2)*time.Second {
+					abs(offset-signedOffset) > skewCorrectionThreshold {
+					if time.Now().After(deadline) {
+						return nil, newDeadlineError(
+							"the call budget ran out before the clock-corrected retry; last error: "+failure.Message, failure)
+					}
 					t.logger.Warn("clock skew detected; re-signing with server time",
 						LogFields{"route": label, "offsetSec": int(offset.Seconds())})
 					skewTried = true
-					skewBefore = t.clock.currentOffset()
+					skewBefore, skewInstalled = signedOffset, offset
 					t.clock.correct(offset)
 					continue
 				}
 			} else {
-				t.clock.correct(skewBefore) // the corrected timestamp did not help: it was not skew
+				// The corrected timestamp did not help: it was not skew. Put the old offset back,
+				// but only if this call's correction is still the one in force — a concurrent call
+				// that measured its own offset must keep it.
+				t.clock.revert(skewInstalled, skewBefore)
 			}
 		}
 		if shouldRetry(failure, attempt, safeToRepeat, t.retry) {
@@ -249,8 +293,7 @@ func (t *transport) classify(r Route, raw *rawResponse) *Error {
 func (t *transport) pause(ctx context.Context, err *Error, attempt int, deadline time.Time) *Error {
 	wait := retryDelay(err, attempt, t.retry, t.random)
 	if time.Now().Add(wait).After(deadline) {
-		return newTransportError(CodeTransportDeadline,
-			"a retry would exceed the call budget; last error: "+err.Message, err)
+		return newDeadlineError("a retry would exceed the call budget; last error: "+err.Message, err)
 	}
 	if wait <= 0 {
 		return nil
@@ -265,8 +308,9 @@ func (t *transport) pause(ctx context.Context, err *Error, attempt int, deadline
 	}
 }
 
-// send performs one HTTP attempt and reads the whole body.
-func (t *transport) send(ctx context.Context, req *builtRequest, o callOptions, deadline time.Time) (*rawResponse, *Error) {
+// send performs one HTTP attempt and reads the whole body, under one deadline: the per-attempt
+// timeout covers the response read, not only the first byte.
+func (t *transport) send(ctx context.Context, req *builtRequest, o callOptions, deadline time.Time, limit int64) (*rawResponse, *Error) {
 	timeout := t.timeout
 	if o.timeout > 0 {
 		timeout = o.timeout
@@ -297,9 +341,21 @@ func (t *transport) send(ctx context.Context, req *builtRequest, o callOptions, 
 		return nil, transportErrorFor(ctx, attemptCtx, timeout, err)
 	}
 	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
+	// A signed request must never be replayed against another origin. The client's own redirect
+	// policy refuses to follow one, but an injected http.Client may carry a transport that does:
+	// compare the URL the answer came from with the one that was signed.
+	if res.Request != nil && res.Request.URL != nil && res.Request.URL.String() != req.url {
+		return nil, apiErrorFrom(res.StatusCode, errorDetail{
+			Code:    "internal",
+			Message: fmt.Sprintf("unexpected redirect to %s; check the base URL", res.Request.URL.Redacted()),
+		}, nil, true, nil)
+	}
+	body, err := io.ReadAll(io.LimitReader(res.Body, limit+1))
 	if err != nil {
 		return nil, transportErrorFor(ctx, attemptCtx, timeout, err)
+	}
+	if int64(len(body)) > limit {
+		return nil, newResponseTooLargeError(res.StatusCode, limit)
 	}
 	return &rawResponse{status: res.StatusCode, header: res.Header, body: body, contentType: res.Header.Get("Content-Type")}, nil
 }

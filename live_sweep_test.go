@@ -459,16 +459,16 @@ func TestLiveSweep(t *testing.T) {
 		tolerate(t, "Wallets.Block", discard(client.Wallets.Block(ctx, WalletBlockParams{Address: liveAddress})))
 		// A well-formed but unknown uuid: the core must answer "not found", not "malformed".
 		tolerate(t, "Wallets.RefundBlockedDeposit", discard(client.Wallets.RefundBlockedDeposit(ctx,
-			WalletBlockedAddressRefundParams{UUID: NewIdempotencyKey(), Address: liveAddress})))
+			WalletBlockedAddressRefundParams{UUID: randomUUID(t), Address: liveAddress})))
 		tolerate(t, "Transfers.ToPersonal", discard(client.Transfers.ToPersonal(ctx, TransferToPersonalParams{
 			Amount: "1", Currency: "USDT",
 		})))
 		tolerate(t, "Transfers.ToUser", discard(client.Transfers.ToUser(ctx, TransferToUserParams{
-			ToUserID: NewIdempotencyKey(), Amount: "1", Currency: "USDT",
+			ToUserID: randomUUID(t), Amount: "1", Currency: "USDT",
 		})))
 		tolerate(t, "Transfers.Batch", discard(client.Transfers.Batch(ctx, TransferBatchParams{
 			Transfers: []TransferBatchParamsTransferItem{{
-				ToUserID: NewIdempotencyKey(), Amount: "1", Currency: "USDT", OrderID: stamp("sw-tb"),
+				ToUserID: randomUUID(t), Amount: "1", Currency: "USDT", OrderID: stamp("sw-tb"),
 			}},
 		})))
 	})
@@ -548,4 +548,15 @@ func contains(values []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// randomUUID is a well-formed uuid for a lookup that must answer "not found" rather than
+// "malformed". The generator is the idempotency-key one; only its shape matters here.
+func randomUUID(t *testing.T) string {
+	t.Helper()
+	key, err := NewIdempotencyKey()
+	if err != nil {
+		t.Fatalf("NewIdempotencyKey: %v", err)
+	}
+	return key
 }

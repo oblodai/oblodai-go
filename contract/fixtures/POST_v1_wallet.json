@@ -11,11 +11,11 @@
    "address": "T90ebc5efe274593567156a24dc8ef28914",
    "blocked": false,
    "currency": "USDT",
-   "document_url": "http://127.0.0.1:39227/v1/documents/wallet/ccedb97b-cdbe-4cc4-b0d3-2e5d45022393?exp=1787709016\u0026sig=22964bda9065b203ae1e112d5b191ed670c8f92d2cec0091f2ffcb351d8c2ac9",
+   "document_url": "http://127.0.0.1:45579/v1/documents/wallet/75bae56b-dad7-4db4-9e82-b52688b630c1?exp=1787745005\u0026sig=7b16b56907158c1298dc8c87517169f79953de29739394905932bbdaa2508b08",
    "network": "tron",
    "order_id": "sdk-w-1",
    "url": "",
-   "uuid": "ccedb97b-cdbe-4cc4-b0d3-2e5d45022393"
+   "uuid": "75bae56b-dad7-4db4-9e82-b52688b630c1"
   },
   "state": 0
  },

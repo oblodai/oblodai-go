@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -237,9 +238,6 @@ func TestVerifyRules(t *testing.T) {
 		if !webhooks.IsStale(event, 7) || webhooks.IsStale(event, 6) {
 			t.Fatal("sequence 7 is stale against 7 and fresh against 6")
 		}
-		if _, err := webhooks.Parse([]byte(`{"type":"alien","uuid":"x"}`)); !oblodai.IsSignature(err) {
-			t.Fatalf("an unknown event type must be refused: %v", err)
-		}
 		if _, err := webhooks.Parse([]byte(`{"uuid":"x"}`)); err == nil {
 			t.Fatal("a body without a type must be refused")
 		}
@@ -247,6 +245,116 @@ func TestVerifyRules(t *testing.T) {
 			t.Fatal("a non-JSON body must be refused")
 		}
 	})
+}
+
+// An event type this release does not know is a newer core, not an attack: it must reach the
+// receiver with its raw type, and it must not be mistaken for a known shape.
+func TestUnknownEventTypeIsReturnedNotRefused(t *testing.T) {
+	event, err := webhooks.Parse([]byte(`{"type":"alien","uuid":"x","sequence":9,"is_final":true,"test":true}`))
+	if err != nil {
+		t.Fatalf("an unknown event type must not be refused: %v", err)
+	}
+	unknown, ok := event.(*oblodai.UnknownEvent)
+	if !ok {
+		t.Fatalf("expected an *oblodai.UnknownEvent, got %T", event)
+	}
+	if string(unknown.Kind()) != "alien" || unknown.ID() != "x" || unknown.Seq() != 9 || !unknown.Final() {
+		t.Fatalf("the raw event was not preserved: %+v", unknown)
+	}
+	if webhooks.IsKnownEvent(event) {
+		t.Fatal("IsKnownEvent must be false for an unmodelled type")
+	}
+	if !webhooks.IsTestEvent(event) {
+		t.Fatal("the test flag must work on an unmodelled type")
+	}
+	if webhooks.IsStale(event, 20) != true || webhooks.IsStale(event, 8) {
+		t.Fatal("IsStale must work on an unmodelled type")
+	}
+	if len(unknown.Raw) == 0 {
+		t.Fatal("the raw body must be kept")
+	}
+}
+
+// A body that verified but cannot be read is webhook.bad_payload in the contract family: a
+// receiver that answers 401 to signature failures must not answer 401 to an authentic event.
+func TestAuthenticButUnreadableBodyIsAPayloadError(t *testing.T) {
+	const ts = int64(1_755_600_000)
+	at := func() time.Time { return time.Unix(ts, 0) }
+	body := `{"type":"payment","uuid":"u1","sequence":"seven"}`
+	header := signed(t, "whsec", ts, body, nil)
+	_, err := webhooks.Verify([]byte(body), header, webhooks.Options{Secret: "whsec", Now: at})
+	if !oblodai.IsCode(err, oblodai.CodeWebhookBadPayload) {
+		t.Fatalf("want webhook.bad_payload, got %v", err)
+	}
+	if oblodai.IsSignature(err) {
+		t.Fatal("an authentic delivery must never report a signature failure")
+	}
+	if !oblodai.IsContract(err) || !oblodai.IsWebhookPayload(err) {
+		t.Fatalf("webhook.bad_payload must be in the contract family: %v", err)
+	}
+}
+
+// The MAC is checked before freshness: a forged delivery with a stale timestamp must report the
+// signature failure, never the timestamp — otherwise the tolerance window answers questions to
+// callers who cannot sign.
+func TestSignatureIsCheckedBeforeFreshness(t *testing.T) {
+	const ts = int64(1_755_600_000)
+	late := func() time.Time { return time.Unix(ts+86_400, 0) }
+	header := signed(t, "whsec", ts, sampleBody, nil)
+	header.Set(webhooks.HeaderSignature, "00")
+	_, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{Secret: "whsec", Now: late})
+	if !oblodai.IsCode(err, oblodai.CodeWebhookBadSignature) {
+		t.Fatalf("a forged stale delivery must fail on the signature, got %v", err)
+	}
+}
+
+func TestVerificationConfigurationIsRefusedBeforeAnyCrypto(t *testing.T) {
+	const ts = int64(1_755_600_000)
+	at := func() time.Time { return time.Unix(ts, 0) }
+	header := signed(t, "whsec", ts, sampleBody, nil)
+
+	_, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{Secret: "", Now: at})
+	if !oblodai.IsConfig(err) {
+		t.Fatalf("an empty secret must be a ConfigError, got %v", err)
+	}
+	_, err = webhooks.Verify([]byte(sampleBody), header, webhooks.Options{Secret: "whsec", Tolerance: -time.Second, Now: at})
+	if !oblodai.IsConfig(err) {
+		t.Fatalf("a negative tolerance must be a ConfigError, got %v", err)
+	}
+}
+
+func TestSignatureHeaderSpellings(t *testing.T) {
+	const ts = int64(1_755_600_000)
+	at := func() time.Time { return time.Unix(ts, 0) }
+	digest := oblodai.SignWebhook("whsec", ts, []byte(sampleBody))
+
+	for name, value := range map[string]string{
+		"upper case": strings.ToUpper(digest),
+		"padded":     "  " + digest + "\t",
+	} {
+		header := signed(t, "whsec", ts, sampleBody, nil)
+		header.Set(webhooks.HeaderSignature, value)
+		if _, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{Secret: "whsec", Now: at}); err != nil {
+			t.Fatalf("%s signature: %v", name, err)
+		}
+	}
+
+	header := signed(t, "whsec", ts, sampleBody, nil)
+	header.Set(webhooks.HeaderSignature, "0x"+digest)
+	if _, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{Secret: "whsec", Now: at}); !oblodai.IsCode(err, oblodai.CodeWebhookBadSignature) {
+		t.Fatalf("a 0x-prefixed signature must be refused, got %v", err)
+	}
+}
+
+// A body with no sequence orders nothing: dropping it as "stale" would lose a real state change.
+func TestEventWithoutASequenceIsNeverStale(t *testing.T) {
+	event, err := webhooks.Parse([]byte(`{"type":"payment","uuid":"u1","status":"paid"}`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if webhooks.IsStale(event, 0) || webhooks.IsStale(event, 99) {
+		t.Fatal("an event without a sequence must never be reported as stale")
+	}
 }
 
 func TestEveryEventKindDecodesToItsOwnType(t *testing.T) {

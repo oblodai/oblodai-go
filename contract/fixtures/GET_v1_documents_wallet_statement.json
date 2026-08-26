@@ -2,7 +2,7 @@
  "route": "GET /v1/documents/wallet/statement",
  "status": 200,
  "headers": {
-  "Content-Disposition": "inline; filename=\"oblodai-wallet-statement-ccedb97b.pdf\"",
+  "Content-Disposition": "inline; filename=\"oblodai-wallet-statement-75bae56b.pdf\"",
   "Content-Length": "46",
   "Content-Type": "application/pdf"
  }

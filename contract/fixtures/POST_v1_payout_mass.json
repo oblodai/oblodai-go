@@ -30,9 +30,9 @@
       "amount": "1.000000",
       "approval_required": false,
       "commission": "0.000000",
-      "created_at": "2026-08-26T00:50:16Z",
+      "created_at": "2026-08-26T10:50:05Z",
       "currency": "USDT",
-      "document_url": "http://127.0.0.1:39227/v1/documents/payout/471353b9-36fe-414a-a071-8cde6f3de608?exp=1787709016\u0026sig=cec650201ad95071d66603ba2d0c44ae8b1a7122db56357a6dcf769b00df6d5c",
+      "document_url": "http://127.0.0.1:45579/v1/documents/payout/ede9cea1-0455-4a69-8133-69105b7c13a1?exp=1787745005\u0026sig=7045261e53eb0152c27a70f0d27236133a36799864bf679e5d5c938168d9c78c",
       "fee_bearer": "gateway",
       "is_final": false,
       "is_refund": false,
@@ -45,8 +45,8 @@
       "source": "api",
       "status": "approved",
       "txid": "",
-      "updated_at": "2026-08-26T00:50:16Z",
-      "uuid": "471353b9-36fe-414a-a071-8cde6f3de608"
+      "updated_at": "2026-08-26T10:50:05Z",
+      "uuid": "ede9cea1-0455-4a69-8133-69105b7c13a1"
      }
     },
     {

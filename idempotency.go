@@ -16,12 +16,24 @@ const MaxIdempotencyKeyLength = 255
 
 // NewIdempotencyKey returns a random RFC 4122 v4 UUID from the platform CSPRNG. Generate one
 // yourself and pass it with WithIdempotencyKey when a retry has to survive a process restart.
-func NewIdempotencyKey() string {
+//
+// The error is the platform CSPRNG failing, which no supported platform does; a key that cannot
+// be trusted to be unique is never returned, because reusing one is how a retry becomes a second
+// payout. Callers who want the key or nothing can treat the error as fatal.
+func NewIdempotencyKey() (string, error) {
+	key, err := newIdempotencyKey()
+	if err != nil {
+		return "", err
+	}
+	return key, nil
+}
+
+// newIdempotencyKey is NewIdempotencyKey with this package's concrete error type.
+func newIdempotencyKey() (string, *Error) {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
-		// crypto/rand does not fail on any supported platform; a key we cannot trust to be unique
-		// is worse than a loud failure, so this panics rather than returning a weak key.
-		panic("oblodai: crypto/rand is unavailable: " + err.Error())
+		return "", newConfigError(CodeBadIdempotencyKey,
+			"a random idempotency key could not be generated: crypto/rand is unavailable: "+err.Error(), "idempotencyKey")
 	}
 	b[6] = (b[6] & 0x0f) | 0x40 // version 4
 	b[8] = (b[8] & 0x3f) | 0x80 // variant 10
@@ -35,7 +47,7 @@ func NewIdempotencyKey() string {
 	hex.Encode(out[19:23], b[8:10])
 	out[23] = '-'
 	hex.Encode(out[24:36], b[10:16])
-	return string(out[:])
+	return string(out[:]), nil
 }
 
 // checkIdempotencyKey validates a caller-supplied key before it is signed and sent.

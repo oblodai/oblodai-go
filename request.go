@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -30,6 +31,9 @@ type buildInput struct {
 	ts             int64
 	userAgent      string
 	extraHeaders   map[string]string
+	// adminToken is set only on onboarding routes. It travels in its own field, never through
+	// extraHeaders, so a caller header named X-Admin-Token can be dropped without dropping this.
+	adminToken string
 }
 
 // builtRequest is the request as it will go on the wire.
@@ -43,15 +47,53 @@ type builtRequest struct {
 }
 
 // Headers the client owns; a caller-supplied header with one of these names is dropped rather
-// than allowed to break the signature or impersonate another merchant.
+// than allowed to break the signature, impersonate another merchant or claim admin rights on a
+// route that is not an onboarding route. The comparison is case-insensitive.
 var reservedHeaders = map[string]bool{
 	strings.ToLower(HeaderPublicID):       true,
 	strings.ToLower(HeaderSignature):      true,
 	strings.ToLower(HeaderTimestamp):      true,
 	strings.ToLower(HeaderIdempotencyKey): true,
+	strings.ToLower(HeaderAdminToken):     true,
+	"accept":                              true,
+	"user-agent":                          true,
 	"content-type":                        true,
 	"content-length":                      true,
 	"host":                                true,
+}
+
+// ReservedHeaders lists, in lower case, the header names the client owns: WithHeader and
+// WithRequestHeader ignore them.
+func ReservedHeaders() []string {
+	out := make([]string, 0, len(reservedHeaders))
+	for name := range reservedHeaders {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// checkHeader refuses a caller header the client cannot send verbatim. A CR or LF would split the
+// request; a non-ASCII byte is not a legal header value and different HTTP stacks disagree on what
+// to do with it, so it is refused here rather than mangled on the wire.
+func checkHeader(name, value string) *Error {
+	if name == "" {
+		return newConfigError(CodeBadHeader, "a request header needs a name", "headers")
+	}
+	for _, part := range [2]string{name, value} {
+		for i := 0; i < len(part); i++ {
+			c := part[i]
+			if c == '\r' || c == '\n' {
+				return newConfigError(CodeBadHeader, fmt.Sprintf(
+					"the %q request header contains a line break; header names and values must be one line", name), "headers")
+			}
+			if c < 0x20 || c > 0x7e {
+				return newConfigError(CodeBadHeader, fmt.Sprintf(
+					"the %q request header must be printable ASCII (got byte %#02x)", name, c), "headers")
+			}
+		}
+	}
+	return nil
 }
 
 func buildRequest(in buildInput) (*builtRequest, *Error) {
@@ -73,6 +115,9 @@ func buildRequest(in buildInput) (*builtRequest, *Error) {
 
 	headers := map[string]string{}
 	for k, v := range in.extraHeaders {
+		if err := checkHeader(k, v); err != nil {
+			return nil, err
+		}
 		if !reservedHeaders[strings.ToLower(k)] {
 			headers[k] = v
 		}
@@ -85,6 +130,9 @@ func buildRequest(in buildInput) (*builtRequest, *Error) {
 	}
 	if in.idempotencyKey != "" {
 		headers[HeaderIdempotencyKey] = in.idempotencyKey
+	}
+	if in.adminToken != "" && in.route.Auth == AuthOnboard {
+		headers[HeaderAdminToken] = in.adminToken
 	}
 
 	if in.route.Auth != AuthPublic && in.route.Auth != AuthOnboard {
@@ -134,8 +182,10 @@ func joinURL(baseURL, routePath string) (*url.URL, *Error) {
 	return base, nil
 }
 
-// fillPath substitutes {name} segments. Every placeholder must be supplied and each value must be
-// a single path segment: an empty value, "." or ".." or anything containing a slash would rewrite
+// fillPath substitutes {name} segments and returns the path with its values still unescaped:
+// url.URL escapes the path exactly once when the request is built, and escaping here as well
+// would send "a b" as "a%2520b". Every placeholder must be supplied and each value must be a
+// single path segment: an empty value, "." or ".." or anything containing a slash would rewrite
 // the URL and send a signed request somewhere else entirely.
 func fillPath(template string, params map[string]string) (string, *Error) {
 	var out strings.Builder
@@ -159,7 +209,7 @@ func fillPath(template string, params map[string]string) (string, *Error) {
 				"path parameter %q for %s must be a non-empty single segment (got %q)", name, template, value), name)
 		}
 		out.WriteString(rest[:open])
-		out.WriteString(url.PathEscape(value))
+		out.WriteString(value)
 		rest = rest[close+1:]
 	}
 }

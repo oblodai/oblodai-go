@@ -28,8 +28,10 @@ type step struct {
 
 // recorded is one recorded request.
 type recorded struct {
-	method   string
-	path     string
+	method string
+	path   string
+	// rawPath is the path exactly as it arrived on the wire, still percent-encoded.
+	rawPath  string
 	rawQuery string
 	header   http.Header
 	body     string
@@ -91,7 +93,7 @@ func (f *fakeAPI) serve(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	f.mu.Lock()
 	f.calls = append(f.calls, recorded{
-		method: r.Method, path: r.URL.Path, rawQuery: r.URL.RawQuery,
+		method: r.Method, path: r.URL.Path, rawPath: r.URL.EscapedPath(), rawQuery: r.URL.RawQuery,
 		header: r.Header.Clone(), body: string(body),
 	})
 	var next step

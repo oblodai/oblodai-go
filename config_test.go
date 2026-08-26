@@ -140,11 +140,18 @@ func TestStatusHelpersFollowTheCoreVocabulary(t *testing.T) {
 }
 
 func TestIdempotencyKeysAreUUIDsAndValidated(t *testing.T) {
-	key := NewIdempotencyKey()
+	key, err := NewIdempotencyKey()
+	if err != nil {
+		t.Fatalf("NewIdempotencyKey: %v", err)
+	}
 	if len(key) != 36 || key[14] != '4' {
 		t.Fatalf("NewIdempotencyKey = %q, want a v4 UUID", key)
 	}
-	if key == NewIdempotencyKey() {
+	other, err := NewIdempotencyKey()
+	if err != nil {
+		t.Fatalf("NewIdempotencyKey: %v", err)
+	}
+	if key == other {
 		t.Fatal("keys must be unique")
 	}
 	if err := checkIdempotencyKey(""); err == nil {

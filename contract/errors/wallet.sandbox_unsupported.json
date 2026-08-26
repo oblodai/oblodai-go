@@ -11,7 +11,7 @@
    "code": "wallet.sandbox_unsupported",
    "message": "static wallets are not available to a dev store's test key; simulate a deposit on an invoice instead",
    "retryable": false,
-   "request_id": "65028681-18a0-48c4-881d-43121e8d1331"
+   "request_id": "aa226254-36cc-40b6-93cc-c7a500b5616c"
   }
  },
  "headers": {

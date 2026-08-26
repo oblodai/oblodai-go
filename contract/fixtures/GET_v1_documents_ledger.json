@@ -2,7 +2,7 @@
  "route": "GET /v1/documents/ledger",
  "status": 200,
  "headers": {
-  "Content-Disposition": "inline; filename=\"oblodai-ledger-b3e59691.pdf\"",
+  "Content-Disposition": "inline; filename=\"oblodai-ledger-a34a935d.pdf\"",
   "Content-Length": "46",
   "Content-Type": "application/pdf"
  }

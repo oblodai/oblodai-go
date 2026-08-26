@@ -55,9 +55,9 @@ Prices in fiat: `Amount: "25", Currency: "USD", ToCurrency: "USDT"` — `Currenc
 
 The gateway issues a **payment key** (`pk_…`) and a **payout key** (`wk_…`). Sandbox keys are both at
 once; live keys are separate, and money-out routes need the payout one: `Payouts`, `Refunds`,
-`PayoutLinks`, `Transfers`, `Splits`, `Wallets.RefundBlockedDeposit`, auto-withdraw, the IP
-allow-list, `Webhooks.RotateSecret`, `Sandbox.Faucet`/`Reset`. Pass both pairs and the client picks
-the right one per call:
+`PayoutLinks`, `Transfers`, `Splits` (every split route), `Wallets.RefundBlockedDeposit`,
+auto-withdraw, the IP allow-list, `Webhooks.RotateSecret`, `Webhooks.Test` for the payout kind,
+`Sandbox.Faucet`/`Reset`. Pass both pairs and the client picks the right one per call:
 
 ```go
 client, err := oblodai.New(
@@ -89,13 +89,19 @@ A call with the wrong kind is a 403 `merchant.wrong_key_kind`.
 | `Merchants`                 | Create · CreateSandbox (provisioning; `WithAdminToken` on a self-hosted gateway)                                                                                                               |
 
 Every method takes a `context.Context` first and optional `RequestOption`s last:
-`WithIdempotencyKey`, `WithRequestTimeout`, `WithRequestBudget`, `WithPayoutKey`. Lookups carry both
-identifiers, so `PaymentInfoParams{UUID: id}` and `PaymentInfoParams{OrderID: "order-1001"}` both work.
+`WithIdempotencyKey`, `WithRequestTimeout`, `WithRequestBudget`, `WithRequestHeader`,
+`WithPayoutKey`. Lookups carry both identifiers, so `PaymentInfoParams{UUID: id}` and
+`PaymentInfoParams{OrderID: "order-1001"}` both work.
+
+The money-moving methods list the error codes worth branching on in their own doc comments
+(`go doc oblodai.PayoutsService.Create`).
 
 ### Lists
 
 A list method returns a `*List[T]` that has requested nothing yet. `Page()` fetches the first page,
-`Pager()` walks every page one request at a time, `All(max)` collects them.
+`Pager()` walks every page one request at a time, `All(max)` collects them. The first page is
+memoized, so several goroutines may call `Page()` on one list and share the single request; a
+`Pager` is single-consumer state and belongs to one goroutine.
 
 ```go
 page, err := client.Payments.History(ctx, oblodai.PaymentHistoryParams{Limit: &fifty}).Page()
@@ -128,8 +134,14 @@ Every failure is an `*oblodai.Error` carrying the API's error envelope: `Code`
 `Synthetic`. Recover it with `errors.As`, or use the predicates: `IsValidation` (400),
 `IsAuthentication` (401), `IsPermission` (403), `IsNotFound` (404), `IsConflict` /
 `IsIdempotencyConflict` (409), `IsRateLimit` (429), `IsUnavailable` (503), `IsInternal`,
-`IsTransport` (no response), `IsConfig` (refused before sending), `IsContract`, `IsSignature`.
-Quote `RequestID` to support.
+`IsTransport` (no response), `IsConfig` (refused before sending), `IsContract`, `IsSignature`,
+`IsWebhookPayload`. Quote `RequestID` to support.
+
+`RetryAfter` is reported in seconds, clamped to `[0, MaxRetryAfterSeconds]` (a day) whether it came
+from the envelope or from the `Retry-After` header — what the retry loop actually sleeps stays
+bounded by `RetryOptions.MaxRetryAfter`. When a call runs out of budget the error is
+`transport.deadline` and carries what the API last said: `LastCode`, `HTTPStatus`, `RetryAfter`,
+`RequestID`, with the last error itself reachable through `errors.Unwrap`.
 
 ```go
 payout, err := client.Payouts.Create(ctx, params)
@@ -151,6 +163,18 @@ Marshalling an `*Error` to JSON keeps the identity (code, message, status, reque
 raw body, so a structured log cannot leak what the body carried. `Error.Body()` still returns it for
 debugging.
 
+An answer larger than the client will buffer (8 MiB on JSON routes, 64 MiB on document routes) is
+`sdk.response_too_large`, a contract error, rather than an out-of-memory.
+
+### Secrets
+
+`WebhookEndpoint.Secret`, `WebhookSecretRotated.Secret`, `APIKeyPair.Secret`,
+`PayoutLink.ClaimToken` and `PayoutLink.Passcode` read normally as fields and render as
+`[redacted]` in `fmt` (`%v`, `%+v`, `%#v`) and in `json.Marshal` — store them by reading the field,
+not by serializing the struct. A `Client` never prints its keys either. Log fields whose name looks
+like a secret are redacted inside the client, before the value reaches any logger, including one
+installed with `WithLogger`.
+
 ### Retries and idempotency
 
 - Create-type routes get an `Idempotency-Key` automatically — one per logical call, reused on every
@@ -163,6 +187,12 @@ debugging.
 - `WithRetry(oblodai.RetryOptions{MaxRetries, BaseDelay, MaxDelay, MaxRetryAfter})`,
   `WithTimeout` per attempt, `WithCallBudget` per call (attempts plus pauses). Cancelling the
   context aborts everything, including a retry pause.
+- Retry safety is not guessed: `Routes[key].Safe` is the core's own read-only classification,
+  shipped in the contract snapshot.
+- Headers the client owns (`ReservedHeaders()`: `X-Public-Id`, `X-Signature`, `X-Timestamp`,
+  `Idempotency-Key`, `X-Admin-Token`, `Accept`, `User-Agent`, `Content-Type`, `Content-Length`,
+  `Host`) win over `WithHeader`/`WithRequestHeader`, compared case-insensitively; a header carrying
+  a line break or a non-ASCII byte is refused with `sdk.bad_header` before anything is sent.
 
 ### Webhooks
 
@@ -191,6 +221,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+Checks run in this order: headers, HMAC (the current secret, then `Options.PreviousSecret`),
+freshness, body. An empty `Secret` or a negative `Tolerance` is a `ConfigError`; `Tolerance` zero
+means the 5-minute default, and `SkipTimestampCheck: true` is how freshness is switched off. A
+delivery that verified but cannot be read is `webhook.bad_payload` (a *contract* error, not a
+signature one): answer 5xx, because the event is real and the core will retry it. An event type a
+newer core added arrives as `*oblodai.UnknownEvent` with its raw type instead of an error — narrow
+with `webhooks.IsKnownEvent` before switching.
+
 Verification always runs over the **raw** bytes. Rehearsal deliveries (`Webhooks.Test`, sandbox) are
 signed exactly like live ones and carry `test: true` in the body (and `X-Webhook-Test: true`): check
 `delivery.IsTest` (or `webhooks.IsTestEvent(event)`) and never act on one as if money moved — no
@@ -202,7 +240,10 @@ retries — use it to deduplicate; `event.Seq()` orders events (`webhooks.IsStal
 
 `AddAmounts`, `SubtractAmounts`, `CompareAmounts`, `AmountsEqual`, `IsZeroAmount` — exact decimal
 arithmetic on the string amounts the API uses. Never parse a `Money` into a float: USDT has 6
-decimals, BTC 8 and ETH 18, and binary floating point holds none of them exactly.
+decimals, BTC 8 and ETH 18, and binary floating point holds none of them exactly. `Money` is an
+alias of `string`, so Go will let you write `a < b`: do not — `"9" < "10"` is true as text and false
+as money. Anything that is not `-?digits[.digits]` (at most 64 characters, no trailing dot, no
+exponent) is refused with `sdk.bad_amount`.
 
 ### Self-hosted or local gateway
 
@@ -213,9 +254,10 @@ the prefixed path.
 
 ## The contract snapshot
 
-`contract/` is exported by the gateway's own test suite: the route registry, request DTO schemas with
-English field docs, every vocabulary and error code, signing vectors, golden response bodies recorded
-from a live core, and real signed webhook deliveries. `contract_routes.go`, `contract_enums.go`,
+`contract/` is exported by the gateway's own test suite: the route registry (107 routes, each with
+the core's own `safe` flag), request DTO schemas, every vocabulary and all 471 error codes, signing
+vectors, golden response bodies recorded from a live core, and real signed webhook deliveries. Only
+`contract/descriptions.en.json` (the English field docs) is repo-local. `contract_routes.go`, `contract_enums.go`,
 `contract_requests.go` and `contract_version.go` are generated from it and are never edited by hand.
 
 ```bash
@@ -234,7 +276,9 @@ must decode into a model whose fields match the wire key for key.
 ```bash
 gofmt -l .                         # formatting gate
 go vet ./... && staticcheck ./...  # static analysis
-go test ./...                      # everything
+go test -race ./...                # everything
 ```
+
+`AGENTS.md` is the same surface in one page, written for coding agents.
 
 License: MIT.

@@ -192,6 +192,16 @@ func optionalType(typ string) string {
 	}
 }
 
+// isASCII reports whether a string is plain ASCII, the only thing generated documentation carries.
+func isASCII(text string) bool {
+	for i := 0; i < len(text); i++ {
+		if text[i] > 0x7e || text[i] < 0x09 {
+			return false
+		}
+	}
+	return true
+}
+
 func isMoneyField(wire string) bool {
 	return wire == "amount" || wire == "amount_fixed" || strings.HasSuffix(wire, "_amount")
 }
@@ -208,7 +218,10 @@ func fieldDoc(desc *Descriptions, d deferred, wire string, s *Schema, required b
 		parts = append(parts, "Required.")
 	}
 	if s.Example != nil {
-		if example, err := json.Marshal(s.Example); err == nil {
+		if example, err := json.Marshal(s.Example); err == nil && isASCII(string(example)) {
+			// The core's examples are written for its own docs and some are Russian. Generated Go
+			// documentation is English only, so a non-ASCII example is dropped rather than copied:
+			// the field description above it already says what the value means.
 			parts = append(parts, fmt.Sprintf("Example: %s.", example))
 		}
 	}

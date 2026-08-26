@@ -4,14 +4,14 @@
  "request": {
   "amount": "25",
   "confirmations": 20,
-  "invoice_id": "d5b73aa7-7059-4e60-9594-cbb3fdf880bb",
+  "invoice_id": "361cf859-6692-4371-9823-b8dea53c78b8",
   "txid": "sdk-tx-1"
  },
  "response": {
   "result": {
    "amount": "25.000000",
    "confirmations": 20,
-   "invoice_id": "d5b73aa7-7059-4e60-9594-cbb3fdf880bb",
+   "invoice_id": "361cf859-6692-4371-9823-b8dea53c78b8",
    "txid": "sandbox:sdk-tx-1"
   },
   "state": 0

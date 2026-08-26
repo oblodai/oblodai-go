@@ -2,7 +2,6 @@ package oblodai
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -64,6 +63,9 @@ const (
 	CodeIdempotencyUnsupported = "sdk.idempotency_unsupported"
 	CodeBadEnvelope            = "sdk.bad_envelope"
 	CodeBadPathParam           = "sdk.bad_path_param"
+	CodeBadAmount              = "sdk.bad_amount"
+	CodeBadHeader              = "sdk.bad_header"
+	CodeResponseTooLarge       = "sdk.response_too_large"
 
 	CodeTransportTimeout  = "transport.timeout"
 	CodeTransportNetwork  = "transport.network"
@@ -73,6 +75,10 @@ const (
 	CodeWebhookBadSignature   = "webhook.bad_signature"
 	CodeWebhookStaleTimestamp = "webhook.stale_timestamp"
 	CodeWebhookMissingHeader  = "webhook.missing_header"
+	// CodeWebhookBadPayload marks a delivery whose signature is genuine but whose body cannot be
+	// read. It is a contract failure, not a signature failure: a receiver that answers 401 to
+	// forged deliveries must not answer 401 to an authentic event it failed to parse.
+	CodeWebhookBadPayload = "webhook.bad_payload"
 
 	// CodeIdempotencyKeyReused is the core's 409 for a key replayed with a different body.
 	CodeIdempotencyKeyReused = "idempotency.key_reused"
@@ -82,6 +88,23 @@ const (
 	CodeBadSignature = "merchant.bad_signature"
 	CodeBadTimestamp = "auth.bad_timestamp"
 )
+
+// MaxRetryAfterSeconds bounds what the client reports as RetryAfter, whether the hint came from
+// the error envelope or from a Retry-After header: a day. It is a plausibility bound on the
+// reported value only — the retry loop still sleeps at most RetryOptions.MaxRetryAfter.
+const MaxRetryAfterSeconds = 86400
+
+// clampRetryAfter folds any retry hint into [0, MaxRetryAfterSeconds]. Arithmetic happens in
+// int64 so a far-future HTTP-date cannot overflow into a negative wait.
+func clampRetryAfter(seconds int64) int {
+	if seconds < 0 {
+		seconds = 0
+	}
+	if seconds > MaxRetryAfterSeconds {
+		seconds = MaxRetryAfterSeconds
+	}
+	return int(seconds)
+}
 
 // Error is the one error type this package returns. Recover it with errors.As:
 //
@@ -108,6 +131,11 @@ type Error struct {
 	// Synthetic reports that no core envelope was present: the answer came from something in front
 	// of the core, so the core may or may not have performed the operation.
 	Synthetic bool
+	// LastCode is the code of the failure that was in force when the client gave up. It is set on
+	// transport.deadline, where Code describes the client's own decision to stop and LastCode
+	// (together with HTTPStatus, RetryAfter and RequestID, copied from the same error) describes
+	// what the API last said. Unwrap returns that error itself.
+	LastCode string
 
 	// raw is the response body. It is deliberately unexported and dropped from MarshalJSON so a
 	// structured log of the error cannot leak a secret the body carried.
@@ -169,87 +197,20 @@ func (e *Error) MarshalJSON() ([]byte, error) {
 		RequestID  string `json:"requestId,omitempty"`
 		Field      string `json:"field,omitempty"`
 		Synthetic  bool   `json:"synthetic"`
-	}{e.Kind, e.Code, e.Message, e.HTTPStatus, e.Retryable, e.RetryAfter, e.RequestID, e.Field, e.Synthetic})
+		LastCode   string `json:"lastCode,omitempty"`
+	}{e.Kind, e.Code, e.Message, e.HTTPStatus, e.Retryable, e.RetryAfter, e.RequestID, e.Field, e.Synthetic, e.LastCode})
 }
-
-// AsError recovers the *Error from an error chain.
-func AsError(err error) (*Error, bool) {
-	var target *Error
-	if errors.As(err, &target) {
-		return target, true
-	}
-	return nil, false
-}
-
-// IsKind reports whether err is an *Error of that kind. KindConflict also matches an idempotency
-// conflict, which is a conflict with a specific code.
-func IsKind(err error, kind Kind) bool {
-	e, ok := AsError(err)
-	if !ok {
-		return false
-	}
-	if kind == KindConflict && e.Kind == KindIdempotencyConflict {
-		return true
-	}
-	return e.Kind == kind
-}
-
-// IsCode reports whether err is an *Error carrying that code.
-func IsCode(err error, code string) bool {
-	e, ok := AsError(err)
-	return ok && e.Code == code
-}
-
-// IsRetryable reports whether the core (or the transport classification) considers the failure
-// worth repeating. The client has already retried what it could; this is for your own outer loop.
-func IsRetryable(err error) bool {
-	e, ok := AsError(err)
-	return ok && e.Retryable
-}
-
-// IsValidation reports an HTTP 400.
-func IsValidation(err error) bool { return IsKind(err, KindValidation) }
-
-// IsAuthentication reports an HTTP 401.
-func IsAuthentication(err error) bool { return IsKind(err, KindAuthentication) }
-
-// IsPermission reports an HTTP 403.
-func IsPermission(err error) bool { return IsKind(err, KindPermission) }
-
-// IsNotFound reports an HTTP 404.
-func IsNotFound(err error) bool { return IsKind(err, KindNotFound) }
-
-// IsConflict reports an HTTP 409, including an idempotency conflict.
-func IsConflict(err error) bool { return IsKind(err, KindConflict) }
-
-// IsIdempotencyConflict reports the 409 idempotency.key_reused specifically: the same key was
-// replayed with a different body.
-func IsIdempotencyConflict(err error) bool { return IsKind(err, KindIdempotencyConflict) }
-
-// IsRateLimit reports an HTTP 429.
-func IsRateLimit(err error) bool { return IsKind(err, KindRateLimit) }
-
-// IsUnavailable reports an HTTP 503.
-func IsUnavailable(err error) bool { return IsKind(err, KindUnavailable) }
-
-// IsInternal reports a 5xx other than 503.
-func IsInternal(err error) bool { return IsKind(err, KindInternal) }
-
-// IsTransport reports a failure with no HTTP response: DNS, TCP, TLS, timeout, cancellation.
-func IsTransport(err error) bool { return IsKind(err, KindTransport) }
-
-// IsConfig reports a refusal raised before anything was sent.
-func IsConfig(err error) bool { return IsKind(err, KindConfig) }
-
-// IsContract reports a response that could not be read as the documented envelope.
-func IsContract(err error) bool { return IsKind(err, KindContract) }
-
-// IsSignature reports a failed webhook verification.
-func IsSignature(err error) bool { return IsKind(err, KindSignature) }
 
 // newConfigError is raised before any request leaves the process.
 func newConfigError(code, message, field string) *Error {
 	return &Error{Kind: KindConfig, Code: code, Message: message, Field: field}
+}
+
+// NewConfigError builds the error this package raises when a caller's configuration cannot be
+// used. It is exported so the webhooks sub-package can refuse an unusable secret or tolerance
+// with exactly the error type — and the kind — the client documents.
+func NewConfigError(code, message, field string) *Error {
+	return newConfigError(code, message, field)
 }
 
 // newTransportError describes a request that never produced an HTTP response.
@@ -261,6 +222,40 @@ func newTransportError(code, message string, cause error) *Error {
 		Retryable: code == CodeTransportTimeout || code == CodeTransportNetwork,
 		cause:     cause,
 	}
+}
+
+// newDeadlineError reports that the call budget ran out before another attempt could be made. It
+// carries the identity of the last failure — code (as LastCode), HTTP status, Retry-After and
+// request id — so a caller that inspects the returned error still sees what the API said, and
+// keeps it as the cause so errors.Unwrap and errors.Is reach it.
+func newDeadlineError(message string, last *Error) *Error {
+	e := &Error{Kind: KindTransport, Code: CodeTransportDeadline, Message: message, cause: last}
+	if last != nil {
+		e.LastCode = last.Code
+		e.HTTPStatus = last.HTTPStatus
+		e.RetryAfter = last.RetryAfter
+		e.RequestID = last.RequestID
+		e.Field = last.Field
+		e.Synthetic = last.Synthetic
+	}
+	return e
+}
+
+// newResponseTooLargeError describes an answer the client refused to buffer.
+func newResponseTooLargeError(httpStatus int, limit int64) *Error {
+	return &Error{
+		Kind:       KindContract,
+		Code:       CodeResponseTooLarge,
+		Message:    fmt.Sprintf("the response is larger than the %d-byte limit this client reads; it was not buffered", limit),
+		HTTPStatus: httpStatus,
+	}
+}
+
+// NewWebhookPayloadError builds the error an authentic delivery with an unreadable body reports.
+// It is a contract error, not a signature error, so a receiver can answer 5xx (and have the core
+// retry the delivery) instead of 401.
+func NewWebhookPayloadError(message string) *Error {
+	return &Error{Kind: KindContract, Code: CodeWebhookBadPayload, Message: message}
 }
 
 // newContractError describes a response that is not the documented envelope.
@@ -309,6 +304,10 @@ func apiErrorFrom(httpStatus int, detail errorDetail, raw []byte, synthetic bool
 	retryAfter := detail.RetryAfter
 	if retryAfter == nil {
 		retryAfter = retryAfterHeader
+	}
+	if retryAfter != nil {
+		clamped := clampRetryAfter(int64(*retryAfter))
+		retryAfter = &clamped
 	}
 	return &Error{
 		Kind:       kindFor(httpStatus, code),

@@ -141,6 +141,18 @@ func WithRequestBudget(d time.Duration) RequestOption {
 	return func(o *callOptions) { o.budget = d }
 }
 
+// WithRequestHeader adds a header to one call. Headers the client owns (ReservedHeaders) are
+// ignored, and a name or value with a line break or a non-ASCII byte is refused with
+// sdk.bad_header before anything is sent. A per-call header wins over the same client-level one.
+func WithRequestHeader(name, value string) RequestOption {
+	return func(o *callOptions) {
+		if o.headers == nil {
+			o.headers = map[string]string{}
+		}
+		o.headers[name] = value
+	}
+}
+
 // WithPayoutKey signs a route that accepts either key kind with the payout key — for example
 // Batches.Info for a batch created by a payout key.
 func WithPayoutKey() RequestOption {

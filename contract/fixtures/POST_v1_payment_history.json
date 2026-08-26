@@ -10,7 +10,7 @@
    "items": [
     {
      "additional_data": "sdk-contract",
-     "address": "sandbox:d5b73aa7-7059-4e60-9594-cbb3fdf880bb",
+     "address": "sandbox:361cf859-6692-4371-9823-b8dea53c78b8",
      "address_muxed": "",
      "address_qr_code": "",
      "address_xaddress": "",
@@ -19,12 +19,12 @@
      "amount_remaining": "25.000000",
      "commission": "0.000000",
      "confirmations": 0,
-     "created_at": "2026-08-26T00:50:16Z",
+     "created_at": "2026-08-26T10:50:04Z",
      "currency": "USDT",
      "destination_tag": "",
-     "document_url": "http://127.0.0.1:39227/v1/documents/payment/d5b73aa7-7059-4e60-9594-cbb3fdf880bb?exp=1787709016\u0026sig=c4e30dce85a0b8ce1ddd1f0fde9914824a6ff3a5feee6942fcb7cd05a26afd49",
+     "document_url": "http://127.0.0.1:45579/v1/documents/payment/361cf859-6692-4371-9823-b8dea53c78b8?exp=1787745004\u0026sig=6f8f8e2b8ce363b0c9d3e49f2821a9b10f5dbbe0a0df04acd726161b12053bc7",
      "exchange_rate": "1",
-     "expired_at": "2026-08-26T01:50:16Z",
+     "expired_at": "2026-08-26T11:50:04Z",
      "is_final": false,
      "is_multi": false,
      "is_test": true,
@@ -38,16 +38,16 @@
      "payer_amount": "25.000000",
      "payer_currency": "USDT",
      "payer_email": "buyer@example.com",
-     "rate_expires_at": "2026-08-26T00:55:16Z",
+     "rate_expires_at": "2026-08-26T10:55:04Z",
      "required_confirmations": 20,
      "status": "created",
      "tx_list": [],
      "txid": "",
-     "updated_at": "2026-08-26T00:50:16Z",
-     "url": "http://127.0.0.1:39227/pay/d5b73aa7-7059-4e60-9594-cbb3fdf880bb",
+     "updated_at": "2026-08-26T10:50:04Z",
+     "url": "http://127.0.0.1:45579/pay/361cf859-6692-4371-9823-b8dea53c78b8",
      "url_return": "https://shop.example/back",
      "url_success": "https://shop.example/ok",
-     "uuid": "d5b73aa7-7059-4e60-9594-cbb3fdf880bb"
+     "uuid": "361cf859-6692-4371-9823-b8dea53c78b8"
     }
    ],
    "paginate": {
