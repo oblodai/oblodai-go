@@ -9,9 +9,10 @@ import (
 )
 
 // Minimal structured logging contract. Anything with these four methods fits (a slog adapter, a
-// zap sugared logger, a test recorder). Field values whose key looks like a secret are redacted
-// before they reach the logger, so a debug log never leaks a key, a signature or a cheque
-// passcode.
+// zap sugared logger, a test recorder). Every logger the client uses — the built-in text logger
+// and any logger passed to WithLogger alike — is wrapped so that a field whose key looks like a
+// secret is redacted BEFORE it reaches the logger: a debug log cannot leak a key, a signature or
+// a cheque passcode, not even into a caller's own logging pipeline.
 
 // LogFields is a set of structured fields attached to a log line.
 type LogFields map[string]any
@@ -35,6 +36,39 @@ const (
 )
 
 var logOrder = map[LogLevel]int{LogDebug: 0, LogInfo: 1, LogWarn: 2, LogError: 3}
+
+// redactingLogger redacts sensitive-looking fields and then delegates. WithLogger installs one
+// around the caller's logger, so the raw value never reaches it.
+type redactingLogger struct{ inner Logger }
+
+func (l redactingLogger) Debug(message string, fields LogFields) {
+	l.inner.Debug(message, redactFields(fields))
+}
+
+func (l redactingLogger) Info(message string, fields LogFields) {
+	l.inner.Info(message, redactFields(fields))
+}
+
+func (l redactingLogger) Warn(message string, fields LogFields) {
+	l.inner.Warn(message, redactFields(fields))
+}
+
+func (l redactingLogger) Error(message string, fields LogFields) {
+	l.inner.Error(message, redactFields(fields))
+}
+
+// redactFields copies a field set, replacing the values of sensitive-looking keys. The copy
+// matters: the caller's map must not be rewritten under it.
+func redactFields(fields LogFields) LogFields {
+	if len(fields) == 0 {
+		return fields
+	}
+	out := make(LogFields, len(fields))
+	for k, v := range fields {
+		out[k] = redact(k, v)
+	}
+	return out
+}
 
 type nopLogger struct{}
 
@@ -79,11 +113,14 @@ func (l *textLogger) emit(level LogLevel, message string, fields LogFields) {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		fmt.Fprintf(&b, " %s=%v", k, redact(k, fields[k]))
+		fmt.Fprintf(&b, " %s=%v", k, fields[k])
 	}
 	b.WriteString("\n")
 	_, _ = io.WriteString(l.out, b.String())
 }
+
+// redactedPlaceholder is what a sensitive value reads as once redacted.
+const redactedPlaceholder = "[redacted]"
 
 // sensitive keys never reach a log line with their value intact.
 var sensitiveWords = []string{"secret", "signature", "passcode", "token", "authorization", "password"}
@@ -93,7 +130,7 @@ func redact(key string, value any) any {
 	lower := strings.ToLower(key)
 	for _, word := range sensitiveWords {
 		if strings.Contains(lower, word) {
-			return "[redacted]"
+			return redactedPlaceholder
 		}
 	}
 	return value

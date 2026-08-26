@@ -24,18 +24,31 @@ type TransfersService struct{ c *Client }
 
 // ToPersonal moves funds from the business balance to the owner's personal wallet
 // (POST /v1/transfer/to-personal). It needs an owner link on the merchant.
+//
+// Errors worth branching on: transfer.bad_amount, merchant.no_owner,
+// merchant.no_personal_wallet, payout.insufficient_funds (retryable), payout.funds_maturing
+// (retryable), merchant.wrong_key_kind.
 func (s *TransfersService) ToPersonal(ctx context.Context, params TransferToPersonalParams, opts ...RequestOption) (*TransferToPersonal, error) {
 	return post[TransferToPersonal](ctx, s.c, "POST /v1/transfer/to-personal", params, opts)
 }
 
 // ToUser moves funds from the business balance to another platform user's personal wallet
 // (POST /v1/transfer/to-user). Amount and Currency are required.
+//
+// Errors worth branching on: transfer.bad_amount, transfer.no_recipient,
+// transfer.recipient_not_found, transfer.bad_recipient (the recipient is yourself),
+// payout.insufficient_funds (retryable), merchant.wrong_key_kind.
 func (s *TransfersService) ToUser(ctx context.Context, params TransferToUserParams, opts ...RequestOption) (*TransferToUser, error) {
 	return post[TransferToUser](ctx, s.c, "POST /v1/transfer/to-user", params, opts)
 }
 
 // Batch queues up to 5000 ToUser transfers asynchronously (POST /v1/transfer/batch); poll
 // Batches.Info. OrderID is required on every element.
+//
+// Errors worth branching on: payout.batch_too_large, payout.empty_batch,
+// request.missing_field (an item without OrderID, Amount or Currency),
+// transfer.recipient_not_found, payout.insufficient_funds (retryable),
+// merchant.wrong_key_kind.
 func (s *TransfersService) Batch(ctx context.Context, params TransferBatchParams, opts ...RequestOption) (*BatchSubmitted, error) {
 	return post[BatchSubmitted](ctx, s.c, "POST /v1/transfer/batch", params, opts)
 }
@@ -45,6 +58,11 @@ func (s *TransfersService) Batch(ctx context.Context, params TransferBatchParams
 type WalletsService struct{ c *Client }
 
 // Create allocates a static deposit address (POST /v1/wallet). Idempotent by OrderID.
+//
+// Errors worth branching on: wallet.static_disabled, wallet.unsupported_network,
+// wallet.no_network (a multi-network asset with no Network), wallet.no_address (derivation is
+// temporarily unavailable — retryable), wallet.sandbox_unsupported, request.unknown_currency,
+// idempotency.key_reused.
 func (s *WalletsService) Create(ctx context.Context, params WalletParams, opts ...RequestOption) (*Wallet, error) {
 	return post[Wallet](ctx, s.c, "POST /v1/wallet", params, opts)
 }
@@ -62,6 +80,10 @@ func (s *WalletsService) Block(ctx context.Context, params WalletBlockParams, op
 
 // RefundBlockedDeposit sends funds that landed on a blocked address back to their sender
 // (POST /v1/wallet/blocked-address-refund). It wants the payout key.
+//
+// Errors worth branching on: wallet.bad_uuid, refund.no_address (the address is not blocked),
+// refund.nothing_to_refund (already refunded, or nothing landed), refund.dust (below the network
+// minimum), refund.destination_internal, merchant.wrong_key_kind.
 func (s *WalletsService) RefundBlockedDeposit(ctx context.Context, params WalletBlockedAddressRefundParams, opts ...RequestOption) (*Payout, error) {
 	return post[Payout](ctx, s.c, "POST /v1/wallet/blocked-address-refund", params, opts)
 }

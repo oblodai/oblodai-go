@@ -8,6 +8,11 @@ type PaymentsService struct{ c *Client }
 
 // Create opens an invoice (POST /v1/payment). It is idempotent twice over: by your OrderID, and
 // by the Idempotency-Key this client generates and reuses across retries.
+//
+// Errors worth branching on: payment.bad_amount, payment.below_minimum,
+// payment.minimum_unavailable (the rate feed is down — retryable), payment.unsupported_network,
+// payment.network_required (a multi-network asset with no Network), request.unknown_currency,
+// idempotency.key_reused (the same key with a different body).
 func (s *PaymentsService) Create(ctx context.Context, params PaymentParams, opts ...RequestOption) (*Payment, error) {
 	return post[Payment](ctx, s.c, "POST /v1/payment", params, opts)
 }
@@ -41,6 +46,10 @@ func (s *PaymentsService) List(ctx context.Context, params PaymentHistoryParams,
 
 // Batch creates up to 5000 invoices asynchronously (POST /v1/payment/batch). Track it with
 // Batches.Info.
+//
+// Errors worth branching on: payment.bad_amount, payment.below_minimum,
+// request.unknown_currency, request.missing_field (an item without OrderID),
+// payout.batch_too_large, idempotency.key_reused.
 func (s *PaymentsService) Batch(ctx context.Context, params PaymentBatchParams, opts ...RequestOption) (*BatchSubmitted, error) {
 	return post[BatchSubmitted](ctx, s.c, "POST /v1/payment/batch", params, opts)
 }

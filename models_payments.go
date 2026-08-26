@@ -123,15 +123,20 @@ type QRCode struct {
 	Address string `json:"address"`
 }
 
-// ResolutionAccepted is /v1/payment/resolve with action "accept": the underpayment was kept as
-// full settlement. With action "refund" the body is the refund payout instead.
-type ResolutionAccepted struct {
-	// Resolution is always "accepted" on this body.
-	Resolution  string `json:"resolution"`
-	PaymentUUID string `json:"payment_uuid"`
-	OrderID     string `json:"order_id"`
-	Currency    string `json:"currency"`
-	AmountKept  Money  `json:"amount_kept"`
+// Resolution is the answer to POST /v1/payment/resolve, in both of its shapes.
+//
+// With action "accept" the underpayment is kept as full settlement and PaymentUUID, Currency and
+// AmountKept describe it. With action "refund" the money goes back and the embedded Payout is the
+// refund that was created. Resolution says which happened: "accepted" or "refunded".
+type Resolution struct {
+	// Resolution is "accepted" or "refunded".
+	Resolution string `json:"resolution"`
+	// PaymentUUID is the invoice that was settled; set when the underpayment was accepted.
+	PaymentUUID string `json:"payment_uuid,omitempty"`
+	// AmountKept is what the merchant kept; set when the underpayment was accepted.
+	AmountKept Money `json:"amount_kept,omitempty"`
+	// Payout is the refund that was created; set when the underpayment was refunded.
+	Payout
 }
 
 // EmailSent is the body of /v1/payment/send-email.

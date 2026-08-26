@@ -1,5 +1,7 @@
 package oblodai
 
+import "encoding/json"
+
 // WebhookEndpoint is the body of POST /v1/webhooks.
 type WebhookEndpoint struct {
 	EndpointID string `json:"endpoint_id"`
@@ -49,7 +51,8 @@ type WebhookTestResult struct {
 }
 
 // WebhookEvent is a verified webhook body. Type-switch on it to reach the concrete event:
-// *PaymentEvent, *PayoutEvent or *WalletEvent.
+// *PaymentEvent, *PayoutEvent or *WalletEvent — or *UnknownEvent, which a core newer than this
+// SDK release can deliver. Check IsKnownEvent before switching if the default branch matters.
 type WebhookEvent interface {
 	// Kind reports which body this is: payment, payout or wallet.
 	Kind() WebhookKind
@@ -62,6 +65,47 @@ type WebhookEvent interface {
 	// IsTest reports whether this is a rehearsal delivery (Webhooks.Test, sandbox): signed like a
 	// live one, but no money moved.
 	IsTest() bool
+}
+
+// UnknownEvent is a verified delivery whose type this SDK release does not model — a newer core
+// added an event kind. It is never an error: the delivery verified, so the fields every event
+// carries are readable, Type keeps the raw wire string and Raw keeps the whole body.
+type UnknownEvent struct {
+	Type WebhookKind `json:"type"`
+	UUID string      `json:"uuid"`
+	// Sequence is 0 when the body carried none.
+	Sequence int64 `json:"sequence"`
+	IsFinal  bool  `json:"is_final"`
+	Test     bool  `json:"test,omitempty"`
+	// Raw is the exact body that was verified; decode it yourself once you know the new type.
+	Raw json.RawMessage `json:"-"`
+}
+
+// Kind reports the raw type string the core sent.
+func (e *UnknownEvent) Kind() WebhookKind { return e.Type }
+
+// ID is the uuid of the object the event is about.
+func (e *UnknownEvent) ID() string { return e.UUID }
+
+// Seq is the event's global sequence number, or 0 when the body carried none.
+func (e *UnknownEvent) Seq() int64 { return e.Sequence }
+
+// Final reports whether the object reached a state nothing follows.
+func (e *UnknownEvent) Final() bool { return e.IsFinal }
+
+// IsTest reports whether this delivery is a rehearsal rather than a real state change.
+func (e *UnknownEvent) IsTest() bool { return e.Test }
+
+// IsKnownEvent reports whether an event is one of the shapes this SDK release models. A false
+// means the core sent a type added after this release: log it, keep the delivery, and do not
+// treat it as a failure.
+func IsKnownEvent(event WebhookEvent) bool {
+	switch event.(type) {
+	case *PaymentEvent, *PayoutEvent, *WalletEvent:
+		return true
+	default:
+		return false
+	}
 }
 
 // PaymentEvent is an invoice.<status> delivery: an invoice changed state.

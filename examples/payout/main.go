@@ -44,7 +44,10 @@ func main() {
 
 	// Store this key next to the order: reusing it after a restart replays the first answer
 	// instead of creating a second payout.
-	key := oblodai.NewIdempotencyKey()
+	key, err := oblodai.NewIdempotencyKey()
+	if err != nil {
+		log.Fatal(err)
+	}
 	payout, err := client.Payouts.Create(ctx, params, oblodai.WithIdempotencyKey(key))
 	if err != nil {
 		var apiErr *oblodai.Error

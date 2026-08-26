@@ -100,14 +100,16 @@ func TestListRequestsNothingUntilConsumedAndNeverCarriesACallerKey(t *testing.T)
 		t.Fatalf("expected 1 request, saw %d", api.count())
 	}
 
+	// A key on a list is refused, not dropped: one key per page would make the core replay page
+	// one for ever, and a caller who passed one must not be left believing the re-send is keyed.
 	keyed := newFakeAPI(t, emptyPage())
-	if _, err := keyed.client().Payouts.History(context.Background(), PayoutHistoryParams{},
-		WithIdempotencyKey("k")).Page(); err != nil {
-		t.Fatalf("Payouts.History: %v", err)
+	_, err := keyed.client().Payouts.History(context.Background(), PayoutHistoryParams{},
+		WithIdempotencyKey("k")).Page()
+	if !IsConfig(err) || !IsCode(err, CodeIdempotencyUnsupported) {
+		t.Fatalf("expected sdk.idempotency_unsupported on a list, got %v", err)
 	}
-	if got := keyed.last().header.Get(HeaderIdempotencyKey); got != "" {
-		// One key per page would make the core replay page one for ever.
-		t.Fatalf("a list page must not carry an idempotency key, got %q", got)
+	if keyed.count() != 0 {
+		t.Fatalf("a refused list must not reach the network, saw %d requests", keyed.count())
 	}
 }
 

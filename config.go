@@ -84,8 +84,11 @@ func WithLogger(logger Logger) Option {
 	return func(c *config) { c.logger = logger }
 }
 
-// WithHeader adds a header to every request. Headers the client signs or owns (X-Public-Id,
-// X-Signature, X-Timestamp, Idempotency-Key, Content-Type, Content-Length, Host) are ignored.
+// WithHeader adds a header to every request. Headers the client signs or owns are ignored,
+// compared case-insensitively: X-Public-Id, X-Signature, X-Timestamp, Idempotency-Key,
+// X-Admin-Token (sent by the client on onboarding routes only), Accept, User-Agent, Content-Type,
+// Content-Length and Host — ReservedHeaders lists them. A name or value carrying a line break or
+// a non-ASCII byte is refused with sdk.bad_header on the first call that would send it.
 func WithHeader(name, value string) Option {
 	return func(c *config) {
 		if c.headers == nil {
@@ -147,6 +150,10 @@ func resolve(opts []Option) (*config, *Error) {
 	}
 	if c.logger == nil {
 		c.logger = nopLogger{}
+	} else {
+		// Redaction happens here, once, so no logger — the built-in one or a caller's — ever sees
+		// a secret-looking field value.
+		c.logger = redactingLogger{inner: c.logger}
 	}
 	if c.timeout <= 0 {
 		c.timeout = 30 * time.Second

@@ -39,10 +39,13 @@ type Envelope struct {
 
 // Route is one row of the core's conformance table, as contract.json carries it.
 type Route struct {
-	Method        string          `json:"method"`
-	Path          string          `json:"path"`
-	Auth          string          `json:"auth"`
-	Idempotent    bool            `json:"idempotent"`
+	Method     string `json:"method"`
+	Path       string `json:"path"`
+	Auth       string `json:"auth"`
+	Idempotent bool   `json:"idempotent"`
+	// Safe is the core's own read-only classification. It is a pointer so a test can tell a
+	// contract that declares "safe": false from one that predates the field entirely.
+	Safe          *bool           `json:"safe"`
 	Bare          bool            `json:"bare"`
 	List          string          `json:"list"`
 	RequestSchema *Schema         `json:"request_schema"`

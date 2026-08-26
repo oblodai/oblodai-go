@@ -37,7 +37,8 @@ type PeriodQuery struct {
 // carries.
 type DownloadQuery struct {
 	Lang string
-	// Exp is the unix second the link expires at.
+	// Exp is the unix second the link expires at, as the document_url carries it. Leave it zero
+	// when the link has no expiry: nothing is sent then, rather than exp=0.
 	Exp int64
 	// Sig is the link signature.
 	Sig string
@@ -112,8 +113,17 @@ func (s *DocumentsService) ReferralsReport(ctx context.Context, q PeriodQuery, o
 // directly does the same thing.
 func (s *DocumentsService) Download(ctx context.Context, kind, id string, q DownloadQuery, opts ...RequestOption) (*FileResult, error) {
 	return file(ctx, s.c, "GET /v1/documents/{kind}/{id}",
-		query("lang", q.Lang, "exp", strconv.FormatInt(q.Exp, 10), "sig", q.Sig),
+		query("lang", q.Lang, "exp", expiryValue(q.Exp), "sig", q.Sig),
 		map[string]string{"kind": kind, "id": id}, nil, opts)
+}
+
+// expiryValue renders the signed link's expiry, and omits it when it is unset: exp=0 is not a
+// timestamp, and sending it would make the core reject a link that carries none.
+func expiryValue(exp int64) string {
+	if exp == 0 {
+		return ""
+	}
+	return strconv.FormatInt(exp, 10)
 }
 
 func periodQuery(q PeriodQuery, uuid string) url.Values {

@@ -29,11 +29,14 @@ func newSkewClock(base func() time.Time) *skewClock {
 	return &skewClock{base: base}
 }
 
-// now is the current unix time in seconds, with the learned offset applied.
-func (c *skewClock) now() int64 {
+// stamp is the current unix time in seconds with the learned offset applied, plus the offset it
+// was produced with. A caller that re-signs after a signature
+// failure compares the server's time with the offset ITS request carried, not with whatever
+// another goroutine has installed since.
+func (c *skewClock) stamp() (int64, time.Duration) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.base().Add(c.offset).Unix()
+	return c.base().Add(c.offset).Unix(), c.offset
 }
 
 // currentOffset reports the offset in force.
@@ -68,4 +71,16 @@ func (c *skewClock) correct(offset time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.offset = offset
+}
+
+// revert undoes a correction this call installed, and only that: if another goroutine has since
+// measured its own offset, that one stays. The second result reports whether the revert happened.
+func (c *skewClock) revert(installed, previous time.Duration) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.offset != installed {
+		return false
+	}
+	c.offset = previous
+	return true
 }

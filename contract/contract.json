@@ -1,6 +1,6 @@
 {
- "core_commit": "bfca971cce71d090ba9f7083616b4568d5568868",
- "exported_at": "2026-08-26T00:50:13Z",
+ "core_commit": "7ec04293c4264faa121409b1715c2e8fcd349f32",
+ "exported_at": "2026-08-26T10:50:02Z",
  "signing": {
   "algorithm": "HMAC-SHA256, lowercase hex",
   "canonical": "ts\\nMETHOD\\nrequest_uri\\nidempotency_key\\nbody",
@@ -31,6 +31,7 @@
    "path": "/docs",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -38,6 +39,7 @@
    "path": "/healthz",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -45,6 +47,7 @@
    "path": "/internal/docs",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -52,6 +55,7 @@
    "path": "/internal/openapi.json",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -59,6 +63,7 @@
    "path": "/openapi.json",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -66,6 +71,7 @@
    "path": "/readyz",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -73,6 +79,7 @@
    "path": "/v1/api-allowlist/add",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "list": "plain",
    "request_schema": {
@@ -94,6 +101,7 @@
    "path": "/v1/api-allowlist/enable",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "list": "plain",
    "request_schema": {
@@ -115,6 +123,7 @@
    "path": "/v1/api-allowlist/list",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "plain"
   },
@@ -123,6 +132,7 @@
    "path": "/v1/api-allowlist/remove",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "list": "plain",
    "request_schema": {
@@ -144,6 +154,7 @@
    "path": "/v1/auto-withdraw/delete",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -164,6 +175,7 @@
    "path": "/v1/auto-withdraw/list",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "plain"
   },
@@ -172,6 +184,7 @@
    "path": "/v1/auto-withdraw/set",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -209,6 +222,7 @@
    "path": "/v1/balance",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -216,6 +230,7 @@
    "path": "/v1/batch/info",
    "auth": "any",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -343,6 +358,7 @@
    "path": "/v1/claim/{token}",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -350,6 +366,7 @@
    "path": "/v1/claim/{token}",
    "auth": "public",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -374,6 +391,7 @@
    "path": "/v1/currencies",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -381,6 +399,7 @@
    "path": "/v1/documents/balance",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -388,6 +407,7 @@
    "path": "/v1/documents/batch",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -395,6 +415,7 @@
    "path": "/v1/documents/fees",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -402,6 +423,7 @@
    "path": "/v1/documents/jobs",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -442,6 +464,7 @@
    "path": "/v1/documents/jobs/file",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -449,6 +472,7 @@
    "path": "/v1/documents/jobs/info",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -469,6 +493,7 @@
    "path": "/v1/documents/ledger",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -476,6 +501,7 @@
    "path": "/v1/documents/link",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -483,6 +509,7 @@
    "path": "/v1/documents/referrals",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -490,6 +517,7 @@
    "path": "/v1/documents/split",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -497,6 +525,7 @@
    "path": "/v1/documents/statement",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -504,6 +533,7 @@
    "path": "/v1/documents/wallet/statement",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -511,6 +541,7 @@
    "path": "/v1/documents/{kind}/{id}",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": true
   },
   {
@@ -518,6 +549,7 @@
    "path": "/v1/exchange-rate/list",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -548,6 +580,7 @@
    "path": "/v1/link/{id}",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -555,6 +588,7 @@
    "path": "/v1/link/{id}/checkout",
    "auth": "public",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -796,6 +830,7 @@
    "path": "/v1/merchants",
    "auth": "onboard",
    "idempotent": false,
+   "safe": false,
    "bare": false
   },
   {
@@ -803,6 +838,7 @@
    "path": "/v1/merchants/{id}/sandbox",
    "auth": "onboard",
    "idempotent": false,
+   "safe": false,
    "bare": false
   },
   {
@@ -810,6 +846,7 @@
    "path": "/v1/pay/{id}",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "response_schema": {
     "properties": {
@@ -1022,6 +1059,7 @@
    "path": "/v1/pay/{id}/qr",
    "auth": "public",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -1029,6 +1067,7 @@
    "path": "/v1/pay/{id}/select",
    "auth": "public",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -1260,6 +1299,7 @@
    "path": "/v1/payment",
    "auth": "payment",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -1552,6 +1592,7 @@
    "path": "/v1/payment/accepted/list",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -1575,6 +1616,7 @@
    "path": "/v1/payment/accepted/set",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -1613,6 +1655,7 @@
    "path": "/v1/payment/accuracy/get",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -1620,6 +1663,7 @@
    "path": "/v1/payment/accuracy/set",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -1645,6 +1689,7 @@
    "path": "/v1/payment/autorefund/get",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -1652,6 +1697,7 @@
    "path": "/v1/payment/autorefund/set",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -1678,6 +1724,7 @@
    "path": "/v1/payment/batch",
    "auth": "payment",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -1807,6 +1854,7 @@
    "path": "/v1/payment/cancel",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2033,6 +2081,7 @@
    "path": "/v1/payment/discount/list",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -2056,6 +2105,7 @@
    "path": "/v1/payment/discount/set",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2086,6 +2136,7 @@
    "path": "/v1/payment/fee-config/get",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -2093,6 +2144,7 @@
    "path": "/v1/payment/fee-config/set",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2113,6 +2165,7 @@
    "path": "/v1/payment/history",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -2146,6 +2199,7 @@
    "path": "/v1/payment/info",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2372,6 +2426,7 @@
    "path": "/v1/payment/link",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2455,6 +2510,7 @@
    "path": "/v1/payment/link/info",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2485,6 +2541,7 @@
    "path": "/v1/payment/link/list",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -2508,6 +2565,7 @@
    "path": "/v1/payment/link/toggle",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2534,6 +2592,7 @@
    "path": "/v1/payment/qr",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2555,6 +2614,7 @@
    "path": "/v1/payment/refund",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2634,6 +2694,7 @@
    "path": "/v1/payment/resend",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2655,6 +2716,7 @@
    "path": "/v1/payment/resolve",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2696,6 +2758,7 @@
    "path": "/v1/payment/send-email",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2722,6 +2785,7 @@
    "path": "/v1/payment/services",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -2745,6 +2809,7 @@
    "path": "/v1/payment/testing-webhook",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2767,6 +2832,7 @@
    "path": "/v1/payout",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2929,6 +2995,7 @@
    "path": "/v1/payout/approve",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -2948,6 +3015,7 @@
    "path": "/v1/payout/batch",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3053,6 +3121,7 @@
    "path": "/v1/payout/calculate",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3088,6 +3157,7 @@
    "path": "/v1/payout/cancel",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3107,6 +3177,7 @@
    "path": "/v1/payout/fee-config/get",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -3114,6 +3185,7 @@
    "path": "/v1/payout/fee-config/set",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3134,6 +3206,7 @@
    "path": "/v1/payout/history",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -3167,6 +3240,7 @@
    "path": "/v1/payout/info",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3287,6 +3361,7 @@
    "path": "/v1/payout/link",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3354,6 +3429,7 @@
    "path": "/v1/payout/link/batch",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3433,6 +3509,7 @@
    "path": "/v1/payout/link/cancel",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3452,6 +3529,7 @@
    "path": "/v1/payout/link/cheque",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": true,
    "request_schema": {
     "properties": {
@@ -3477,6 +3555,7 @@
    "path": "/v1/payout/link/info",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3496,6 +3575,7 @@
    "path": "/v1/payout/link/list",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -3519,6 +3599,7 @@
    "path": "/v1/payout/mass",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3598,6 +3679,7 @@
    "path": "/v1/payout/refund-fee-config/get",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -3605,6 +3687,7 @@
    "path": "/v1/payout/refund-fee-config/set",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3625,6 +3708,7 @@
    "path": "/v1/payout/services",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -3648,6 +3732,7 @@
    "path": "/v1/payout/validate",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3711,6 +3796,7 @@
    "path": "/v1/referral/info",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -3718,6 +3804,7 @@
    "path": "/v1/refund/batch",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3799,6 +3886,7 @@
    "path": "/v1/sandbox/deposit",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3832,6 +3920,7 @@
    "path": "/v1/sandbox/faucet",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3862,6 +3951,7 @@
    "path": "/v1/sandbox/reset",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false
   },
   {
@@ -3869,6 +3959,7 @@
    "path": "/v1/sandbox/webhooks",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged"
   },
@@ -3877,6 +3968,7 @@
    "path": "/v1/sandbox/webhooks/replay",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3896,6 +3988,7 @@
    "path": "/v1/split/config/get",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -3903,6 +3996,7 @@
    "path": "/v1/split/config/set",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3923,6 +4017,7 @@
    "path": "/v1/split/recipient/optin",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3943,6 +4038,7 @@
    "path": "/v1/split/recipient/optin/get",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false
   },
   {
@@ -3950,6 +4046,7 @@
    "path": "/v1/split/rule",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -3988,6 +4085,7 @@
    "path": "/v1/split/rule/delete",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4008,6 +4106,7 @@
    "path": "/v1/split/rule/list",
    "auth": "payout",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -4031,6 +4130,7 @@
    "path": "/v1/test-webhook/payment",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4074,6 +4174,7 @@
    "path": "/v1/test-webhook/payout",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4117,6 +4218,7 @@
    "path": "/v1/test-webhook/wallet",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4160,6 +4262,7 @@
    "path": "/v1/transfer/batch",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4207,6 +4310,7 @@
    "path": "/v1/transfer/to-personal",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4238,6 +4342,7 @@
    "path": "/v1/transfer/to-user",
    "auth": "payout",
    "idempotent": true,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4271,6 +4376,7 @@
    "path": "/v1/vrcs",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4288,6 +4394,7 @@
    "path": "/v1/wallet",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4374,6 +4481,7 @@
    "path": "/v1/wallet/block",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4398,6 +4506,7 @@
    "path": "/v1/wallet/blocked-address-refund",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4426,6 +4535,7 @@
    "path": "/v1/wallet/qr",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4445,6 +4555,7 @@
    "path": "/v1/webhooks",
    "auth": "payment",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "request_schema": {
     "properties": {
@@ -4482,6 +4593,7 @@
    "path": "/v1/webhooks/deliveries",
    "auth": "payment",
    "idempotent": false,
+   "safe": true,
    "bare": false,
    "list": "paged",
    "request_schema": {
@@ -4505,6 +4617,7 @@
    "path": "/v1/webhooks/rotate-secret",
    "auth": "payout",
    "idempotent": false,
+   "safe": false,
    "bare": false,
    "response_schema": {
     "properties": {
@@ -4629,6 +4742,8 @@
   "autopilot.bad_usd",
   "autopilot.energy_no_free_trx",
   "autopilot.energy_too_large",
+  "autopilot.freeze_unknown",
+  "autopilot.frozen",
   "autopilot.gas_deep_deficit",
   "autopilot.gas_target_below_min",
   "autopilot.usd_too_large",

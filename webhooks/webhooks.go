@@ -26,6 +26,12 @@
 //
 // Always verify over the RAW request bytes: a re-serialized parse will not match the signature.
 //
+// The checks run in this order: headers, HMAC (current secret, then the previous one), freshness,
+// body. A failure before the body is an *oblodai.Error of kind signature — answer 4xx. A body
+// that verified but cannot be read is webhook.bad_payload, kind contract — answer 5xx, because
+// the event is real and the core will retry it. An event type this release does not model is not
+// a failure at all: it arrives as *oblodai.UnknownEvent (narrow with IsKnownEvent).
+//
 // Rehearsal deliveries are signed exactly like live ones and carry test: true in the body (and the
 // X-Webhook-Test header). Check Delivery.IsTest — or IsTestEvent — and never act on one as if
 // money moved.
@@ -64,13 +70,16 @@ const MaxBodySize = 1 << 20
 
 // Options configures verification.
 type Options struct {
-	// Secret is the endpoint secret from Webhooks.Register or Webhooks.RotateSecret. Required.
+	// Secret is the endpoint secret from Webhooks.Register or Webhooks.RotateSecret. Required: an
+	// empty one is refused with a ConfigError before any crypto runs, never verified against.
 	Secret string
 	// PreviousSecret is the outgoing secret during a rotation. Deliveries queued before the
 	// rotation stay signed with it for their whole retry life (about 26 hours), so keep it at
 	// least that long after rotating.
 	PreviousSecret string
-	// Tolerance is the accepted clock difference; zero means DefaultTolerance.
+	// Tolerance is the accepted clock difference. Zero means DefaultTolerance — in Go the zero
+	// value is "unset", so freshness is never silently disabled; use SkipTimestampCheck for that.
+	// A negative value is a configuration error.
 	Tolerance time.Duration
 	// SkipTimestampCheck accepts any timestamp. Only for replaying captured deliveries in tests:
 	// in production it removes the replay protection the timestamp provides.
@@ -127,9 +136,26 @@ func VerifyRequest(r *http.Request, opts Options) (*Delivery, error) {
 }
 
 // VerifyDelivery is Verify, and also returns the delivery id, event type and times.
+//
+// The order of the checks is deliberate: headers, then the MAC, then freshness, then the body.
+// Checking freshness before the MAC would answer "stale" to an unsigned probe and turn the
+// tolerance window into an oracle; parsing the body before the MAC would run a decoder over
+// attacker-controlled bytes.
 func VerifyDelivery(rawBody []byte, headers http.Header, opts Options) (*Delivery, error) {
-	timestampHeader := headers.Get(HeaderTimestamp)
-	signature := headers.Get(HeaderSignature)
+	if opts.Secret == "" {
+		return nil, oblodai.NewConfigError(oblodai.CodeBadConfig,
+			"webhooks: a non-empty endpoint secret is required to verify a delivery", "Secret")
+	}
+	if opts.Tolerance < 0 {
+		return nil, oblodai.NewConfigError(oblodai.CodeBadConfig,
+			"webhooks: Tolerance must not be negative; leave it zero for the default window, or set SkipTimestampCheck to accept any timestamp", "Tolerance")
+	}
+
+	timestampHeader := strings.TrimSpace(headers.Get(HeaderTimestamp))
+	signature, sigErr := normalizeSignature(headers.Get(HeaderSignature))
+	if sigErr != nil {
+		return nil, sigErr
+	}
 	if timestampHeader == "" || signature == "" {
 		return nil, signatureError(oblodai.CodeWebhookMissingHeader,
 			fmt.Sprintf("the delivery is missing %s or %s", HeaderTimestamp, HeaderSignature))
@@ -139,28 +165,13 @@ func VerifyDelivery(rawBody []byte, headers http.Header, opts Options) (*Deliver
 		return nil, signatureError(oblodai.CodeWebhookBadSignature, "the timestamp header is not an integer")
 	}
 
-	if !opts.SkipTimestampCheck {
-		tolerance := opts.Tolerance
-		if tolerance <= 0 {
-			tolerance = DefaultTolerance
-		}
-		now := time.Now
-		if opts.Now != nil {
-			now = opts.Now
-		}
-		if drift := now().Sub(time.Unix(ts, 0)); drift > tolerance || drift < -tolerance {
-			return nil, signatureError(oblodai.CodeWebhookStaleTimestamp, fmt.Sprintf(
-				"the delivery timestamp %d is outside the +/-%s window", ts, tolerance))
-		}
-	}
-
-	if opts.Secret == "" {
-		return nil, signatureError(oblodai.CodeWebhookBadSignature, "no secret was supplied to verify against")
-	}
 	// A merchant who has not swapped the stored secret yet verifies the Prev header with it; one
 	// who already swapped but kept the old copy verifies the main header with the new secret.
 	// Both hold, so try every combination the rotation can produce.
-	previous := headers.Get(HeaderSignaturePrev)
+	previous, prevErr := normalizeSignature(headers.Get(HeaderSignaturePrev))
+	if prevErr != nil {
+		return nil, prevErr
+	}
 	candidates := [][2]string{{signature, opts.Secret}}
 	if previous != "" {
 		candidates = append(candidates, [2]string{previous, opts.Secret})
@@ -174,12 +185,27 @@ func VerifyDelivery(rawBody []byte, headers http.Header, opts Options) (*Deliver
 	matched := false
 	for _, candidate := range candidates {
 		want := oblodai.SignWebhook(candidate[1], ts, rawBody)
-		if subtle.ConstantTimeCompare([]byte(strings.ToLower(candidate[0])), []byte(want)) == 1 {
+		if subtle.ConstantTimeCompare([]byte(candidate[0]), []byte(want)) == 1 {
 			matched = true
 		}
 	}
 	if !matched {
 		return nil, signatureError(oblodai.CodeWebhookBadSignature, "the signature does not match the body")
+	}
+
+	if !opts.SkipTimestampCheck {
+		tolerance := opts.Tolerance
+		if tolerance == 0 {
+			tolerance = DefaultTolerance
+		}
+		now := time.Now
+		if opts.Now != nil {
+			now = opts.Now
+		}
+		if drift := now().Sub(time.Unix(ts, 0)); drift > tolerance || drift < -tolerance {
+			return nil, signatureError(oblodai.CodeWebhookStaleTimestamp, fmt.Sprintf(
+				"the delivery timestamp %d is outside the +/-%s window", ts, tolerance))
+		}
 	}
 
 	event, err := Parse(rawBody)
@@ -191,28 +217,49 @@ func VerifyDelivery(rawBody []byte, headers http.Header, opts Options) (*Deliver
 		ID:        headers.Get(HeaderID),
 		EventType: oblodai.EventType(headers.Get(HeaderEvent)),
 		SentAt:    time.Unix(ts, 0).UTC(),
-		IsTest:    strings.EqualFold(headers.Get(HeaderTest), "true") || event.IsTest(),
+		IsTest:    strings.EqualFold(strings.TrimSpace(headers.Get(HeaderTest)), "true") || event.IsTest(),
 		Raw:       rawBody,
 	}
-	if eventTime, err := strconv.ParseInt(headers.Get(HeaderEventTime), 10, 64); err == nil {
+	if eventTime, err := strconv.ParseInt(strings.TrimSpace(headers.Get(HeaderEventTime)), 10, 64); err == nil {
 		delivery.EventTime = time.Unix(eventTime, 0).UTC()
 	}
 	return delivery, nil
 }
 
+// normalizeSignature trims the surrounding whitespace a proxy may add and folds the hex to lower
+// case, so an upper-case digest still verifies. A "0x" prefix is refused rather than stripped:
+// this is not an Ethereum quantity, and accepting two spellings of one value invites the kind of
+// mismatch signature checks exist to prevent.
+func normalizeSignature(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(value, "0x") || strings.HasPrefix(value, "0X") {
+		return "", signatureError(oblodai.CodeWebhookBadSignature,
+			"the signature header must be bare hex, without a 0x prefix")
+	}
+	return strings.ToLower(value), nil
+}
+
 // Parse decodes a delivery body into the event it describes. Use it only on bytes Verify has
 // already accepted — an unverified body is attacker-controlled input.
+//
+// A type this release does not model is not an error: it comes back as an *oblodai.UnknownEvent
+// carrying the raw type string, so a core that adds an event kind cannot break a receiver that
+// has already verified the signature. A body that verified but cannot be read at all is an
+// *oblodai.Error with code webhook.bad_payload, in the contract family rather than the signature
+// family: the delivery is authentic, so answer 5xx and let the core retry it.
 func Parse(rawBody []byte) (oblodai.WebhookEvent, error) {
 	var head struct {
 		Type oblodai.WebhookKind `json:"type"`
 		UUID string              `json:"uuid"`
 	}
 	if err := json.Unmarshal(rawBody, &head); err != nil {
-		return nil, signatureError(oblodai.CodeWebhookBadSignature, "the body is not JSON")
+		return nil, payloadError("the body is not JSON: " + err.Error())
 	}
 	if head.Type == "" || head.UUID == "" {
-		return nil, signatureError(oblodai.CodeWebhookBadSignature,
-			"the body lacks the type and uuid fields every event carries")
+		return nil, payloadError("the body lacks the type and uuid fields every event carries")
 	}
 	var event oblodai.WebhookEvent
 	switch head.Type {
@@ -223,14 +270,23 @@ func Parse(rawBody []byte) (oblodai.WebhookEvent, error) {
 	case oblodai.WebhookKindWallet:
 		event = &oblodai.WalletEvent{}
 	default:
-		return nil, signatureError(oblodai.CodeWebhookBadSignature,
-			fmt.Sprintf("unknown event type %q", string(head.Type)))
+		unknown := &oblodai.UnknownEvent{}
+		if err := json.Unmarshal(rawBody, unknown); err != nil {
+			return nil, payloadError(fmt.Sprintf("the body of the unknown event type %q cannot be read: %v", string(head.Type), err))
+		}
+		unknown.Raw = append(json.RawMessage(nil), rawBody...)
+		return unknown, nil
 	}
 	if err := json.Unmarshal(rawBody, event); err != nil {
-		return nil, signatureError(oblodai.CodeWebhookBadSignature, "the body does not match the "+string(head.Type)+" event shape")
+		return nil, payloadError("the body does not match the " + string(head.Type) + " event shape: " + err.Error())
 	}
 	return event, nil
 }
+
+// IsKnownEvent reports whether an event is one of the shapes this SDK release models. Narrow with
+// it before switching on the concrete type when an unmodelled event must not fall into a default
+// branch that assumes it is a payment.
+func IsKnownEvent(event oblodai.WebhookEvent) bool { return oblodai.IsKnownEvent(event) }
 
 // IsTestEvent reports whether an event is a rehearsal delivery (Webhooks.Test, sandbox). Such a
 // body is signed like a live one, so a handler must check it and never act on a test event as if
@@ -242,11 +298,28 @@ func IsTestEvent(event oblodai.WebhookEvent) bool {
 // IsStale reports whether an event is not newer than the last sequence you processed for that
 // object. Deliveries can arrive out of order (a retried "paid" after a "refund"), so keep the last
 // sequence per object and skip anything IsStale flags.
+//
+// An event whose body carried no usable sequence (absent, null, zero) is never stale: without an
+// order there is nothing to compare, and dropping it would lose a real state change.
 func IsStale(event oblodai.WebhookEvent, lastProcessedSequence int64) bool {
-	return event != nil && event.Seq() <= lastProcessedSequence
+	if event == nil {
+		return false
+	}
+	seq := event.Seq()
+	if seq <= 0 {
+		return false
+	}
+	return seq <= lastProcessedSequence
 }
 
-// signatureError builds the *oblodai.Error every failure here reports.
+// signatureError builds the *oblodai.Error a verification failure reports: the delivery is not
+// (provably) from Oblodai, so a receiver answers 4xx.
 func signatureError(code, message string) error {
 	return oblodai.NewSignatureError(code, message)
+}
+
+// payloadError builds the *oblodai.Error an authentic delivery with an unreadable body reports.
+// It carries webhook.bad_payload in the contract family, never the signature family.
+func payloadError(message string) error {
+	return oblodai.NewWebhookPayloadError("webhooks: " + message)
 }

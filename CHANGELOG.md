@@ -1,246 +1,239 @@
 # Changelog
 
-## 1.3.0 — 2026-08-25
+Notable changes to this package. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this package follows
+[Semantic Versioning](https://semver.org/).
 
-Rewrite generated from the gateway's contract snapshot. See MIGRATION-1.3.md.
+## [1.3.0] — 2026-08-26
 
-- Fixed: requests are signed with the five-field recipe (`ts\nMETHOD\nrequest_uri\nidempotency_key\nbody`) over path+query. 1.x signed four fields and got 401 on every call against the current core.
-- Fixed: models, statuses, pagination and parameter names match the current API vocabulary, field for field, checked against response bodies recorded from a live core.
-- Added: every merchant route (107) — cancel/validate, batches, documents, fee configs, split opt-in, secret rotation, the payer-facing checkout and claim endpoints, merchant provisioning.
-- Added: `*List[T]` lists (`Page`, `Pager`, `All`) that request nothing until consumed, `retryable`-driven retries, automatic idempotency keys, clock-skew correction, dual key pairs, a per-attempt timeout and a per-call budget.
-- Added: `github.com/oblodai/oblodai-go/webhooks` — rotation-aware `Verify`, `VerifyRequest`, `VerifyDelivery`, `Parse`, `IsStale`, `IsTestEvent` (with `Delivery.IsTest` for rehearsal deliveries); no client and no API key needed.
-- Added: `contract/` snapshot plus `internal/codegen` (`go generate ./...`, `go run ./internal/codegen -check` as a drift gate), contract tests against the golden bodies and 43 real signed webhook deliveries, and a live journey behind `OBLODAI_LIVE_URL`.
-- Changed: every call takes a `context.Context`; options are functional (`oblodai.New(oblodai.WithCredentials(…))`); one error type `*oblodai.Error` with `errors.As` and `Is*` predicates; amounts stay decimal strings.
-- Changed: still zero third-party dependencies, Go ≥ 1.22, standard `net/http` only.
-- Safety rules the transport enforces: an undeduplicated write is never re-sent after a transport failure or an envelope-less proxy answer; an idempotency key is refused on routes the core does not deduplicate; a clock correction that does not help is reverted; caller headers cannot overwrite signed ones; a path parameter that would rewrite the URL is rejected; redirects are reported, never followed.
+A rewrite generated from the gateway's own contract snapshot. See MIGRATION-1.3.md.
 
-Значимые изменения этого пакета. Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/),
-версии — [SemVer](https://semver.org/lang/ru/).
+### Added
+
+- Every merchant route the core declares (107): cancel/validate, batches, documents, fee configs,
+  split opt-in, secret rotation, the payer-facing checkout and claim endpoints, merchant
+  provisioning (`client.Merchants`, `WithAdminToken` / `OBLODAI_ADMIN_TOKEN` on a self-hosted
+  gateway).
+- `*List[T]` lists (`Page`, `Pager`, `All`) that request nothing until consumed,
+  `retryable`-driven retries, automatic idempotency keys, clock-skew correction, dual key pairs, a
+  per-attempt timeout and a per-call budget.
+- `github.com/oblodai/oblodai-go/webhooks`: rotation-aware `Verify`, `VerifyRequest`,
+  `VerifyDelivery`, `Parse`, `IsStale`, `IsTestEvent`, `IsKnownEvent`, and `Delivery.IsTest` for
+  rehearsal deliveries. No client and no API key needed.
+- `contract/` snapshot plus `internal/codegen` (`go generate ./...`, `go run ./internal/codegen
+  -check` as a drift gate), contract tests against the golden bodies and 43 real signed webhook
+  deliveries, and a live journey behind `OBLODAI_LIVE_URL`.
+- `AGENTS.md`: the whole surface in one page, for coding agents.
+- `WithRequestHeader(name, value)`: a header for one call. `ReservedHeaders()` lists the names the
+  client owns.
+- `*oblodai.UnknownEvent`: a webhook type a newer core added arrives with its raw `type` instead of
+  being refused; narrow with `IsKnownEvent`.
+- `Error.LastCode`: on `transport.deadline`, the code of the failure that was in force when the
+  client gave up. `HTTPStatus`, `RetryAfter` and `RequestID` are copied onto it too, and the last
+  error stays reachable through `errors.Unwrap`.
+- `MaxRetryAfterSeconds` (86400) and `MaxAmountLength` (64).
+
+### Changed
+
+- Every call takes a `context.Context`; options are functional
+  (`oblodai.New(oblodai.WithCredentials(…))`); one error type `*oblodai.Error` with `errors.As` and
+  the `Is*` predicates; amounts stay decimal strings.
+- Retry safety comes from the contract's own `safe` flag per route — the core's hand-classified
+  statement that a route is read-only. The SDK no longer infers it from the path, and codegen fails
+  if a contract snapshot does not declare it.
+- Secrets are redacted in both paths a Go program prints through: `WebhookEndpoint.Secret`,
+  `WebhookSecretRotated.Secret`, `APIKeyPair.Secret`, `PayoutLink.ClaimToken` and
+  `PayoutLink.Passcode` render as `[redacted]` in `fmt` (`%v`, `%+v`, `%#v`) and in
+  `json.Marshal`; the fields themselves keep the real value. A `Client` never prints its keys.
+- Log field redaction happens in the client, before the value reaches any logger — including one
+  installed with `WithLogger`.
+- `NewIdempotencyKey` returns `(string, error)` instead of panicking when the platform CSPRNG is
+  unavailable.
+- `Documents.Download` omits `exp` when it is unset instead of sending `exp=0`.
+- Webhook verification checks the MAC before the timestamp, so the freshness window cannot answer
+  questions to a caller who cannot sign. An empty secret or a negative tolerance is a `ConfigError`
+  raised before any crypto runs; `SkipTimestampCheck` (not a zero tolerance) disables freshness.
+- Webhook signature headers are trimmed and accepted in either hex case; a `0x` prefix is refused.
+- `Resolution` moved to `models_payments.go`; the duplicate `ResolutionAccepted` is gone —
+  `Resolution` already covers both shapes of `POST /v1/payment/resolve`.
+- `Money` helpers refuse anything that is not `-?digits[.digits]` (≤ 64 characters) with a
+  `ConfigError` carrying `sdk.bad_amount`; a trailing dot (`"5."`) is no longer read as `"5"`.
+
+### Fixed
+
+- Requests are signed with the five-field recipe (`ts\nMETHOD\nrequest_uri\nidempotency_key\nbody`)
+  over path plus query. 1.x signed four fields and got 401 on every call against the current core.
+- Models, statuses, pagination and parameter names match the current API vocabulary, field for
+  field, checked against response bodies recorded from a live core.
+- Path parameters are escaped exactly once: `"a b"` reached the core as `a%2520b`.
+- `*List[T]` memoizes its first page under a `sync.Once`: two goroutines calling `Page` raced over
+  the memo (`go test -race` reproduces it).
+- The error envelope is decoded field by field. A `code` that is not a non-empty string makes the
+  answer synthetic (the `request_id` is kept); a non-string `message` falls back to `HTTP <status>`;
+  a non-boolean `retryable` falls back to the status; `retry_after` accepts an integer, a float or a
+  numeric string and is clamped to `[0, 86400]` — negative and implausible values can no longer
+  become a wait. The `Retry-After` header is clamped the same way, and an HTTP-date centuries away
+  no longer overflows into a negative wait.
+- Response bodies are read under a size cap (8 MiB for JSON routes, 64 MiB for document routes) and
+  report `sdk.response_too_large` instead of buffering whatever arrives.
+- A caller header cannot claim `User-Agent`, `Accept` or `X-Admin-Token` (the admin token is sent by
+  the client, on onboarding routes only); a header name or value with a line break or a non-ASCII
+  byte is refused with `sdk.bad_header` before anything is sent.
+- An injected `http.Client` whose transport follows a redirect itself is detected: the answer would
+  come from an origin the request was not signed for.
+- An idempotency key passed to a list method is refused with `sdk.idempotency_unsupported` instead
+  of being dropped silently.
+- A clock correction is compared against, and reverted to, the offset the failing request was signed
+  with, so concurrent calls cannot undo each other's correction; the retry that follows a correction
+  respects the call budget.
+- A verified webhook whose body cannot be read reports `webhook.bad_payload` in the contract family
+  — answer 5xx to it — instead of `webhook.bad_signature`, which receivers answer 4xx to.
+- `IsStale` returns false for an event that carries no sequence rather than treating it as old.
+- Generated documentation is English only: non-ASCII example strings from the core's own docs are no
+  longer copied into it.
+
+### Safety rules the transport enforces
+
+An undeduplicated write is never re-sent after a transport failure or an envelope-less proxy answer;
+an idempotency key is refused on routes the core does not deduplicate; a clock correction that does
+not help is reverted; caller headers cannot overwrite signed ones; a path parameter that would
+rewrite the URL is rejected; redirects are reported, never followed.
 
 ## [1.2.0] — 2026-07-19
 
-### Добавлено
-- **Песочница разработчика (`client.Sandbox`).** Бизнес-эндпоинты для тестовых ключей
-  (`test_…` / `oblodai_test_…`) не меняются — меняется только ключ. Новое — пять test-only
-  помощников (в проде их нет; живой ключ получает `403 sandbox.live_key`):
-  - `Sandbox.SimulateDeposit(ctx, SandboxDepositParams)` — симуляция он-чейн депозита в инвойс
-    (`POST /v1/sandbox/deposit`): точная оплата / недоплата / переплата (`Amount`), неглубокие
-    подтверждения и углубление повтором того же `TxID` (`Confirmations`), идемпотентность по `TxID`.
-  - `Sandbox.Faucet(ctx, asset, amount)` / `FaucetWithKey(…, key)` — «кран» тестового баланса
-    (`POST /v1/sandbox/faucet`, потолок 1000000 за вызов; ключ идемпотентности — полем тела).
-  - `Sandbox.Reset(ctx)` — обнуление балансов и отмена инвойсов, по которым ещё не видели оплату
-    (`POST /v1/sandbox/reset`); инвойсы в `confirm_check` / `wrong_amount_waiting` сознательно не
-    трогаются — см. «Уточнена формулировка `Sandbox.Reset`» ниже.
-  - `Sandbox.ListWebhooks(ctx)` — последние ≤50 доставок вебхуков с сырым `Payload`
-    (`GET /v1/sandbox/webhooks`, тип `SandboxDelivery`).
-  - `Sandbox.ReplayWebhook(ctx, deliveryID)` — повторная постановка доставки в очередь
-    (`POST /v1/sandbox/webhooks/replay`).
-- **`oblodai.IsTestKey(publicID)`** — проверка, что public_id тестовый (префикс `test_`).
-- **Внутренние переводы пользователям платформы.** `Account.TransferToUser(ctx, params)` —
-  перевод без комиссии с баланса мерчанта на личный кошелёк ДРУГОГО пользователя платформы
-  (`POST /v1/transfer/to-user`; `to_user_id` — UUID пользователя, НЕ username; PAYOUT-ключ;
-  заголовок `Idempotency-Key` как у остальных денежных вызовов, лестница дедупа
-  заголовок → `order_id` → подпись). Тип `TransferToUserResult`
-  (`currency`/`amount`/`to_user_id`/`recipient_balance`).
-- **Пачка внутренних переводов.** `Account.TransferBatch(ctx, transfers, onError)` —
-  «зарплатная» постановка до 5000 переводов одним запросом (`POST /v1/transfer/batch`,
-  `on_error: continue|stop`); результат `BatchSubmission`, прогресс и построчные результаты —
-  через `Batches.Info(batchID, …)`.
-- **Публичная страница оплаты (свой checkout, без ключей в браузере).**
-  `Payments.PublicGet(ctx, uuid)` — публичное состояние инвойса (`GET /v1/pay/{id}`, БЕЗ подписи;
-  тип `PublicPayment` = `Payment` + `Accepted []AcceptedMethod` для инвойса в статусе выбора) и
-  `Payments.PublicSelect(ctx, uuid, currency, network)` — выбор валюты и сети валюто-агностичного
-  инвойса с фиксацией курса и выдачей адреса (`POST /v1/pay/{id}/select`, БЕЗ подписи; ответ —
-  обычный `Payment`).
-- **Подписанный GET.** HTTP-слой умеет подписывать GET-запросы с пустым телом — та же каноническая
-  строка `{ts}\nGET\n{path}\n{пустое тело}` (нужно для `GET /v1/sandbox/webhooks`; поведение
-  остальных эндпоинтов не изменилось).
-- **Ключ идемпотентности на денежных вызовах, которые его не слали.** `PayoutLinks.Create`,
-  `PayoutLinks.CreateBatch` и `Wallets.BlockedAddressRefund` резервируют средства, но шли без
-  `Idempotency-Key` — при автоповторе (сетевая ошибка/5xx, до 4 попыток) потерянный ответ мог
-  обернуться второй профинансированной ссылкой или повторной выплатой. Теперь запрос идёт с
-  заголовком, зафиксированным ДО цикла повторов. Свой ключ — `PayoutLinkParams.IdempotencyKey`,
-  `PayoutLinks.CreateBatchWithKey(ctx, links, key)`,
-  `Wallets.BlockedAddressRefundWithKey(ctx, uuid, address, key)`.
-  На `/v1/payout/link` и `/v1/payout/link/batch` шлюз заголовок **уважает**: повтор с тем же
-  ключом реплеит первый ответ (та же ссылка, тот же `claim_token`, заголовок
-  `Idempotent-Replayed: true`), баланс дебетуется ровно один раз. `Reference` остаётся вторым,
-  durable слоем защиты.
-- **Задокументированы коды слоя идемпотентности** на payout-ссылках: `idempotency.key_reused`
-  (400, тот же ключ с другим телом), `idempotency.bad_key` (400), `idempotency.in_progress`
-  (409, параллельный повтор), `idempotency.unavailable` (503, fail-closed — SDK ретраит сам).
-  Дубль `Reference` теперь `payoutlink.duplicate_reference` (**409** вместо прежнего 500):
-  терминальная ошибка, SDK больше не ретраит её впустую. Классификация `APIError.IsRetriable`
-  уже корректна — ретраятся только 5xx и 429.
-- **Батчи payout-ссылок:** частично упавший батч реплеится как есть (упавшие элементы шлите
-  НОВЫМ ключом), а ответ больше 256 КБ шлюз не кэширует — поэтому на батчах проставляйте
-  per-item `Reference`.
+### Added
 
-- **Типизированные константы статусов** (`statuses.go`): `oblodai.PaymentStatus` со значениями
-  `PaymentStatusCheck` / `ConfirmCheck` / `WrongAmountWaiting` / `WrongAmount` / `Paid` /
-  `PaidOver` / `Cancel` / `Select` и `oblodai.PayoutStatus` со значениями `PayoutStatusCheck` /
-  `Process` / `Paid` / `Fail` / `Cancel`. У обоих типов — метод `IsFinal()`.
-  Изменение **чисто аддитивное**: типы полей моделей (`Payment.PaymentStatus`, `Payout.Status`,
-  `MassPayoutItem.Status`, `Resolution.Status`) остались **`string`**, существующий код
-  (`strings.ToUpper(p.Status)`, `map[string]T[p.PaymentStatus]`) продолжает компилироваться
-  без единой правки. Значения констант — те же строки из JSON: сравнивайте как
-  `p.PaymentStatus == string(oblodai.PaymentStatusPaid)`, терминальность —
-  `oblodai.PaymentStatus(p.PaymentStatus).IsFinal()`. Статусы payout-ссылок
-  (`PayoutLinkStatus*`) — отдельный словарь и не изменились.
-- **Раздел «Статусы» в README** — обе таблицы (платёж, выплата) с пометкой терминальности.
-- **`client.PaymentLinks`** — каноническое имя ресурса платёжных ссылок, единое во всех SDK Oblodai
-  (`payment_links` / `paymentLinks` / `PaymentLinks`): код переносится между языками без
-  переименований. Прежнее `client.Links` остаётся **задокументированным алиасом на тот же самый
-  объект** (`client.Links == client.PaymentLinks`) и никуда не денется — ничего переписывать не
-  нужно.
-- **`oblodai.DefaultWebhookMaxAgeSeconds` (300) и `oblodai.DisableWebhookMaxAge` (-1)** —
-  именованные значения окна свежести вебхука (см. исправление replay-защиты ниже).
+- **Developer sandbox (`client.Sandbox`).** Business endpoints behave the same for test keys
+  (`test_…`); only the key changes. Five test-only helpers were added (a live key gets `403
+  sandbox.live_key`): `SimulateDeposit` (exact, under- or overpayment, shallow confirmations,
+  idempotent by `TxID`), `Faucet`/`FaucetWithKey` (cap 1000000 per call), `Reset`, `ListWebhooks`
+  (last ≤50 deliveries with the raw payload), `ReplayWebhook`.
+- **`oblodai.IsTestKey(publicID)`** — whether a public id is a test key (`test_` prefix).
+- **Internal transfers to platform users.** `Account.TransferToUser` — a fee-free move from the
+  merchant balance to another platform user's personal wallet (payout key; `to_user_id` is the
+  user's UUID, not a username).
+- **Batched internal transfers.** `Account.TransferBatch` — up to 5000 transfers in one request
+  (`on_error: continue|stop`); progress through `Batches.Info`.
+- **Public payment page** (own checkout, no keys in the browser): `Payments.PublicGet` and
+  `Payments.PublicSelect` (unsigned).
+- **Signed GET**: the HTTP layer signs GET requests with an empty body.
+- **Idempotency keys on money calls that lacked them.** `PayoutLinks.Create`,
+  `PayoutLinks.CreateBatch` and `Wallets.BlockedAddressRefund` reserve funds but were sent without
+  `Idempotency-Key`, so a retry after a lost response could fund a second link or repeat a payout.
+  The key is now fixed before the retry loop; the gateway honours it on `/v1/payout/link` and
+  `/v1/payout/link/batch` (a replay returns the same link and the same `claim_token`). `Reference`
+  remains the second, durable layer.
+- **Documented idempotency-layer codes** on payout links: `idempotency.key_reused` (400),
+  `idempotency.bad_key` (400), `idempotency.in_progress` (409), `idempotency.unavailable` (503,
+  fail-closed — the SDK retries it). A duplicate `Reference` became
+  `payoutlink.duplicate_reference` (409 instead of 500): terminal, no longer retried in vain.
+- **Payout-link batches:** a partially failed batch replays as it was (re-send failed elements with
+  a NEW key), and an answer larger than 256 KB is not cached — set a per-item `Reference`.
+- **Typed status constants** (`statuses.go`) for payments and payouts, both with `IsFinal()`. Purely
+  additive: model fields stayed `string`.
+- **A "Statuses" section in the README** with both tables and their terminal states.
+- **`client.PaymentLinks`** — the canonical resource name across all Oblodai SDKs. `client.Links`
+  remains a documented alias for the same object.
+- **`oblodai.DefaultWebhookMaxAgeSeconds` (300) and `oblodai.DisableWebhookMaxAge` (-1).**
 
-### Исправлено
+### Fixed
 
-- **БЕЗОПАСНОСТЬ: replay-защита вебхуков молча отключалась.** В `VerifyOptions.MaxAgeSeconds`
-  нулевое значение (то есть **незаполненное поле**) трактовалось как «окно свежести не проверять».
-  А `Now` — единственный способ подставить часы — задаётся той же структурой, поэтому любой
-  `&VerifyOptions{Now: t}` (и вообще любая передача опций без явного `MaxAgeSeconds`) снимал
-  replay-защиту: сколь угодно старый перехваченный вебхук с валидной подписью принимался как
-  свежий. В остальных четырёх SDK Oblodai дефолт 300 срабатывал всегда.
-  Теперь **0 (zero value) = дефолт `DefaultWebhookMaxAgeSeconds` (300)**, отключение — только
-  явным сентинелом `MaxAgeSeconds: oblodai.DisableWebhookMaxAge` (`-1`).
-  ⚠ Если вы **намеренно** отключали окно через `MaxAgeSeconds: 0` — замените на
-  `oblodai.DisableWebhookMaxAge`, иначе начнёт действовать окно 300 с.
-- **БЕЗОПАСНОСТЬ: не-`https` базовый URL принимался молча.** `New` / `NewFromEnv` брали любой
-  `BaseURL`, включая `http://` на внешний хост, — и подпись запроса (`X-Signature`), `public_id` и
-  тело уходили открытым текстом, где их можно перехватить и переиграть. Теперь схема обязана быть
-  `https://`, иначе создание клиента возвращает ошибку с объяснением причины. **Исключение —
-  локальная петля**: `http://localhost:…` (и `*.localhost`), `http://127.0.0.0/8`, `http://[::1]:…`
-  принимаются как раньше, локальные стенды (в т.ч. `http://localhost:8095`) не ломаются. Чужие
-  схемы (`ftp://`) и строки без схемы тоже отвергаются.
-- **БЛОКЕР: в примере проверки вебхуков в README передавался не тот секрет.** Параметр назывался
-  `secret`, а во всём остальном README «секрет» — это `Config.Secret` (секрет API-ключа), так что
-  интегратор закономерно подставлял его в `ConstructEvent` и **отвергал 100% вебхуков**: вебхуки
-  подписываются **отдельным секретом эндпоинта**, который возвращает `Webhooks.Register(...).Secret`.
-  Параметр переименован в `endpointSecret` (и в примере, и в сигнатурах `VerifyWebhook`,
-  `ConstructEvent`, `ComputeWebhookSignature`), добавлено явное предупреждение в README, в
-  доккомментарии этих функций и в поле `WebhookRegistration.Secret`.
-- **Задокументирован upsert при регистрации вебхука** (README + доккоммент `Webhooks.Register`).
-  Register — это upsert **единственного** эндпоинта на проект (`ON CONFLICT (project_id) DO UPDATE`
-  в ядре), а не добавление ещё одного: повторный вызов с ДРУГИМ URL возвращает тот же `endpoint_id`
-  и **перенаправляет** доставки, а старый URL молча замолкает. Фан-аута на несколько адресов нет.
-  Секрет при этом сохраняется — иначе смена URL осиротила бы уже стоящие в очереди доставки
-  (они подписаны секретом на момент постановки) и потеряла события `paid`/`payout`.
-- **Разъяснено `wrong_amount_waiting` vs `wrong_amount`** (README + доккоммент `Payments.Resolve`).
-  Это два разных момента: `wrong_amount_waiting` — недоплата в процессе, счёт ещё жив и может
-  стать `paid` доплатой, и `Resolve` там отвечает **409 `resolution.not_underpaid`** (не баг
-  интеграции, ретраить бессмысленно); решать судьбу недоплаты можно только после закрытия счёта, в
-  `wrong_amount`.
-- **Оговорка про пустые `url` и `claim_url` на локальном стенде** (README + доккомментарии
-  `Payment.URL`, `PayoutLink.ClaimURL`, `PaymentLinkCreated.URL` и `PaymentLink.URL`). Шлюз собирает
-  все три ссылки из `GATEWAY_PUBLIC_BASE_URL` (`{base}/pay/{uuid}`, `{base}/claim/{token}`,
-  `{base}/link/{link_id}`); локально переменной обычно нет — поля приходят пустой строкой. В проде
-  шлюз без неё не стартует. Локально стройте ссылку сами из `UUID` / `ClaimToken` / `LinkID`.
-- **Уточнена формулировка `Sandbox.Reset`** (README + доккоммент). «Отменяет открытые инвойсы» и
-  «чистый лист» вводили в заблуждение: отменяются **только** инвойсы в статусах `check` и `select`.
-  Инвойс, по которому депозит уже виден (`confirm_check`, `wrong_amount_waiting`), сознательно не
-  трогается — отмена дала бы депозиту подтвердиться в отменённый счёт. Балансы обнуляются в любом
-  случае.
-- **Убрано ложное утверждение «заголовок на payout-ссылках сегодня игнорируется»** (README,
-  доккомменты `PayoutLinksResource`, `PayoutLinkParams.Reference` / `.IdempotencyKey`,
-  `PayoutLinks.Create` / `CreateBatch`, CHANGELOG — семь мест). `/v1/payout/link` и
-  `/v1/payout/link/batch` **обёрнуты** в идемпотентность на шлюзе, заголовок работает. Вместе с
-  ним ушло и утверждение, что `Reference` — «единственная реальная защита»: это второй,
-  durable слой, а не единственный.
-- **Убрано ложное утверждение, что у `Wallets.BlockedAddressRefund` «дедупа нет вовсе»** и вредный
-  совет отключать для него повторы (`NoRetry`). Эндпоинт намеренно не обёрнут в middleware, но
-  идемпотентен по состоянию и притом сильнее заголовка: детерминированная ссылка
-  `refund-wallet:<wallet_id>` + per-wallet advisory-lock + поиск существующей выплаты внутри
-  лока. Повтор возвращает ТУ ЖЕ выплату безусловно, конкурентный повтор дожидается результата
-  вместо 409. Оговорка: повтор с другим адресом вернёт первую выплату на первый адрес.
-- **Задокументирована идемпотентность `Payouts.Approve`.** Это переход состояния: принимается
-  только `pending`, иначе `payout.not_pending` (409). Повторный approve не может одобрить или
-  сдвинуть деньги дважды; 409 следует читать как «уже одобрено» и уточнять через `Payouts.Info`.
-- **Убрано ложное утверждение про «автодозревание за ~10 минут»** (README, доккоммент
-  `Sandbox.SimulateDeposit`, CHANGELOG). Были слиты два разных механизма. Депозит в песочнице с
-  недобором подтверждений **сам не дозревает никогда**: цепочки у него нет, никто его не
-  переэмитит, курсор не двигается — инвойс висит в `confirm_check`, пока не повторить
-  `SimulateDeposit` с тем же `TxID` и бОльшим `Confirmations`. Ожидание ~10 минут относится
-  ИСКЛЮЧИТЕЛЬНО к maturity-холду на **выплате** (`payout.funds_maturing`), который снимает по
-  возрасту фоновый джоб (`GATEWAY_SANDBOX_MATURITY_MINUTES`, по умолчанию 10 минут) и который на
-  статус инвойса не влияет.
+- **SECURITY: webhook replay protection turned itself off.** A zero `VerifyOptions.MaxAgeSeconds`
+  (that is, an unset field) meant "do not check freshness", and `Now` lives in the same struct, so
+  any `&VerifyOptions{Now: t}` accepted a captured webhook of any age. Zero now means the default
+  (300 s); disabling requires the explicit `DisableWebhookMaxAge` sentinel.
+- **SECURITY: a non-`https` base URL was accepted silently**, putting the signature, the public id
+  and the body in clear text. The scheme must be `https`, except for loopback hosts
+  (`localhost`, `127.0.0.0/8`, `[::1]`), which keep working for local stands.
+- **BLOCKER: the README's webhook example passed the wrong secret.** Webhooks are signed with the
+  endpoint secret from `Webhooks.Register(...).Secret`, not the API key secret; the parameter is now
+  called `endpointSecret` everywhere.
+- **Documented that webhook registration is an upsert** of the project's single endpoint: calling it
+  with another URL returns the same `endpoint_id`, redirects deliveries and keeps the secret. There
+  is no fan-out to several addresses.
+- **Clarified `wrong_amount_waiting` vs `wrong_amount`.** While an underpayment is still open the
+  invoice can still become `paid`, and `Resolve` answers 409 `resolution.not_underpaid`; the
+  underpayment can only be settled once the invoice closes as `wrong_amount`.
+- **Noted that `url` and `claim_url` are empty on a local stand**: the gateway builds all three
+  links from `GATEWAY_PUBLIC_BASE_URL`, which local stands usually do not set.
+- **Clarified `Sandbox.Reset`:** it cancels invoices in `check` and `select` only. An invoice whose
+  deposit is already visible (`confirm_check`, `wrong_amount_waiting`) is deliberately left alone.
+  Balances are zeroed either way.
+- **Removed the false claim that the idempotency header is ignored on payout links** (seven places).
+  Both payout-link routes are wrapped in idempotency and the header works; `Reference` is the
+  second, durable layer rather than the only protection.
+- **Removed the false claim that `Wallets.BlockedAddressRefund` has no deduplication**, and the
+  harmful advice to disable retries for it. It is idempotent by state — a deterministic
+  `refund-wallet:<wallet_id>` reference under a per-wallet advisory lock — and stronger than the
+  header: a repeat returns the same payout, a concurrent repeat waits for the result instead of
+  answering 409. A repeat with a different address returns the first payout to the first address.
+- **Documented `Payouts.Approve` idempotency**: it is a state transition, accepted only from
+  `pending`; otherwise `payout.not_pending` (409), which reads as "already approved".
+- **Removed the false claim about "auto-maturing in about 10 minutes."** A sandbox deposit with too
+  few confirmations never matures on its own — repeat `SimulateDeposit` with the same `TxID` and a
+  higher `Confirmations`. The ~10 minutes belong to the payout maturity hold
+  (`payout.funds_maturing`, `GATEWAY_SANDBOX_MATURITY_MINUTES`), which does not touch invoices.
 
 ## [1.1.0] — 2026-07-15
 
-### ЛОМАЮЩИЕ ИЗМЕНЕНИЯ
-- **Идемпотентность: заголовок `Idempotency-Key` вместо авто-`order_id`.** Создающие вызовы
-  (`Payments.Create` / `Refund` / `Resolve` / `CreateBatch` / `RefundBatch`, `Payouts.Create` /
-  `CreateMass` / `CreateBatch`, `Account.TransferToPersonal`) шлют заголовок `Idempotency-Key`
-  (UUID v4, генерируется ОДИН раз до цикла повторов — все ретраи с одним ключом; в подпись запроса
-  заголовок не входит). SDK **больше не подставляет** сгенерированный `order_id` в тело: `order_id`
-  уходит как есть (в v1.0.x при пустом `order_id` вставлялся `idem-…`). Если вы полагались на
-  авто-`order_id` в ответе — задавайте его явно. Свой ключ идемпотентности можно передать полем
-  `params["idempotency_key"]` — оно уйдёт в заголовок и будет вырезано из тела.
-- **`Retry: nil` теперь означает дефолтные повторы** (`DefaultRetry()`: до 4 попыток, backoff
-  500 мс → 30 с, учёт `Retry-After`), как и в остальных SDK Oblodai. В v1.0.x `nil` означал
-  «повторов нет». Отключить повторы — явно: `Retry: oblodai.NoRetry()` (новая функция).
+### Breaking
 
-### Добавлено
-- **Массовые операции (батчи, до 5000 элементов одним запросом):** `Payments.CreateBatch`,
-  `Payments.RefundBatch`, `Payouts.CreateBatch` (постановка, режим `on_error: continue|stop`) и
-  `client.Batches.Info(batchID, limit, offset)` — прогресс и результат по каждому элементу
-  (типы `BatchSubmission`, `BatchInfo`, `BatchItem`).
-- **Платёжные ссылки:** `client.Links` — `Create` (типизированный `LinkParams`), `List`, `Info`,
-  `Toggle` + публичные (без подписи) `PublicGet` и `Checkout`.
-- **Сплит-платежи:** `client.Splits` — `CreateRule`, удобные `SplitToAddress` / `SplitToMerchant`,
-  `ListRules`, `DeleteRule`, `GetConfig` / `SetConfig(refundHoldHours)`.
-- **Payout-ссылки (крипто-чеки):** `client.PayoutLinks` — `Create`, `CreateBatch` (до 500), `List`,
-  `Info`, `Cancel` + публичные (без подписи, без ключей) `ClaimInfo(token)`, `Claim(token, address)`
-  и `ClaimWithMemo`. Тип `PayoutLink` со статусами `funded` / `claiming` / `claimed` / `expired` /
-  `cancelled` (константы `PayoutLinkStatus*`). Заголовок `Idempotency-Key` на payout-link-эндпоинты
-  в этой версии ещё НЕ шлётся — защита от дублей: per-link `Reference`. (Исправлено в v1.2.0: SDK
-  шлёт заголовок, и шлюз его уважает.)
-  Задавайте `ExpiresInHours` явно: при 0 бэкенд клампит срок к минимуму — 1 час (диапазон 1–720).
-- **Счёт на e-mail:** `Payments.SendEmail(ctx, uuid, orderID, email)` — письмо покупателю с кнопкой
-  «Оплатить» (тип `SendEmailResult`).
-- **Судьба недоплаты:** `Payments.Resolve(ctx, uuid, orderID, action, opts)` — `accept` (оставить
-  частичную оплату, глушит авто-возврат) или `refund` (вернуть плательщику; opts: `address`,
-  `network`, `reference`). Тип `Resolution`.
+- **Idempotency moved to the `Idempotency-Key` header** (UUID v4, generated once before the retry
+  loop, not covered by the signature). The SDK no longer writes a generated `order_id` into the
+  body: set `order_id` yourself if you relied on it. A caller key travels as
+  `params["idempotency_key"]`, which is moved into the header.
+- **`Retry: nil` now means the default retry policy** (up to 4 attempts, 500 ms → 30 s backoff,
+  `Retry-After` honoured), as in the other Oblodai SDKs. Disable retries explicitly with
+  `Retry: oblodai.NoRetry()`.
+
+### Added
+
+- **Batches (up to 5000 elements per request):** `Payments.CreateBatch`, `Payments.RefundBatch`,
+  `Payouts.CreateBatch` (`on_error: continue|stop`) and `client.Batches.Info`.
+- **Payment links:** `client.Links` — `Create`, `List`, `Info`, `Toggle`, plus unsigned `PublicGet`
+  and `Checkout`.
+- **Split payments:** `client.Splits` — `CreateRule`, `SplitToAddress`, `SplitToMerchant`,
+  `ListRules`, `DeleteRule`, `GetConfig`/`SetConfig`.
+- **Payout links (crypto cheques):** `client.PayoutLinks` — `Create`, `CreateBatch` (≤500), `List`,
+  `Info`, `Cancel`, plus unsigned `ClaimInfo`, `Claim`, `ClaimWithMemo`. Set `ExpiresInHours`
+  explicitly: zero is clamped to the one-hour minimum (range 1–720).
+- **Invoice by e-mail:** `Payments.SendEmail`.
+- **Settling an underpayment:** `Payments.Resolve` — `accept` (keep the partial payment, which also
+  silences the auto-refund) or `refund`.
 
 ## [1.0.2] — 2026-07-12
 
-### Исправлено
-- **Карта параметров вызывающего больше не мутируется.** `Payments.Create` и
-  `Account.TransferToPersonal` подставляют авто-`order_id` в поверхностную КОПИЮ переданной карты,
-  а не в неё саму. Раньше повторное использование одной `oblodai.Params` в двух вызовах протекало
-  `order_id` из первого вызова во второй, и бэкенд схлопывал две операции в одну по дедупу. Теперь
-  каждый вызов получает собственный ключ идемпотентности; исходная карта остаётся неизменной.
-- **Нормализация проверки «order_id отсутствует».** `order_id` считается заданным только если это
-  непустая строка после обрезки пробелов. Отсутствие, `nil`, `""`, `"   "` и не-строковые значения
-  теперь одинаково приводят к вставке сгенерированного ключа.
-- **`Retry-After` зажимается в диапазон `[0, 5 мин]`.** Огромное значение секунд больше не может
-  переполнить `time.Duration` и дать отрицательную задержку (из-за которой повтор срабатывал бы
-  мгновенно, в busy-loop). Значение зажимается к потолку до умножения; эффективная задержка всегда
-  неотрицательна.
+### Fixed
+
+- **The caller's parameter map is no longer mutated.** `Payments.Create` and
+  `Account.TransferToPersonal` write the generated `order_id` into a shallow copy. Reusing one
+  `oblodai.Params` across two calls leaked the first call's `order_id` into the second, and the
+  backend collapsed both operations into one.
+- **Normalized the "order_id is missing" check:** it counts as set only when it is a non-empty
+  string after trimming.
+- **`Retry-After` is clamped to `[0, 5 min]`.** A huge value could overflow `time.Duration` into a
+  negative delay and retry in a busy loop; the value is clamped before the multiplication.
 
 ## [1.0.1] — 2026-07-12
 
-### Исправлено
-- **Безопасность повторов (деньги).** `Payments.Create` и `Account.TransferToPersonal` теперь
-  автоматически подставляют стабильный ключ идемпотентности (`order_id = "idem-…"`), если он не
-  задан. Ключ вставляется до цикла повторов, поэтому все попытки шлют один и тот же `order_id`, и
-  бэкенд дедуплицирует повтор неидемпотентного POST (без риска двойного платежа/перевода). Выплаты
-  по-прежнему требуют явного `order_id`.
-- **`Retry-After` больше не зажимается к `MaxDelay`.** Серверный заголовок уважается как есть (напр.
-  `Retry-After: 60` ждёт ~60с, а не 30с), с абсолютным потолком в 5 минут.
-- **`payout.funds_maturing` больше не считается повторяемой** — это терминальная ошибка
-  (`IsRetriable() == false`); дождитесь зрелости средств и повторите вручную.
+### Fixed
+
+- **Retry safety (money).** `Payments.Create` and `Account.TransferToPersonal` fill in a stable
+  idempotency key (`order_id = "idem-…"`) before the retry loop, so every attempt sends the same
+  one. Payouts still require an explicit `order_id`.
+- **`Retry-After` is no longer clamped to `MaxDelay`** — the server's header is honoured as sent
+  (with an absolute ceiling of 5 minutes).
+- **`payout.funds_maturing` is no longer treated as retryable**: wait for the funds to mature and
+  repeat the call yourself.
 
 ## [1.0.0] — 2026-07-12
 
-### Добавлено
-- Первый релиз официального Go SDK для платёжного шлюза Oblodai.
-- Приём платежей, выплаты и массовые выплаты, статические кошельки, возвраты, вебхуки,
-  публичные справочники (курсы валют, каталог монет и сетей).
-- Подпись запросов HMAC-SHA256 и проверка подписи вебхуков (сравнение в постоянном времени,
-  защита от replay).
-- Конструктор из переменных окружения `oblodai.NewFromEnv()` — `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET` /
-  `OBLODAI_BASE_URL`.
-- Автоматические повторы с экспоненциальным backoff и учётом заголовка `Retry-After` на 429.
+### Added
+
+- First release of the official Go SDK for the Oblodai payment gateway.
+- Accepting payments, payouts and mass payouts, static wallets, refunds, webhooks, public reference
+  data (exchange rates, the currency and network catalogue).
+- HMAC-SHA256 request signing and webhook signature verification (constant-time comparison, replay
+  protection).
+- `oblodai.NewFromEnv()` — `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET` / `OBLODAI_BASE_URL`.
+- Automatic retries with exponential backoff, honouring `Retry-After` on 429.

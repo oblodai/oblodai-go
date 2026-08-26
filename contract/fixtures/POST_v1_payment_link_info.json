@@ -2,23 +2,23 @@
  "route": "POST /v1/payment/link/info",
  "status": 200,
  "request": {
-  "link_id": "c600f605-c972-4e1c-88b4-c84f4101a0c1"
+  "link_id": "4773c3f0-3bc4-40d6-9491-aec7cd7480d9"
  },
  "response": {
   "result": {
    "active": true,
    "amount_fixed": "10",
    "amount_mode": "fixed",
-   "created_at": "2026-08-26T00:50:16Z",
+   "created_at": "2026-08-26T10:50:05Z",
    "currency": "USDT",
    "description": "Tip jar",
-   "document_url": "http://127.0.0.1:39227/v1/documents/paylink/c600f605-c972-4e1c-88b4-c84f4101a0c1?exp=1787709016\u0026sig=3313e049e19264db7d1c3002e9dc1c7c531b529d05700c30bc36644060fe7d21",
-   "expires_at": "2026-08-27T00:50:16Z",
-   "link_id": "c600f605-c972-4e1c-88b4-c84f4101a0c1",
+   "document_url": "http://127.0.0.1:45579/v1/documents/paylink/4773c3f0-3bc4-40d6-9491-aec7cd7480d9?exp=1787745005\u0026sig=1bf16041e017928e11211ff2db34f01a6b08658bbc5b97aa574c31771026dcd9",
+   "expires_at": "2026-08-27T10:50:05Z",
+   "link_id": "4773c3f0-3bc4-40d6-9491-aec7cd7480d9",
    "payments": [],
    "pinned_network": "tron",
    "title": "Support",
-   "url": "http://127.0.0.1:39227/link/c600f605-c972-4e1c-88b4-c84f4101a0c1"
+   "url": "http://127.0.0.1:45579/link/4773c3f0-3bc4-40d6-9491-aec7cd7480d9"
   },
   "state": 0
  },

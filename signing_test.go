@@ -50,7 +50,7 @@ func TestSigningEmptyIdempotencySlot(t *testing.T) {
 
 func TestSigningSignsBodyBytes(t *testing.T) {
 	// Non-ASCII data must be signed as the UTF-8 bytes that go on the wire.
-	body := `{"additional_data":"тест"}`
+	body := `{"additional_data":"café 日本語 🚀"}`
 	in := SignInput{TS: 5, Method: "POST", RequestURI: "/v1/payment", Body: []byte(body)}
 	signature := SignRequest("s", in)
 	if !hexish(signature, 32) {

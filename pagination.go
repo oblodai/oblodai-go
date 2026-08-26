@@ -3,8 +3,10 @@ package oblodai
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strconv"
+	"sync"
 )
 
 // Offset pagination over the core's {items, paginate} lists. paginate.has_pages is the server's
@@ -17,19 +19,24 @@ import (
 // DefaultPageLimit is the page size used when a list call does not set one.
 const DefaultPageLimit = 50
 
-// List is a lazy handle on a paged list route.
+// List is a lazy handle on a paged list route. The first page is fetched at most once, however
+// many goroutines ask for it; a Pager, by contrast, is single-consumer state and belongs to one
+// goroutine.
 type List[T any] struct {
 	ctx    context.Context
 	fetch  func(ctx context.Context, limit, offset int) (*Page[T], error)
 	limit  int
 	offset int
 
+	// once guards the memoized first page: two goroutines calling Page concurrently must make one
+	// request and see the same answer, not race over these three fields.
+	once     sync.Once
 	first    *Page[T]
 	firstErr error
-	fetched  bool
 }
 
-// Page fetches the first page. Calling it twice does not repeat the request.
+// Page fetches the first page. Calling it twice does not repeat the request, and calling it from
+// several goroutines at once still makes exactly one.
 func (l *List[T]) Page() (*Page[T], error) {
 	page, err := l.pageAt(l.offset)
 	return page, err
@@ -63,10 +70,9 @@ func (l *List[T]) Pager() *Pager[T] {
 // pageAt fetches one page, reusing the memoized first page when it is the one asked for.
 func (l *List[T]) pageAt(offset int) (*Page[T], error) {
 	if offset == l.offset {
-		if !l.fetched {
+		l.once.Do(func() {
 			l.first, l.firstErr = l.fetch(l.ctx, l.limit, offset)
-			l.fetched = true
-		}
+		})
 		return l.first, l.firstErr
 	}
 	return l.fetch(l.ctx, l.limit, offset)
@@ -141,11 +147,18 @@ func newList[T any](ctx context.Context, t *transport, key string, params any, o
 	delete(fields, "offset")
 
 	o := applyRequestOptions(opts)
+	r := route(key)
 	// One idempotency key per page would be wrong on both sides: the core would replay page one
-	// for ever. A list is a read, and reads are safe to repeat without a key.
+	// for ever. A list is a read, and reads are safe to repeat without a key — so a caller who
+	// passed one is told, not quietly ignored: silently dropping it would leave them believing a
+	// re-send was deduplicated.
+	if o.idempotencyKey != "" && err == nil {
+		err = newConfigError(CodeIdempotencyUnsupported, fmt.Sprintf(
+			"%s %s is a list route and does not deduplicate by Idempotency-Key; drop WithIdempotencyKey from this call",
+			r.Method, r.Path), "idempotencyKey")
+	}
 	o.idempotencyKey = ""
 
-	r := route(key)
 	return &List[T]{
 		ctx:    ctx,
 		limit:  limit,
