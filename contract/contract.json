@@ -1,6 +1,6 @@
 {
- "core_commit": "7b8eb828b9ec3bbaff44755ad784881e533ec4fb",
- "exported_at": "2026-08-25T22:08:54Z",
+ "core_commit": "bfca971cce71d090ba9f7083616b4568d5568868",
+ "exported_at": "2026-08-26T00:50:13Z",
  "signing": {
   "algorithm": "HMAC-SHA256, lowercase hex",
   "canonical": "ts\\nMETHOD\\nrequest_uri\\nidempotency_key\\nbody",
@@ -4327,6 +4327,10 @@
       "description": "Только XRP: адрес и тег одной строкой (X-address, XLS-5).",
       "type": "string"
      },
+     "blocked": {
+      "description": "true — кошелёк заблокирован: пополнения на этот адрес НЕ зачисляются (уходят в карантин оператору, без вебхука и без автовозврата). Публиковать такой адрес нельзя.",
+      "type": "boolean"
+     },
      "currency": {
       "description": "Валюта пополнений.",
       "example": "USDT",
@@ -4334,6 +4338,10 @@
      },
      "destination_tag": {
       "description": "Только XRP: числовой destination tag этого кошелька — клиент обязан указывать его в каждом переводе.",
+      "type": "string"
+     },
+     "document_url": {
+      "description": "Подписанная ссылка на PDF-справку о реквизитах. Пусто, когда рендер документов выключен.",
       "type": "string"
      },
      "memo": {
@@ -4774,6 +4782,7 @@
   "onramp.token",
   "pay.bad_uuid",
   "pay.below_minimum",
+  "pay.discount_unavailable",
   "pay.method_not_accepted",
   "pay.minimum_unavailable",
   "pay.not_selectable",

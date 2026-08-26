@@ -9,12 +9,13 @@
  "response": {
   "result": {
    "address": "T90ebc5efe274593567156a24dc8ef28914",
+   "blocked": false,
    "currency": "USDT",
-   "document_url": "http://127.0.0.1:39381/v1/documents/wallet/6561a06b-8b6b-43cb-87fa-9f9f623777a9?exp=1787699337\u0026sig=b61cc76117fc62cf4f748ff4b0b9e9b763878557a9d2f11bcbbdd7e5ee6fcb78",
+   "document_url": "http://127.0.0.1:39227/v1/documents/wallet/ccedb97b-cdbe-4cc4-b0d3-2e5d45022393?exp=1787709016\u0026sig=22964bda9065b203ae1e112d5b191ed670c8f92d2cec0091f2ffcb351d8c2ac9",
    "network": "tron",
    "order_id": "sdk-w-1",
    "url": "",
-   "uuid": "6561a06b-8b6b-43cb-87fa-9f9f623777a9"
+   "uuid": "ccedb97b-cdbe-4cc4-b0d3-2e5d45022393"
   },
   "state": 0
  },

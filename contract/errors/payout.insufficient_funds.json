@@ -13,7 +13,7 @@
    "code": "payout.insufficient_funds",
    "message": "available balance is 1016.892500 USDT, the request asks for 999999.000000, short by 998982.107500 USDT (a payment credits the amount received MINUS our commission, so a full refund of it needs the difference topped up, a partial refund, or the fee moved to the customer via /v1/payment/fee-config/set)",
    "retryable": true,
-   "request_id": "fcfeb92a-905e-4486-86b4-6fbf233701e9"
+   "request_id": "a77032bd-b7d8-4ba7-97c6-b0c267168bbf"
   }
  },
  "headers": {

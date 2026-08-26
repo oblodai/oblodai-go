@@ -221,6 +221,45 @@ func TestEveryRecordedSuccessBodyHasAModel(t *testing.T) {
 	}
 }
 
+// The event models against the deliveries the core's own dispatcher signed, by the same two rules
+// as the golden bodies: nothing on the wire may be missing from the model, and nothing the model
+// declares as always present may be missing from the wire. `test` is omitempty on purpose — only a
+// rehearsal delivery carries it.
+func TestWebhookSampleBodiesMatchTheEventModels(t *testing.T) {
+	models := map[WebhookKind]any{
+		WebhookKindPayment: PaymentEvent{},
+		WebhookKindPayout:  PayoutEvent{},
+		WebhookKindWallet:  WalletEvent{},
+	}
+	samples := fixtures.LoadWebhookSamples(t)
+	if len(samples) == 0 {
+		t.Fatal("no recorded deliveries to check the event models against")
+	}
+	for i, sample := range samples {
+		var wire map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(sample.Raw), &wire); err != nil {
+			t.Fatalf("delivery %d is not a JSON object: %v", i, err)
+		}
+		var kind WebhookKind
+		decode(t, wire["type"], &kind)
+		model, ok := models[kind]
+		if !ok {
+			t.Fatalf("delivery %d carries the unknown event type %q", i, kind)
+		}
+		required, known := modelFields(reflect.TypeOf(model))
+		for key := range wire {
+			if !known[key] {
+				t.Errorf("the core sends %q on a %s event but %T has no field for it", key, kind, model)
+			}
+		}
+		for _, key := range required {
+			if _, sent := wire[key]; !sent {
+				t.Errorf("%T declares %q as always present, but delivery %d did not send it", model, key, i)
+			}
+		}
+	}
+}
+
 func TestEnumsCoverWhatTheWireCarries(t *testing.T) {
 	recorded := fixtures.LoadFixtures(t)
 	vocabulary := func(values any) map[string]bool {

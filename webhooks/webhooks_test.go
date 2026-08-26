@@ -70,6 +70,7 @@ func TestVerifyRealDeliveries(t *testing.T) {
 			var body struct {
 				UUID string              `json:"uuid"`
 				Type oblodai.WebhookKind `json:"type"`
+				Test bool                `json:"test"`
 			}
 			if err := json.Unmarshal(raw, &body); err != nil {
 				t.Fatal(err)
@@ -77,7 +78,22 @@ func TestVerifyRealDeliveries(t *testing.T) {
 			if delivery.Event.ID() != body.UUID || delivery.Event.Kind() != body.Type {
 				t.Errorf("event = %s/%s, want %s/%s", delivery.Event.Kind(), delivery.Event.ID(), body.Type, body.UUID)
 			}
-			if delivery.Event.Seq() <= 0 {
+			// A rehearsal delivery (Webhooks.Test, sandbox) is signed like a live one, carries
+			// test: true in the signed body and the X-Webhook-Test header, and has no place in the
+			// live sequence — the live ones number from one upwards.
+			wantTest := body.Test
+			if delivery.IsTest != wantTest || webhooks.IsTestEvent(delivery.Event) != wantTest {
+				t.Errorf("IsTest = %v / %v, want %v", delivery.IsTest, webhooks.IsTestEvent(delivery.Event), wantTest)
+			}
+			if wantTest != (sample.Headers[webhooks.HeaderTest] == "true") {
+				t.Errorf("the body says test=%v but the %s header says %q", wantTest,
+					webhooks.HeaderTest, sample.Headers[webhooks.HeaderTest])
+			}
+			if wantTest {
+				if delivery.Event.Seq() != 0 {
+					t.Errorf("a rehearsal delivery carries sequence %d", delivery.Event.Seq())
+				}
+			} else if delivery.Event.Seq() <= 0 {
 				t.Errorf("sequence = %d", delivery.Event.Seq())
 			}
 

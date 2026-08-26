@@ -2,7 +2,7 @@
  "route": "GET /v1/documents/balance",
  "status": 200,
  "headers": {
-  "Content-Disposition": "inline; filename=\"oblodai-balance-83595a3e.pdf\"",
+  "Content-Disposition": "inline; filename=\"oblodai-balance-b3e59691.pdf\"",
   "Content-Length": "46",
   "Content-Type": "application/pdf"
  }

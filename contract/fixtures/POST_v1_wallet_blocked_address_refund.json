@@ -3,7 +3,7 @@
  "status": 200,
  "request": {
   "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
-  "uuid": "6561a06b-8b6b-43cb-87fa-9f9f623777a9"
+  "uuid": "ccedb97b-cdbe-4cc4-b0d3-2e5d45022393"
  },
  "response": {
   "result": {
@@ -11,24 +11,24 @@
    "amount": "7.000000",
    "approval_required": false,
    "commission": "0.000000",
-   "created_at": "2026-08-25T22:08:57Z",
+   "created_at": "2026-08-26T00:50:16Z",
    "currency": "USDT",
-   "document_url": "http://127.0.0.1:39381/v1/documents/payout/3b1c283c-cd56-4710-bf12-300607d2c4bf?exp=1787699337\u0026sig=c5141120947c2fe25b6e9c558aff896c2aa822e5ef49c693175c188ef8acf1b0",
+   "document_url": "http://127.0.0.1:39227/v1/documents/payout/6202635f-4735-4dd6-9521-131079a37717?exp=1787709016\u0026sig=1fcbd54dff647e21b92b5075df8e30ea3e81b48dce2dccb6303fba3089eb2c25",
    "fee_bearer": "gateway",
    "is_final": false,
    "is_refund": false,
    "memo": "",
    "network": "tron",
-   "order_id": "refund-wallet:6561a06b-8b6b-43cb-87fa-9f9f623777a9",
+   "order_id": "refund-wallet:ccedb97b-cdbe-4cc4-b0d3-2e5d45022393",
    "payer_amount": "7.000000",
    "payment_order_id": null,
    "refund_for": null,
    "source": "api",
    "status": "approved",
    "txid": "",
-   "updated_at": "2026-08-25T22:08:57Z",
-   "uuid": "3b1c283c-cd56-4710-bf12-300607d2c4bf",
-   "wallet_uuid": "6561a06b-8b6b-43cb-87fa-9f9f623777a9"
+   "updated_at": "2026-08-26T00:50:16Z",
+   "uuid": "6202635f-4735-4dd6-9521-131079a37717",
+   "wallet_uuid": "ccedb97b-cdbe-4cc4-b0d3-2e5d45022393"
   },
   "state": 0
  },

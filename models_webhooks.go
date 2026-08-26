@@ -59,6 +59,9 @@ type WebhookEvent interface {
 	Seq() int64
 	// Final reports whether the object reached a state nothing follows.
 	Final() bool
+	// IsTest reports whether this is a rehearsal delivery (Webhooks.Test, sandbox): signed like a
+	// live one, but no money moved.
+	IsTest() bool
 }
 
 // PaymentEvent is an invoice.<status> delivery: an invoice changed state.
@@ -85,6 +88,10 @@ type PaymentEvent struct {
 	EventAt Timestamp `json:"event_at"`
 	// Sequence is global and increasing (gaps are normal).
 	Sequence int64 `json:"sequence"`
+	// Test is true ONLY on a rehearsal delivery (Webhooks.Test, sandbox). Such a body is signed
+	// like a live one, so a handler must check this flag (or the X-Webhook-Test header) and never
+	// act on a test event as if money moved.
+	Test bool `json:"test,omitempty"`
 }
 
 // PayoutEvent is a payout.<status> delivery: a payout (or refund) changed state. The body is the
@@ -120,6 +127,10 @@ type PayoutEvent struct {
 	EventAt Timestamp `json:"event_at"`
 	// Sequence is global and increasing (gaps are normal).
 	Sequence int64 `json:"sequence"`
+	// Test is true ONLY on a rehearsal delivery (Webhooks.Test, sandbox). Such a body is signed
+	// like a live one, so a handler must check this flag (or the X-Webhook-Test header) and never
+	// act on a test event as if money moved.
+	Test bool `json:"test,omitempty"`
 }
 
 // WalletEvent is a wallet.paid delivery: a deposit landed on a static wallet.
@@ -142,6 +153,10 @@ type WalletEvent struct {
 	EventAt Timestamp `json:"event_at"`
 	// Sequence is global and increasing (gaps are normal).
 	Sequence int64 `json:"sequence"`
+	// Test is true ONLY on a rehearsal delivery (Webhooks.Test, sandbox). Such a body is signed
+	// like a live one, so a handler must check this flag (or the X-Webhook-Test header) and never
+	// act on a test event as if money moved.
+	Test bool `json:"test,omitempty"`
 }
 
 // Kind reports which body this is.
@@ -156,6 +171,10 @@ func (e *PaymentEvent) Seq() int64 { return e.Sequence }
 // Final reports whether the invoice reached a state nothing follows.
 func (e *PaymentEvent) Final() bool { return e.IsFinal }
 
+// IsTest reports whether this delivery is a rehearsal (Webhooks.Test, sandbox) rather than a
+// real invoice: never act on it as if money moved.
+func (e *PaymentEvent) IsTest() bool { return e.Test }
+
 // Kind reports which body this is.
 func (e *PayoutEvent) Kind() WebhookKind { return e.Type }
 
@@ -168,6 +187,10 @@ func (e *PayoutEvent) Seq() int64 { return e.Sequence }
 // Final reports whether the payout reached a state nothing follows.
 func (e *PayoutEvent) Final() bool { return e.IsFinal }
 
+// IsTest reports whether this delivery is a rehearsal (Webhooks.Test, sandbox) rather than a
+// real payout: never act on it as if money moved.
+func (e *PayoutEvent) IsTest() bool { return e.Test }
+
 // Kind reports which body this is.
 func (e *WalletEvent) Kind() WebhookKind { return e.Type }
 
@@ -179,3 +202,7 @@ func (e *WalletEvent) Seq() int64 { return e.Sequence }
 
 // Final reports whether the deposit reached a state nothing follows.
 func (e *WalletEvent) Final() bool { return e.IsFinal }
+
+// IsTest reports whether this delivery is a rehearsal (Webhooks.Test, sandbox) rather than a
+// real deposit: never act on it as if money moved.
+func (e *WalletEvent) IsTest() bool { return e.Test }
