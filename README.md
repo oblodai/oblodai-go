@@ -169,9 +169,9 @@ An answer larger than the client will buffer (8 MiB on JSON routes, 64 MiB on do
 ### Secrets
 
 `WebhookEndpoint.Secret`, `WebhookSecretRotated.Secret`, `APIKeyPair.Secret`,
-`PayoutLink.ClaimToken` and `PayoutLink.Passcode` read normally as fields and render as
-`[redacted]` in `fmt` (`%v`, `%+v`, `%#v`) and in `json.Marshal` — store them by reading the field,
-not by serializing the struct. A `Client` never prints its keys either. Log fields whose name looks
+`PayoutLink.ClaimToken`, `PayoutLink.ClaimURL` (it embeds the token) and `PayoutLink.Passcode` read
+normally as fields and render as `[redacted]` in `fmt` (`%v`, `%+v`, `%#v`) and in `json.Marshal` —
+store them by reading the field, not by serializing the struct. A `Client` never prints its keys either. Log fields whose name looks
 like a secret are redacted inside the client, before the value reaches any logger, including one
 installed with `WithLogger`.
 

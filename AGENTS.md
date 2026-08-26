@@ -29,8 +29,8 @@ snapshot in `contract/contract.json`, from which `contract_routes.go`, `contract
 - Retry safety is `Routes[key].Safe`, the core's own read-only classification from the contract. The
   SDK never infers it from a path or a verb, and codegen fails on a snapshot that omits it.
 - Secrets (`Client`, `WebhookEndpoint.Secret`, `WebhookSecretRotated.Secret`, `APIKeyPair.Secret`,
-  `PayoutLink.ClaimToken`/`Passcode`) read normally as fields and render as `[redacted]` in `fmt`
-  (`%v`, `%+v`, `%#v`) and in `json.Marshal`. Log fields are redacted before they reach any logger,
+  `PayoutLink.ClaimToken`/`ClaimURL`/`Passcode`) read normally as fields and render as
+  `[redacted]` in `fmt` (`%v`, `%+v`, `%#v`) and in `json.Marshal`. Log fields are redacted before they reach any logger,
   including one installed with `WithLogger`.
 
 ## Naming
