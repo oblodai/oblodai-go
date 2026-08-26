@@ -14,7 +14,10 @@ snapshot in `contract/contract.json`, from which `contract_routes.go`, `contract
 - Every method takes `ctx context.Context` first and `...RequestOption` last:
   `WithIdempotencyKey`, `WithRequestTimeout`, `WithRequestBudget`, `WithRequestHeader`,
   `WithPayoutKey`.
-- Two key kinds. The **payout key** is required for `Payouts.*`, `Refunds.*` (including `Resolve`),
+- Two key kinds. A live pair is `oblodai_<hex>` / `oblodai_live_<hex>` — one unified key that opens
+  both sides; older merchants hold them apart as `oblodai_pk_<hex>` (payment) and
+  `oblodai_wk_<hex>` (payout). A sandbox pair (`test_oblodai_<hex>` / `oblodai_test_<hex>`) serves
+  both kinds at once. The **payout key** is required for `Payouts.*`, `Refunds.*` (including `Resolve`),
   `PayoutLinks.*`, `Transfers.*`, `Splits.*`, `Wallets.RefundBlockedDeposit`, `Settings.*AutoWithdraw`,
   `Settings.*APIAllowlist`, `Webhooks.RotateSecret`, `Webhooks.Test(WebhookKindPayout, …)`,
   `Sandbox.Faucet`, `Sandbox.Reset`. Configure it with `WithPayoutCredentials` (or

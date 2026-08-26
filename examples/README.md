@@ -1,10 +1,11 @@
 # Examples
 
-Each directory is a runnable program. Point them at the sandbox first: a sandbox key (`test_…`)
-drives a chainless copy of the gateway, with fake balance and simulated deposits.
+Each directory is a runnable program. Point them at the sandbox first: a sandbox key pair
+(public id `test_oblodai_…`, secret `oblodai_test_…`) drives a chainless copy of the gateway, with
+fake balance and simulated deposits, and serves both key kinds at once.
 
 ```bash
-export OBLODAI_PUBLIC_ID=test_…
+export OBLODAI_PUBLIC_ID=test_oblodai_…
 export OBLODAI_SECRET=oblodai_test_…
 go run ./examples/accept-payment
 ```

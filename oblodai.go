@@ -2,7 +2,7 @@
 //
 // One client per API key pair; it is safe to share across goroutines:
 //
-//	client, err := oblodai.New(oblodai.WithCredentials("pk_live_…", "…"))
+//	client, err := oblodai.New(oblodai.WithCredentials("oblodai_…", "oblodai_live_…"))
 //	invoice, err := client.Payments.Create(ctx, oblodai.PaymentParams{
 //		Amount: "25", Currency: "USDT", Network: oblodai.NetworkTron, OrderID: "order-1",
 //	})
