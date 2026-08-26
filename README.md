@@ -46,34 +46,26 @@ key. Nothing else is pulled in: the SDK and its test suite import the standard l
 
 ## Where to get keys
 
-Keys are issued in the [dashboard](https://my.oblodai.com) → **API keys**. A live pair is a public
-id `oblodai_<hex>` and a secret `oblodai_live_<hex>` — one unified API key that opens both the
-payment and the payout side. Older merchants may still hold the two kinds separately, as
-`oblodai_pk_<hex>` (payment) and `oblodai_wk_<hex>` (payout):
-
-- the **payment key** signs invoices, payment links, wallets, the catalogue, settings and documents;
-- the **payout key** signs everything that moves money out: `Payouts.*`, `Refunds.*` (`Resolve`
-  included), `PayoutLinks.*`, `Transfers.*`, `Splits.*`, `Wallets.RefundBlockedDeposit`,
-  `Settings.*AutoWithdraw`, `Settings.*APIAllowlist`, `Webhooks.RotateSecret`,
-  `Webhooks.Test(WebhookKindPayout, …)`, `Sandbox.Faucet`, `Sandbox.Reset`.
-
-A sandbox pair is a public id `test_oblodai_<hex>` and a secret `oblodai_test_<hex>`; it drives a
-chainless copy of the gateway and serves **both** key kinds at once, so one pair is all a sandbox
-integration needs. When you do hold two live pairs, pass both and the client picks the right one per
-call:
+A merchant has **one API key**, issued in the [dashboard](https://my.oblodai.com) → **API keys**: a
+public id `oblodai_<hex>` and a secret `oblodai_live_<hex>`. It signs every route the gateway gates
+— invoices, payment links, wallets, settings and documents on one side, `Payouts.*`, `Refunds.*`,
+`PayoutLinks.*`, `Transfers.*`, `Splits.*` and the auto-withdraw rules on the other. There is
+nothing to choose per call:
 
 ```go
-client, err := oblodai.New(
-	oblodai.WithCredentials(publicID, secret),
-	oblodai.WithPayoutCredentials(payoutPublicID, payoutSecret),
-)
+client, err := oblodai.New(oblodai.WithCredentials(publicID, secret))
 ```
 
-The environment fallback is `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET` and `OBLODAI_PAYOUT_PUBLIC_ID` /
-`OBLODAI_PAYOUT_SECRET`. A call made with the wrong kind is a 403 `merchant.wrong_key_kind`; on a
-route that accepts either kind, `WithPayoutKey()` picks the payout one for that call. Merchant
-provisioning (`Merchants.Create`, `Merchants.CreateSandbox`) is unsigned — a self-hosted gateway
-gates it with an **onboarding admin token** (`WithAdminToken`, or `OBLODAI_ADMIN_TOKEN`).
+The environment fallback is `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET`. The sandbox pair — public id
+`test_oblodai_<hex>`, secret `oblodai_test_<hex>` — comes from the sandbox onboarding
+(`Merchants.CreateSandbox`) and drives a chainless copy of the gateway. Merchant provisioning
+(`Merchants.Create`, `Merchants.CreateSandbox`) is unsigned — a self-hosted gateway gates it with an
+**onboarding admin token** (`WithAdminToken`, or `OBLODAI_ADMIN_TOKEN`), which is the only other
+credential this SDK knows.
+
+> Merchants who still hold an old **split pair** (`oblodai_pk_<hex>` for payments,
+> `oblodai_wk_<hex>` for payouts) get a 403 `merchant.wrong_key_kind` when the wrong half signs a
+> call. Ask the dashboard for the single `oblodai_<hex>` key and the error goes away for good.
 
 ## Quick start
 
@@ -99,7 +91,7 @@ fmt.Println(invoice.URL, invoice.Address, invoice.Status) // "created"
 
 To price in fiat, set `Amount: "25", Currency: "USD", ToCurrency: "USDT"` — `Currency` is what you
 charge, `ToCurrency` the asset the payer sends. Omit `Network` and the payer chooses it on the pay
-page. Send money out with the payout key:
+page. Send money out with the same key:
 
 ```go
 payout, err := client.Payouts.Create(ctx, oblodai.PayoutParams{
@@ -145,8 +137,8 @@ if err != nil {
 fmt.Println(deposit.TxID, deposit.Confirmations)
 ```
 
-- `Sandbox.Faucet` credits test money, capped at 1000000 per call (payout key). Give it an
-  `IdempotencyKey` when a retry must not top up twice.
+- `Sandbox.Faucet` credits test money, capped at 1000000 per call. Give it an `IdempotencyKey`
+  when a retry must not top up twice.
 - `Sandbox.Deposit` pays an invoice: no `Amount` pays exactly what is due, anything else produces an
   under- or overpayment, and `Confirmations` fewer than required exercises the pending → confirmed
   transition. Repeating a `TxID` adds confirmations instead of paying twice.
@@ -155,7 +147,7 @@ fmt.Println(deposit.TxID, deposit.Confirmations)
 - `Webhooks.Test(kind, params)` rehearses a delivery against any receiver, sandbox or live: it is
   signed exactly like a real event and carries `test: true` in the signed body (and
   `X-Webhook-Test: true`). Check `delivery.IsTest` and never act on one as if money moved.
-- `Sandbox.Reset` cancels the store's open invoices and zeroes its balances (payout key).
+- `Sandbox.Reset` cancels the store's open invoices and zeroes its balances.
 
 ## Method overview
 
@@ -292,7 +284,7 @@ string — never on the message.
 | ------------------------- | -------------- | ----------------------------------------------------------------- |
 | `KindValidation`          | 400            | malformed request or a business rule; `Field` names the culprit    |
 | `KindAuthentication`      | 401            | bad signature, unknown key, clock skew, IP not allow-listed        |
-| `KindPermission`          | 403            | valid key, not allowed here (wrong key kind, feature off)          |
+| `KindPermission`          | 403            | the key is valid but not allowed here (a feature is off)           |
 | `KindNotFound`            | 404            | no such object for this merchant                                   |
 | `KindConflict`            | 409            | a state conflict                                                   |
 | `KindIdempotencyConflict` | 409            | `idempotency.key_reused`: same key, different body                 |
@@ -329,10 +321,10 @@ if err != nil {
 }
 ```
 
-The catalogue is `oblodai.ErrorCodes` — all 471 codes the core can answer with, shipped in the
+The catalogue is `oblodai.ErrorCodes` — all 469 codes the core can answer with, shipped in the
 contract snapshot. Codes worth handling first: `payout.insufficient_funds` and
 `payout.funds_maturing` (both retryable), `idempotency.key_reused`, `invoice.not_payable`,
-`payment.not_found`, `merchant.wrong_key_kind`, `merchant.bad_signature`, `request.rate_limited`.
+`payment.not_found`, `merchant.bad_signature`, `request.rate_limited`.
 The client raises its own families on top: `sdk.missing_credentials`, `sdk.bad_config`,
 `sdk.bad_idempotency_key`, `sdk.idempotency_unsupported`, `sdk.bad_envelope`, `sdk.bad_path_param`,
 `sdk.bad_amount`, `sdk.bad_header`, `sdk.response_too_large`,
@@ -361,10 +353,10 @@ debugging.
   to make retries safe across process restarts; on routes the gateway does not deduplicate (list
   methods included) the client refuses a key with `sdk.idempotency_unsupported` rather than let you
   believe a re-send is safe.
-- **Per call:** `WithIdempotencyKey`, `WithRequestTimeout`, `WithRequestBudget`, `WithRequestHeader`,
-  `WithPayoutKey`. **Per client:** `WithTimeout` (per attempt, 30 s), `WithCallBudget` (attempts plus
-  pauses, 90 s), `WithRetry(oblodai.RetryOptions{MaxRetries, BaseDelay, MaxDelay, MaxRetryAfter})`.
-  Cancelling the context aborts everything, including a retry pause.
+- **Per call:** `WithIdempotencyKey`, `WithRequestTimeout`, `WithRequestBudget`,
+  `WithRequestHeader`. **Per client:** `WithTimeout` (per attempt, 30 s), `WithCallBudget` (attempts
+  plus pauses, 90 s), `WithRetry(oblodai.RetryOptions{MaxRetries, BaseDelay, MaxDelay,
+  MaxRetryAfter})`. Cancelling the context aborts everything, including a retry pause.
 - **Clock skew** is corrected from the API's `Date` header after a 401 that looks like skew, and the
   correction is reverted when it does not help; `Client.ClockOffset()` reports it.
 - **Redirects are never followed**: a signed request must not be replayed against another origin, so
@@ -381,8 +373,7 @@ debugging.
 
 | Option                          | What it does                                                                     |
 | ------------------------------- | -------------------------------------------------------------------------------- |
-| `WithCredentials(id, secret)`   | the payment key pair (also used for payout routes when no payout pair is set)     |
-| `WithPayoutCredentials(id, s)`  | the dedicated payout key pair                                                     |
+| `WithCredentials(id, secret)`   | the merchant's API key pair — it signs every gated route                          |
 | `WithBaseURL(url)`              | the API origin; a path prefix is kept                                             |
 | `WithInsecureBaseURL(true)`     | permit plain `http://` for a non-loopback host                                    |
 | `WithAdminToken(token)`         | onboarding admin token of a self-hosted gateway (provisioning routes only)        |
@@ -395,10 +386,8 @@ debugging.
 
 | Environment variable       | Meaning                                                       |
 | -------------------------- | -------------------------------------------------------------- |
-| `OBLODAI_PUBLIC_ID`        | payment key public id                                          |
-| `OBLODAI_SECRET`           | payment key secret                                             |
-| `OBLODAI_PAYOUT_PUBLIC_ID` | payout key public id                                           |
-| `OBLODAI_PAYOUT_SECRET`    | payout key secret                                              |
+| `OBLODAI_PUBLIC_ID`        | API key public id                                              |
+| `OBLODAI_SECRET`           | API key secret                                                 |
 | `OBLODAI_ADMIN_TOKEN`      | onboarding admin token of a self-hosted gateway                |
 | `OBLODAI_BASE_URL`         | API origin (default `https://api.oblodai.com`)                 |
 | `OBLODAI_LOG`              | `debug` \| `info` \| `warn` \| `error` — enables the text logger |
@@ -423,7 +412,7 @@ prefix in the base URL is kept, so `https://gw.corp/oblodai` reaches
 ## The contract snapshot
 
 `contract/` is exported by the gateway's own test suite: the route registry (107 routes, each with
-the core's own `safe` flag), request DTO schemas, every vocabulary and all 471 error codes, signing
+the core's own `safe` flag), request DTO schemas, every vocabulary and all 469 error codes, signing
 vectors, golden response bodies recorded from a live core, and 43 real signed webhook deliveries.
 Only `contract/descriptions.en.json` (the English field docs) is repo-local; everything else is
 replaced wholesale on a refresh. `contract_routes.go`, `contract_enums.go`, `contract_requests.go`

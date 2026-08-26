@@ -10,7 +10,7 @@
    "items": [
     {
      "additional_data": "sdk-contract",
-     "address": "sandbox:361cf859-6692-4371-9823-b8dea53c78b8",
+     "address": "sandbox:857f83e8-c8ae-4e77-8d8f-4eb367a1c0ea",
      "address_muxed": "",
      "address_qr_code": "",
      "address_xaddress": "",
@@ -19,12 +19,12 @@
      "amount_remaining": "25.000000",
      "commission": "0.000000",
      "confirmations": 0,
-     "created_at": "2026-08-26T10:50:04Z",
+     "created_at": "2026-08-26T15:26:31Z",
      "currency": "USDT",
      "destination_tag": "",
-     "document_url": "http://127.0.0.1:45579/v1/documents/payment/361cf859-6692-4371-9823-b8dea53c78b8?exp=1787745004\u0026sig=6f8f8e2b8ce363b0c9d3e49f2821a9b10f5dbbe0a0df04acd726161b12053bc7",
+     "document_url": "http://127.0.0.1:44917/v1/documents/payment/857f83e8-c8ae-4e77-8d8f-4eb367a1c0ea?exp=1787761591\u0026sig=2920c5fa20dd1a21a9c54509cfd2686acfa8e218d12ff581ed9ccc1f8b0e38a6",
      "exchange_rate": "1",
-     "expired_at": "2026-08-26T11:50:04Z",
+     "expired_at": "2026-08-26T16:26:31Z",
      "is_final": false,
      "is_multi": false,
      "is_test": true,
@@ -38,16 +38,16 @@
      "payer_amount": "25.000000",
      "payer_currency": "USDT",
      "payer_email": "buyer@example.com",
-     "rate_expires_at": "2026-08-26T10:55:04Z",
+     "rate_expires_at": "2026-08-26T15:31:31Z",
      "required_confirmations": 20,
      "status": "created",
      "tx_list": [],
      "txid": "",
-     "updated_at": "2026-08-26T10:50:04Z",
-     "url": "http://127.0.0.1:45579/pay/361cf859-6692-4371-9823-b8dea53c78b8",
+     "updated_at": "2026-08-26T15:26:31Z",
+     "url": "http://127.0.0.1:44917/pay/857f83e8-c8ae-4e77-8d8f-4eb367a1c0ea",
      "url_return": "https://shop.example/back",
      "url_success": "https://shop.example/ok",
-     "uuid": "361cf859-6692-4371-9823-b8dea53c78b8"
+     "uuid": "857f83e8-c8ae-4e77-8d8f-4eb367a1c0ea"
     }
    ],
    "paginate": {

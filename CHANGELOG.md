@@ -15,8 +15,8 @@ A rewrite generated from the gateway's own contract snapshot. See MIGRATION-1.3.
   provisioning (`client.Merchants`, `WithAdminToken` / `OBLODAI_ADMIN_TOKEN` on a self-hosted
   gateway).
 - `*List[T]` lists (`Page`, `Pager`, `All`) that request nothing until consumed,
-  `retryable`-driven retries, automatic idempotency keys, clock-skew correction, dual key pairs, a
-  per-attempt timeout and a per-call budget.
+  `retryable`-driven retries, automatic idempotency keys, clock-skew correction, a per-attempt
+  timeout and a per-call budget.
 - `github.com/oblodai/oblodai-go/webhooks`: rotation-aware `Verify`, `VerifyRequest`,
   `VerifyDelivery`, `Parse`, `IsStale`, `IsTestEvent`, `IsKnownEvent`, and `Delivery.IsTest` for
   rehearsal deliveries. No client and no API key needed.
@@ -35,6 +35,14 @@ A rewrite generated from the gateway's own contract snapshot. See MIGRATION-1.3.
 
 ### Changed
 
+- **One API key.** A merchant's single key signs every gated route, payouts included: the payout
+  credential pair and the payout-key option are gone (`WithPayoutCredentials`, `WithPayoutKey()`,
+  `OBLODAI_PAYOUT_PUBLIC_ID`, `OBLODAI_PAYOUT_SECRET`), along with the key-kind selection in the
+  transport and the payout-key retry on `Batches.Info`. The route table's `Auth` is now `public`,
+  `key` or `onboard`, and codegen refuses any other value. Onboarding returns `api_key` only, so
+  `MerchantOnboarded` and `SandboxStore` no longer carry `PaymentKey`/`PayoutKey`, and `APIKeyPair`
+  no longer carries `Kind`. `merchant.wrong_key_kind` stays documented once, as a legacy
+  split-key error.
 - Every call takes a `context.Context`; options are functional
   (`oblodai.New(oblodai.WithCredentials(…))`); one error type `*oblodai.Error` with `errors.As` and
   the `Is*` predicates; amounts stay decimal strings.
@@ -111,8 +119,8 @@ rewrite the URL is rejected; redirects are reported, never followed.
   (last ≤50 deliveries with the raw payload), `ReplayWebhook`.
 - **`oblodai.IsTestKey(publicID)`** — whether a public id is a test key (`test_` prefix).
 - **Internal transfers to platform users.** `Account.TransferToUser` — a fee-free move from the
-  merchant balance to another platform user's personal wallet (payout key; `to_user_id` is the
-  user's UUID, not a username).
+  merchant balance to another platform user's personal wallet (`to_user_id` is the user's UUID, not
+  a username).
 - **Batched internal transfers.** `Account.TransferBatch` — up to 5000 transfers in one request
   (`on_error: continue|stop`); progress through `Batches.Info`.
 - **Public payment page** (own checkout, no keys in the browser): `Payments.PublicGet` and

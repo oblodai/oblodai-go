@@ -46,36 +46,26 @@ go get github.com/oblodai/oblodai-go@v1.3.0
 
 ## Где взять ключи
 
-Ключи выпускаются в [личном кабинете](https://my.oblodai.com) → **API keys**. Боевая пара — это
-public id `oblodai_<hex>` и секрет `oblodai_live_<hex>`: один унифицированный API-ключ, открывающий
-и платёжную, и выплатную сторону. У давних мерчантов два вида могут быть разведены по-старому:
-`oblodai_pk_<hex>` (платёжный) и `oblodai_wk_<hex>` (выплатной):
-
-- **платёжным ключом** подписываются счета, платёжные ссылки, кошельки, справочник, настройки и
-  документы;
-- **выплатным ключом** — всё, что выводит деньги: `Payouts.*`, `Refunds.*` (включая `Resolve`),
-  `PayoutLinks.*`, `Transfers.*`, `Splits.*`, `Wallets.RefundBlockedDeposit`,
-  `Settings.*AutoWithdraw`, `Settings.*APIAllowlist`, `Webhooks.RotateSecret`,
-  `Webhooks.Test(WebhookKindPayout, …)`, `Sandbox.Faucet`, `Sandbox.Reset`.
-
-Пара песочницы — это public id `test_oblodai_<hex>` и секрет `oblodai_test_<hex>`; она работает с
-бесцепочечной копией шлюза и служит **обоими** видами ключа сразу, так что интеграции в песочнице
-хватает одной пары. Если боевых пар у вас две, передайте обе — клиент сам выберет нужную для
-каждого вызова:
+У мерчанта **один API-ключ**, он выпускается в [личном кабинете](https://my.oblodai.com) →
+**API keys**: public id `oblodai_<hex>` и секрет `oblodai_live_<hex>`. Им подписывается каждый
+закрытый маршрут шлюза — счета, платёжные ссылки, кошельки, настройки и документы с одной стороны,
+`Payouts.*`, `Refunds.*`, `PayoutLinks.*`, `Transfers.*`, `Splits.*` и правила автовывода с другой.
+Выбирать нечего:
 
 ```go
-client, err := oblodai.New(
-	oblodai.WithCredentials(publicID, secret),
-	oblodai.WithPayoutCredentials(payoutPublicID, payoutSecret),
-)
+client, err := oblodai.New(oblodai.WithCredentials(publicID, secret))
 ```
 
-Запасной вариант через окружение — `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET` и
-`OBLODAI_PAYOUT_PUBLIC_ID` / `OBLODAI_PAYOUT_SECRET`. Вызов не тем видом ключа даёт 403
-`merchant.wrong_key_kind`; на маршруте, который принимает любой вид, `WithPayoutKey()` выбирает для
-этого вызова выплатной. Заведение мерчантов (`Merchants.Create`, `Merchants.CreateSandbox`) идёт без
-подписи — self-hosted шлюз закрывает эти маршруты **админ-токеном онбординга** (`WithAdminToken` или
-`OBLODAI_ADMIN_TOKEN`).
+Запасной вариант через окружение — `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET`. Пара песочницы — public
+id `test_oblodai_<hex>` и секрет `oblodai_test_<hex>` — выдаётся онбордингом песочницы
+(`Merchants.CreateSandbox`) и работает с бесцепочечной копией шлюза. Заведение мерчантов
+(`Merchants.Create`, `Merchants.CreateSandbox`) идёт без подписи — self-hosted шлюз закрывает эти
+маршруты **админ-токеном онбординга** (`WithAdminToken` или `OBLODAI_ADMIN_TOKEN`), и это
+единственная другая учётка, которую знает SDK.
+
+> У давних мерчантов может остаться старая **разделённая пара** (`oblodai_pk_<hex>` для платежей,
+> `oblodai_wk_<hex>` для выплат): подпись не той половиной даёт 403 `merchant.wrong_key_kind`.
+> Запросите в кабинете единый ключ `oblodai_<hex>` — и ошибка исчезнет навсегда.
 
 ## Быстрый старт
 
@@ -103,7 +93,7 @@ fmt.Println(invoice.URL, invoice.Address, invoice.Status) // "created"
 Чтобы выставить цену в фиате, укажите `Amount: "25", Currency: "USD", ToCurrency: "USDT"`:
 `Currency` — то, в чём вы выставляете счёт, `ToCurrency` — актив, который отправляет плательщик.
 Если не задавать `Network`, плательщик выберет сеть на платёжной странице. Вывод денег идёт по
-выплатному ключу:
+тому же ключу:
 
 ```go
 payout, err := client.Payouts.Create(ctx, oblodai.PayoutParams{
@@ -150,7 +140,7 @@ if err != nil {
 fmt.Println(deposit.TxID, deposit.Confirmations)
 ```
 
-- `Sandbox.Faucet` начисляет тестовые деньги, не больше 1000000 за вызов (выплатной ключ). Передайте
+- `Sandbox.Faucet` начисляет тестовые деньги, не больше 1000000 за вызов. Передайте
   `IdempotencyKey`, если повтор не должен пополнить баланс дважды.
 - `Sandbox.Deposit` оплачивает счёт: без `Amount` платит ровно столько, сколько нужно, любое другое
   значение даёт недо- или переплату, а `Confirmations` меньше требуемого проверяет переход
@@ -161,7 +151,7 @@ fmt.Println(deposit.TxID, deposit.Confirmations)
   или на бою: она подписана точно так же, как настоящая, и несёт `test: true` в подписанном теле
   (а также заголовок `X-Webhook-Test: true`). Проверяйте `delivery.IsTest` и никогда не считайте
   такую доставку движением денег.
-- `Sandbox.Reset` отменяет открытые счета магазина и обнуляет его балансы (выплатной ключ).
+- `Sandbox.Reset` отменяет открытые счета магазина и обнуляет его балансы.
 
 ## Обзор методов
 
@@ -300,7 +290,7 @@ w.WriteHeader(http.StatusOK)
 | ------------------------- | -------------- | ----------------------------------------------------------------- |
 | `KindValidation`          | 400            | некорректный запрос или бизнес-правило; `Field` называет поле      |
 | `KindAuthentication`      | 401            | плохая подпись, неизвестный ключ, расхождение часов, IP не в белом списке |
-| `KindPermission`          | 403            | ключ валиден, но здесь нельзя (не тот вид ключа, фича выключена)   |
+| `KindPermission`          | 403            | ключ валиден, но здесь нельзя (фича выключена)                     |
 | `KindNotFound`            | 404            | у этого мерчанта такого объекта нет                                |
 | `KindConflict`            | 409            | конфликт состояния                                                 |
 | `KindIdempotencyConflict` | 409            | `idempotency.key_reused`: тот же ключ, другое тело                 |
@@ -337,10 +327,10 @@ if err != nil {
 }
 ```
 
-Полный каталог — `oblodai.ErrorCodes`: все 471 код, которыми может ответить ядро, поставляются в
+Полный каталог — `oblodai.ErrorCodes`: все 469 кодов, которыми может ответить ядро, поставляются в
 снимке контракта. Коды, которые стоит обработать в первую очередь: `payout.insufficient_funds` и
 `payout.funds_maturing` (оба retryable), `idempotency.key_reused`, `invoice.not_payable`,
-`payment.not_found`, `merchant.wrong_key_kind`, `merchant.bad_signature`, `request.rate_limited`.
+`payment.not_found`, `merchant.bad_signature`, `request.rate_limited`.
 Сверх них клиент поднимает собственные семейства: `sdk.missing_credentials`, `sdk.bad_config`,
 `sdk.bad_idempotency_key`, `sdk.idempotency_unsupported`, `sdk.bad_envelope`, `sdk.bad_path_param`,
 `sdk.bad_amount`, `sdk.bad_header`, `sdk.response_too_large`,
@@ -370,7 +360,7 @@ if err != nil {
   маршрутах, которые шлюз не дедуплицирует (включая списки), клиент отклоняет ключ с
   `sdk.idempotency_unsupported`, вместо того чтобы позволить вам считать повтор безопасным.
 - **На вызов:** `WithIdempotencyKey`, `WithRequestTimeout`, `WithRequestBudget`,
-  `WithRequestHeader`, `WithPayoutKey`. **На клиент:** `WithTimeout` (на попытку, 30 с),
+  `WithRequestHeader`. **На клиент:** `WithTimeout` (на попытку, 30 с),
   `WithCallBudget` (попытки вместе с паузами, 90 с),
   `WithRetry(oblodai.RetryOptions{MaxRetries, BaseDelay, MaxDelay, MaxRetryAfter})`. Отмена контекста
   прекращает всё, включая паузу между повторами.
@@ -391,8 +381,7 @@ if err != nil {
 
 | Опция                           | Что делает                                                                       |
 | ------------------------------- | -------------------------------------------------------------------------------- |
-| `WithCredentials(id, secret)`   | платёжная пара ключей (используется и для выплат, если выплатной пары нет)        |
-| `WithPayoutCredentials(id, s)`  | отдельная выплатная пара ключей                                                   |
+| `WithCredentials(id, secret)`   | пара ключей мерчанта — ею подписан каждый закрытый маршрут                        |
 | `WithBaseURL(url)`              | origin API; префикс пути сохраняется                                              |
 | `WithInsecureBaseURL(true)`     | разрешить обычный `http://` для не-loopback хоста                                 |
 | `WithAdminToken(token)`         | админ-токен онбординга self-hosted шлюза (только маршруты заведения мерчантов)    |
@@ -405,10 +394,8 @@ if err != nil {
 
 | Переменная окружения       | Значение                                                       |
 | -------------------------- | -------------------------------------------------------------- |
-| `OBLODAI_PUBLIC_ID`        | public id платёжного ключа                                     |
-| `OBLODAI_SECRET`           | секрет платёжного ключа                                        |
-| `OBLODAI_PAYOUT_PUBLIC_ID` | public id выплатного ключа                                     |
-| `OBLODAI_PAYOUT_SECRET`    | секрет выплатного ключа                                        |
+| `OBLODAI_PUBLIC_ID`        | public id API-ключа                                            |
+| `OBLODAI_SECRET`           | секрет API-ключа                                               |
 | `OBLODAI_ADMIN_TOKEN`      | админ-токен онбординга self-hosted шлюза                       |
 | `OBLODAI_BASE_URL`         | origin API (по умолчанию `https://api.oblodai.com`)            |
 | `OBLODAI_LOG`              | `debug` \| `info` \| `warn` \| `error` — включает текстовый логгер |
@@ -433,7 +420,7 @@ if err != nil {
 ## Снимок контракта
 
 `contract/` экспортируется собственным тестовым набором шлюза: реестр маршрутов (107 маршрутов, у
-каждого — собственный флаг `safe` от ядра), схемы DTO запросов, все словари и все 471 код ошибок,
+каждого — собственный флаг `safe` от ядра), схемы DTO запросов, все словари и все 469 кодов ошибок,
 векторы подписи, эталонные тела ответов, записанные с живого ядра, и 43 настоящие подписанные
 доставки вебхуков. Локальным для репозитория остаётся только `contract/descriptions.en.json`
 (английские описания полей); всё остальное при обновлении заменяется целиком. `contract_routes.go`,

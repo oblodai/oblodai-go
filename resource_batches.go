@@ -6,20 +6,13 @@ import "context"
 // and payout-link.
 type BatchesService struct{ c *Client }
 
-// Info reads a batch's status, counters and per-row outcomes (POST /v1/batch/info).
-//
-// The route accepts either key kind, but the core requires the kind that created the batch, so a
-// payout batch is transparently retried with the payout key when one is configured.
+// Info reads a batch's status, counters and per-row outcomes (POST /v1/batch/info). Every kind of
+// batch — payment, refund, payout, transfer, payout link — is read through this one route.
 func (s *BatchesService) Info(ctx context.Context, params BatchInfoParams, opts ...RequestOption) (*BatchInfo, error) {
-	result, err := post[BatchInfo](ctx, s.c, "POST /v1/batch/info", params, opts)
-	if err != nil && IsCode(err, CodeWrongKeyKind) && s.c.transport.payoutCreds != nil && !applyRequestOptions(opts).preferPayoutKey {
-		return post[BatchInfo](ctx, s.c, "POST /v1/batch/info", params, append(append([]RequestOption{}, opts...), WithPayoutKey()))
-	}
-	return result, err
+	return post[BatchInfo](ctx, s.c, "POST /v1/batch/info", params, opts)
 }
 
-// TransfersService moves money between platform balances: internal, instant and fee-free. It
-// wants the payout key.
+// TransfersService moves money between platform balances: internal, instant and fee-free.
 type TransfersService struct{ c *Client }
 
 // ToPersonal moves funds from the business balance to the owner's personal wallet
@@ -27,7 +20,7 @@ type TransfersService struct{ c *Client }
 //
 // Errors worth branching on: transfer.bad_amount, merchant.no_owner,
 // merchant.no_personal_wallet, payout.insufficient_funds (retryable), payout.funds_maturing
-// (retryable), merchant.wrong_key_kind.
+// (retryable).
 func (s *TransfersService) ToPersonal(ctx context.Context, params TransferToPersonalParams, opts ...RequestOption) (*TransferToPersonal, error) {
 	return post[TransferToPersonal](ctx, s.c, "POST /v1/transfer/to-personal", params, opts)
 }
@@ -37,7 +30,7 @@ func (s *TransfersService) ToPersonal(ctx context.Context, params TransferToPers
 //
 // Errors worth branching on: transfer.bad_amount, transfer.no_recipient,
 // transfer.recipient_not_found, transfer.bad_recipient (the recipient is yourself),
-// payout.insufficient_funds (retryable), merchant.wrong_key_kind.
+// payout.insufficient_funds (retryable).
 func (s *TransfersService) ToUser(ctx context.Context, params TransferToUserParams, opts ...RequestOption) (*TransferToUser, error) {
 	return post[TransferToUser](ctx, s.c, "POST /v1/transfer/to-user", params, opts)
 }
@@ -47,8 +40,7 @@ func (s *TransfersService) ToUser(ctx context.Context, params TransferToUserPara
 //
 // Errors worth branching on: payout.batch_too_large, payout.empty_batch,
 // request.missing_field (an item without OrderID, Amount or Currency),
-// transfer.recipient_not_found, payout.insufficient_funds (retryable),
-// merchant.wrong_key_kind.
+// transfer.recipient_not_found, payout.insufficient_funds (retryable).
 func (s *TransfersService) Batch(ctx context.Context, params TransferBatchParams, opts ...RequestOption) (*BatchSubmitted, error) {
 	return post[BatchSubmitted](ctx, s.c, "POST /v1/transfer/batch", params, opts)
 }
@@ -79,11 +71,11 @@ func (s *WalletsService) Block(ctx context.Context, params WalletBlockParams, op
 }
 
 // RefundBlockedDeposit sends funds that landed on a blocked address back to their sender
-// (POST /v1/wallet/blocked-address-refund). It wants the payout key.
+// (POST /v1/wallet/blocked-address-refund).
 //
 // Errors worth branching on: wallet.bad_uuid, refund.no_address (the address is not blocked),
 // refund.nothing_to_refund (already refunded, or nothing landed), refund.dust (below the network
-// minimum), refund.destination_internal, merchant.wrong_key_kind.
+// minimum), refund.destination_internal.
 func (s *WalletsService) RefundBlockedDeposit(ctx context.Context, params WalletBlockedAddressRefundParams, opts ...RequestOption) (*Payout, error) {
 	return post[Payout](ctx, s.c, "POST /v1/wallet/blocked-address-refund", params, opts)
 }

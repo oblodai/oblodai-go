@@ -1,6 +1,6 @@
 {
- "core_commit": "7ec04293c4264faa121409b1715c2e8fcd349f32",
- "exported_at": "2026-08-26T10:50:02Z",
+ "core_commit": "2cc44c16f516d6c26d6290dcada40b7ed814d6de",
+ "exported_at": "2026-08-26T15:26:29Z",
  "signing": {
   "algorithm": "HMAC-SHA256, lowercase hex",
   "canonical": "ts\\nMETHOD\\nrequest_uri\\nidempotency_key\\nbody",
@@ -77,7 +77,7 @@
   {
    "method": "POST",
    "path": "/v1/api-allowlist/add",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -99,7 +99,7 @@
   {
    "method": "POST",
    "path": "/v1/api-allowlist/enable",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -121,7 +121,7 @@
   {
    "method": "POST",
    "path": "/v1/api-allowlist/list",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -130,7 +130,7 @@
   {
    "method": "POST",
    "path": "/v1/api-allowlist/remove",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -152,7 +152,7 @@
   {
    "method": "POST",
    "path": "/v1/auto-withdraw/delete",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -173,7 +173,7 @@
   {
    "method": "POST",
    "path": "/v1/auto-withdraw/list",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -182,7 +182,7 @@
   {
    "method": "POST",
    "path": "/v1/auto-withdraw/set",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -220,7 +220,7 @@
   {
    "method": "POST",
    "path": "/v1/balance",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false
@@ -228,7 +228,7 @@
   {
    "method": "POST",
    "path": "/v1/batch/info",
-   "auth": "any",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -397,7 +397,7 @@
   {
    "method": "GET",
    "path": "/v1/documents/balance",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": true
@@ -405,7 +405,7 @@
   {
    "method": "GET",
    "path": "/v1/documents/batch",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": true
@@ -413,7 +413,7 @@
   {
    "method": "GET",
    "path": "/v1/documents/fees",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": true
@@ -421,7 +421,7 @@
   {
    "method": "POST",
    "path": "/v1/documents/jobs",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -462,7 +462,7 @@
   {
    "method": "GET",
    "path": "/v1/documents/jobs/file",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": true
@@ -470,7 +470,7 @@
   {
    "method": "POST",
    "path": "/v1/documents/jobs/info",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -491,7 +491,7 @@
   {
    "method": "GET",
    "path": "/v1/documents/ledger",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": true
@@ -499,7 +499,7 @@
   {
    "method": "GET",
    "path": "/v1/documents/link",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": true
@@ -507,7 +507,7 @@
   {
    "method": "GET",
    "path": "/v1/documents/referrals",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": true
@@ -515,7 +515,7 @@
   {
    "method": "GET",
    "path": "/v1/documents/split",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": true
@@ -523,7 +523,7 @@
   {
    "method": "GET",
    "path": "/v1/documents/statement",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": true
@@ -531,7 +531,7 @@
   {
    "method": "GET",
    "path": "/v1/documents/wallet/statement",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": true
@@ -1297,7 +1297,7 @@
   {
    "method": "POST",
    "path": "/v1/payment",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -1590,7 +1590,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/accepted/list",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -1614,7 +1614,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/accepted/set",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -1653,7 +1653,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/accuracy/get",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false
@@ -1661,7 +1661,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/accuracy/set",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -1687,7 +1687,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/autorefund/get",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false
@@ -1695,7 +1695,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/autorefund/set",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -1722,7 +1722,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/batch",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -1852,7 +1852,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/cancel",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -2079,7 +2079,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/discount/list",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -2103,7 +2103,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/discount/set",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -2134,7 +2134,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/fee-config/get",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false
@@ -2142,7 +2142,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/fee-config/set",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -2163,7 +2163,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/history",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -2197,7 +2197,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/info",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -2424,7 +2424,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/link",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -2508,7 +2508,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/link/info",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -2539,7 +2539,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/link/list",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -2563,7 +2563,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/link/toggle",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -2590,7 +2590,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/qr",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -2612,7 +2612,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/refund",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -2692,7 +2692,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/resend",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -2714,7 +2714,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/resolve",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -2756,7 +2756,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/send-email",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -2783,7 +2783,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/services",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -2807,7 +2807,7 @@
   {
    "method": "POST",
    "path": "/v1/payment/testing-webhook",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -2830,7 +2830,7 @@
   {
    "method": "POST",
    "path": "/v1/payout",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -2993,7 +2993,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/approve",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -3013,7 +3013,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/batch",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -3119,7 +3119,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/calculate",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -3155,7 +3155,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/cancel",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -3175,7 +3175,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/fee-config/get",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false
@@ -3183,7 +3183,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/fee-config/set",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -3204,7 +3204,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/history",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -3238,7 +3238,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/info",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -3359,7 +3359,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/link",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -3427,7 +3427,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/link/batch",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -3507,7 +3507,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/link/cancel",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -3527,7 +3527,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/link/cheque",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": true,
@@ -3553,7 +3553,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/link/info",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -3573,7 +3573,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/link/list",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -3597,7 +3597,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/mass",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -3677,7 +3677,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/refund-fee-config/get",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false
@@ -3685,7 +3685,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/refund-fee-config/set",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -3706,7 +3706,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/services",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -3730,7 +3730,7 @@
   {
    "method": "POST",
    "path": "/v1/payout/validate",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -3794,7 +3794,7 @@
   {
    "method": "POST",
    "path": "/v1/referral/info",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false
@@ -3802,7 +3802,7 @@
   {
    "method": "POST",
    "path": "/v1/refund/batch",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -3884,7 +3884,7 @@
   {
    "method": "POST",
    "path": "/v1/sandbox/deposit",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -3918,7 +3918,7 @@
   {
    "method": "POST",
    "path": "/v1/sandbox/faucet",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -3949,7 +3949,7 @@
   {
    "method": "POST",
    "path": "/v1/sandbox/reset",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false
@@ -3957,7 +3957,7 @@
   {
    "method": "GET",
    "path": "/v1/sandbox/webhooks",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -3966,7 +3966,7 @@
   {
    "method": "POST",
    "path": "/v1/sandbox/webhooks/replay",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -3986,7 +3986,7 @@
   {
    "method": "POST",
    "path": "/v1/split/config/get",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false
@@ -3994,7 +3994,7 @@
   {
    "method": "POST",
    "path": "/v1/split/config/set",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4015,7 +4015,7 @@
   {
    "method": "POST",
    "path": "/v1/split/recipient/optin",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4036,7 +4036,7 @@
   {
    "method": "POST",
    "path": "/v1/split/recipient/optin/get",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false
@@ -4044,7 +4044,7 @@
   {
    "method": "POST",
    "path": "/v1/split/rule",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -4083,7 +4083,7 @@
   {
    "method": "POST",
    "path": "/v1/split/rule/delete",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4104,7 +4104,7 @@
   {
    "method": "POST",
    "path": "/v1/split/rule/list",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -4128,7 +4128,7 @@
   {
    "method": "POST",
    "path": "/v1/test-webhook/payment",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4172,7 +4172,7 @@
   {
    "method": "POST",
    "path": "/v1/test-webhook/payout",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4216,7 +4216,7 @@
   {
    "method": "POST",
    "path": "/v1/test-webhook/wallet",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4260,7 +4260,7 @@
   {
    "method": "POST",
    "path": "/v1/transfer/batch",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -4308,7 +4308,7 @@
   {
    "method": "POST",
    "path": "/v1/transfer/to-personal",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -4340,7 +4340,7 @@
   {
    "method": "POST",
    "path": "/v1/transfer/to-user",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": true,
    "safe": false,
    "bare": false,
@@ -4374,7 +4374,7 @@
   {
    "method": "POST",
    "path": "/v1/vrcs",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4392,7 +4392,7 @@
   {
    "method": "POST",
    "path": "/v1/wallet",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4479,7 +4479,7 @@
   {
    "method": "POST",
    "path": "/v1/wallet/block",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4504,7 +4504,7 @@
   {
    "method": "POST",
    "path": "/v1/wallet/blocked-address-refund",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4533,7 +4533,7 @@
   {
    "method": "POST",
    "path": "/v1/wallet/qr",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -4553,7 +4553,7 @@
   {
    "method": "POST",
    "path": "/v1/webhooks",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4591,7 +4591,7 @@
   {
    "method": "POST",
    "path": "/v1/webhooks/deliveries",
-   "auth": "payment",
+   "auth": "key",
    "idempotent": false,
    "safe": true,
    "bare": false,
@@ -4615,7 +4615,7 @@
   {
    "method": "POST",
    "path": "/v1/webhooks/rotate-secret",
-   "auth": "payout",
+   "auth": "key",
    "idempotent": false,
    "safe": false,
    "bare": false,
@@ -4850,7 +4850,6 @@
   "merchant.already_sandbox",
   "merchant.bad_fee_bearer",
   "merchant.bad_id",
-  "merchant.bad_key_kind",
   "merchant.bad_project_id",
   "merchant.bad_settles_to",
   "merchant.bad_signature",
@@ -4864,7 +4863,6 @@
   "merchant.project_mismatch",
   "merchant.secret_decrypt",
   "merchant.unknown_key",
-  "merchant.wrong_key_kind",
   "minimum.negative",
   "minimum.no_network",
   "onramp.admit",

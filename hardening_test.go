@@ -39,7 +39,7 @@ func TestPathParametersAreEscapedExactlyOnce(t *testing.T) {
 func TestWhatIsSignedIsWhatIsSent(t *testing.T) {
 	built, err := buildRequest(buildInput{
 		baseURL:    "https://api.example",
-		route:      Route{Method: "POST", Path: "/v1/claim/{token}", Auth: AuthPayment},
+		route:      Route{Method: "POST", Path: "/v1/claim/{token}", Auth: AuthKey},
 		pathParams: map[string]string{"token": "tok en"},
 		body:       []byte("{}"),
 		creds:      &credentials{publicID: "pk", secret: "sk"},
@@ -259,7 +259,7 @@ func TestSecretsAreRedactedWhenPrintedAndSerialized(t *testing.T) {
 		fmt.Sprintf("%v", endpoint), fmt.Sprintf("%+v", endpoint), fmt.Sprintf("%#v", endpoint),
 		fmt.Sprintf("%v", rotated), fmt.Sprintf("%v", keys), fmt.Sprintf("%+v", link),
 		mustJSON(t, endpoint), mustJSON(t, rotated), mustJSON(t, keys), mustJSON(t, link),
-		mustJSON(t, MerchantOnboarded{APIKey: keys, PaymentKey: keys, PayoutKey: keys}),
+		mustJSON(t, MerchantOnboarded{APIKey: keys}),
 	} {
 		for _, secret := range []string{"whsec_live", "whsec_new", "sk_live_1", "cl4im-tok3n", "pay.test/claim", `"1234"`} {
 			if strings.Contains(rendered, secret) {
@@ -299,12 +299,12 @@ func TestAClaimURLIsRedactedInsideABatchElement(t *testing.T) {
 
 func TestClientAndCredentialsNeverPrintTheirKeys(t *testing.T) {
 	api := newFakeAPI(t)
-	client := api.client(WithPayoutCredentials("wk_live_1", "payout-secret"), WithAdminToken("admin-token"))
+	client := api.client(WithAdminToken("admin-token"))
 	for _, rendered := range []string{
 		fmt.Sprintf("%v", client), fmt.Sprintf("%+v", client), fmt.Sprintf("%#v", client),
 		fmt.Sprintf("%v", client.transport), fmt.Sprintf("%v", client.transport.creds),
 	} {
-		for _, secret := range []string{"secret-1", "payout-secret", "admin-token"} {
+		for _, secret := range []string{"secret-1", "admin-token"} {
 			if strings.Contains(rendered, secret) {
 				t.Fatalf("a secret leaked into %s", rendered)
 			}

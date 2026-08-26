@@ -22,13 +22,13 @@ invoice, err := client.Payments.Create(ctx, oblodai.PaymentParams{...})
 
 - Every call takes a `context.Context` first and optional `RequestOption`s last.
 - Construction returns an error instead of panicking on bad configuration.
-- Options are functional: `WithCredentials`, `WithPayoutCredentials`, `WithBaseURL`,
-  `WithHTTPClient`, `WithTimeout`, `WithCallBudget`, `WithRetry`, `WithLogger`, `WithHeader`,
-  `WithAdminToken`, `WithInsecureBaseURL`. The environment still fills in what you leave out:
-  `OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`, `OBLODAI_PAYOUT_PUBLIC_ID`, `OBLODAI_PAYOUT_SECRET`,
-  `OBLODAI_BASE_URL`, `OBLODAI_ADMIN_TOKEN`, `OBLODAI_ALLOW_INSECURE`, `OBLODAI_LOG`.
+- Options are functional: `WithCredentials`, `WithBaseURL`, `WithHTTPClient`, `WithTimeout`,
+  `WithCallBudget`, `WithRetry`, `WithLogger`, `WithHeader`, `WithAdminToken`,
+  `WithInsecureBaseURL`. The environment still fills in what you leave out, and it is six variables
+  in total: `OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`, `OBLODAI_ADMIN_TOKEN`, `OBLODAI_BASE_URL`,
+  `OBLODAI_LOG`, `OBLODAI_ALLOW_INSECURE`.
 - Per-call options: `WithIdempotencyKey`, `WithRequestTimeout`, `WithRequestBudget`,
-  `WithRequestHeader`, `WithPayoutKey`.
+  `WithRequestHeader`.
 
 ## Names
 
@@ -88,6 +88,13 @@ Verify over the raw request bytes, deduplicate on `delivery.ID`, and drop out-of
 
 ## What else changed in 1.3
 
+- **One API key.** The gateway issues a single key (`oblodai_<hex>` / `oblodai_live_<hex>`) that
+  signs every gated route, payouts included, so the payout credential pair is gone:
+  `WithPayoutCredentials`, the per-call `WithPayoutKey()` and the environment variables
+  `OBLODAI_PAYOUT_PUBLIC_ID` / `OBLODAI_PAYOUT_SECRET` no longer exist. Delete them and pass one
+  pair to `WithCredentials`. Onboarding answers with `api_key` alone — `MerchantOnboarded` and
+  `SandboxStore` no longer carry `PaymentKey` or `PayoutKey`. `merchant.wrong_key_kind` survives
+  only as a legacy code, reachable if you still hold an old `oblodai_pk_…`/`oblodai_wk_…` pair.
 - **Retry safety comes from the contract.** `Routes[key].Safe` is the core's own read-only
   classification; the SDK no longer infers it from the path, and `go run ./internal/codegen -check`
   fails on a contract snapshot that does not declare it.

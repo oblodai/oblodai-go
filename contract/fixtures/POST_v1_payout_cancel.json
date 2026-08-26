@@ -2,7 +2,7 @@
  "route": "POST /v1/payout/cancel",
  "status": 200,
  "request": {
-  "uuid": "ab5c6ab5-4682-41df-a0fa-44aeb5524aaa"
+  "uuid": "0ff25cfe-acdf-4693-acad-b7ac631feb24"
  },
  "response": {
   "result": {
@@ -10,9 +10,9 @@
    "amount": "1.000000",
    "approval_required": false,
    "commission": "0.000000",
-   "created_at": "2026-08-26T10:50:05Z",
+   "created_at": "2026-08-26T15:26:31Z",
    "currency": "USDT",
-   "document_url": "http://127.0.0.1:45579/v1/documents/payout/ab5c6ab5-4682-41df-a0fa-44aeb5524aaa?exp=1787745005\u0026sig=2b1d6b695b90f65817f1f5a8890a25f25b098581783c7e4cc5323faad8708b94",
+   "document_url": "http://127.0.0.1:44917/v1/documents/payout/0ff25cfe-acdf-4693-acad-b7ac631feb24?exp=1787761591\u0026sig=36af0869490354216f88f95181aed50ee567096699889f76cce9083c2c83c17a",
    "fee_bearer": "gateway",
    "is_final": true,
    "is_refund": false,
@@ -25,8 +25,8 @@
    "source": "api",
    "status": "cancelled",
    "txid": "",
-   "updated_at": "2026-08-26T10:50:05Z",
-   "uuid": "ab5c6ab5-4682-41df-a0fa-44aeb5524aaa"
+   "updated_at": "2026-08-26T15:26:31Z",
+   "uuid": "0ff25cfe-acdf-4693-acad-b7ac631feb24"
   },
   "state": 0
  },

@@ -8,13 +8,13 @@
     "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
     "amount": "1",
     "reference": "sdk-ref-2",
-    "uuid": "361cf859-6692-4371-9823-b8dea53c78b8"
+    "uuid": "857f83e8-c8ae-4e77-8d8f-4eb367a1c0ea"
    }
   ]
  },
  "response": {
   "result": {
-   "batch_id": "512b0701-170b-419a-bf66-45491ea1319e",
+   "batch_id": "8b222914-5998-458e-8bc9-fa3a0662f53f",
    "count": 1,
    "kind": "refund",
    "status": "pending"

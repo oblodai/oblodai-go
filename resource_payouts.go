@@ -2,7 +2,7 @@ package oblodai
 
 import "context"
 
-// PayoutsService sends funds to external addresses. Every route here wants the payout key.
+// PayoutsService sends funds to external addresses.
 type PayoutsService struct{ c *Client }
 
 // Create sends a payout and, for API keys, approves it immediately (POST /v1/payout). It is
@@ -11,8 +11,7 @@ type PayoutsService struct{ c *Client }
 // Errors worth branching on: payout.insufficient_funds (retryable — the balance may arrive),
 // payout.funds_maturing (retryable — deposits are still in their reorg window),
 // payout.bad_address, payout.address_network_mismatch, payout.memo_required,
-// payout.amount_below_fee, payout.frozen, payout.order_id_required, idempotency.key_reused,
-// merchant.wrong_key_kind (the payment key on a payout route).
+// payout.amount_below_fee, payout.frozen, payout.order_id_required, idempotency.key_reused.
 func (s *PayoutsService) Create(ctx context.Context, params PayoutParams, opts ...RequestOption) (*Payout, error) {
 	return post[Payout](ctx, s.c, "POST /v1/payout", params, opts)
 }
@@ -65,9 +64,8 @@ func (s *PayoutsService) List(ctx context.Context, params PayoutHistoryParams, o
 // contain failures, so check every element's OK.
 //
 // Errors worth branching on (call level): payout.batch_too_large (more than 100),
-// payout.empty_batch, payout.insufficient_funds (retryable), payout.frozen,
-// merchant.wrong_key_kind. Per-element failures arrive as ErrorCode, with the vocabulary of
-// Create.
+// payout.empty_batch, payout.insufficient_funds (retryable), payout.frozen. Per-element failures
+// arrive as ErrorCode, with the vocabulary of Create.
 func (s *PayoutsService) Mass(ctx context.Context, params PayoutMassParams, opts ...RequestOption) ([]BatchElement[Payout], error) {
 	return items[BatchElement[Payout]](ctx, s.c, "POST /v1/payout/mass", params, opts)
 }
@@ -76,7 +74,7 @@ func (s *PayoutsService) Mass(ctx context.Context, params PayoutMassParams, opts
 // poll with Batches.Info. OrderID is required on every element.
 //
 // Errors worth branching on: payout.batch_too_large, payout.empty_batch,
-// payout.order_id_required, payout.reference_collision, payout.frozen, merchant.wrong_key_kind,
+// payout.order_id_required, payout.reference_collision, payout.frozen,
 // idempotency.key_reused. Insufficient funds surface per element while the batch runs, not on
 // submission.
 func (s *PayoutsService) Batch(ctx context.Context, params PayoutBatchParams, opts ...RequestOption) (*BatchSubmitted, error) {
@@ -111,7 +109,6 @@ func (s *PayoutsService) SetRefundFeeConfig(ctx context.Context, params PayoutRe
 }
 
 // RefundsService issues refunds — payouts in the invoice's own asset — and settles underpayments.
-// It wants the payout key.
 type RefundsService struct{ c *Client }
 
 // Create refunds a paid invoice, fully or partially (POST /v1/payment/refund). The result is the
@@ -119,8 +116,8 @@ type RefundsService struct{ c *Client }
 //
 // Errors worth branching on: refund.nothing_to_refund, refund.exceeds_refundable,
 // refund.no_address (the payer address is not refundable — ask the payer for one), refund.dust
-// (below the network minimum), refund.reference_collision, payout.insufficient_funds (retryable),
-// merchant.wrong_key_kind.
+// (below the network minimum), refund.reference_collision, payout.insufficient_funds
+// (retryable).
 func (s *RefundsService) Create(ctx context.Context, params PaymentRefundParams, opts ...RequestOption) (*Payout, error) {
 	return post[Payout](ctx, s.c, "POST /v1/payment/refund", params, opts)
 }
@@ -138,7 +135,7 @@ func (s *RefundsService) Resolve(ctx context.Context, params PaymentResolveParam
 //
 // Errors worth branching on: payout.batch_too_large, payout.empty_batch,
 // refund.reference_collision, request.missing_field (an item without Reference),
-// merchant.wrong_key_kind, idempotency.key_reused.
+// idempotency.key_reused.
 func (s *RefundsService) Batch(ctx context.Context, params RefundBatchParams, opts ...RequestOption) (*BatchSubmitted, error) {
 	return post[BatchSubmitted](ctx, s.c, "POST /v1/refund/batch", params, opts)
 }

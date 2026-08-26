@@ -1,8 +1,8 @@
 # Examples
 
-Each directory is a runnable program. Point them at the sandbox first: a sandbox key pair
+Each directory is a runnable program. Point them at the sandbox first: a sandbox API key
 (public id `test_oblodai_…`, secret `oblodai_test_…`) drives a chainless copy of the gateway, with
-fake balance and simulated deposits, and serves both key kinds at once.
+fake balance and simulated deposits.
 
 ```bash
 export OBLODAI_PUBLIC_ID=test_oblodai_…

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Client is the Oblodai API client. One instance per key pair; it is safe to share across
+// Client is the Oblodai API client. One instance per API key; it is safe to share across
 // goroutines and should be created once and reused, so connections and the learned clock offset
 // are shared.
 type Client struct {
@@ -54,10 +54,7 @@ type Client struct {
 // environment and talks to the production API:
 //
 //	client, err := oblodai.New()
-//	client, err := oblodai.New(
-//		oblodai.WithCredentials(publicID, secret),
-//		oblodai.WithPayoutCredentials(payoutID, payoutSecret),
-//	)
+//	client, err := oblodai.New(oblodai.WithCredentials(publicID, secret))
 //
 // It fails only on unusable configuration (a malformed base URL, half a key pair); missing
 // credentials surface later, on the first call that needs them.
@@ -89,9 +86,6 @@ func New(opts ...Option) (*Client, error) {
 	}
 	if cfg.publicID != "" {
 		t.creds = &credentials{publicID: cfg.publicID, secret: cfg.secret}
-	}
-	if cfg.payoutPublicID != "" {
-		t.payoutCreds = &credentials{publicID: cfg.payoutPublicID, secret: cfg.payoutSecret}
 	}
 
 	c := &Client{transport: t}
@@ -151,12 +145,6 @@ func WithRequestHeader(name, value string) RequestOption {
 		}
 		o.headers[name] = value
 	}
-}
-
-// WithPayoutKey signs a route that accepts either key kind with the payout key — for example
-// Batches.Info for a batch created by a payout key.
-func WithPayoutKey() RequestOption {
-	return func(o *callOptions) { o.preferPayoutKey = true }
 }
 
 func applyRequestOptions(opts []RequestOption) callOptions {

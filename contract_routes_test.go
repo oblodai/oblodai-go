@@ -69,7 +69,7 @@ func TestRouteRegistryMatchesTheContractFieldForField(t *testing.T) {
 
 	// The comparison has to be able to fail: flip one flag and it must be caught.
 	flipped := fixtures.Route{
-		Method: "POST", Path: "/v1/payout", Auth: "payout",
+		Method: "POST", Path: "/v1/payout", Auth: "key",
 		Idempotent: true, Safe: boolPtr(true), Bare: false, List: "",
 	}
 	if got := routeMismatches(Routes["POST /v1/payout"], flipped); len(got) != 1 {
@@ -143,10 +143,7 @@ func TestEveryRouteHasAMethodWiredToIt(t *testing.T) {
 				answer = step{status: 200, body: "%PDF", headers: map[string]string{"Content-Type": "application/pdf"}}
 			}
 			api := newFakeAPI(t, answer)
-			client := api.client(
-				WithPayoutCredentials("wk_test_1", "secret-2"),
-				WithAdminToken("adm"),
-			)
+			client := api.client(WithAdminToken("adm"))
 			if err := table[key](context.Background(), client); err != nil {
 				t.Fatalf("%s: %v", key, err)
 			}
@@ -166,6 +163,9 @@ func TestEveryRouteHasAMethodWiredToIt(t *testing.T) {
 				if req.header.Get(HeaderSignature) != "" {
 					t.Error("a public route must not be signed")
 				}
+				if req.header.Get(HeaderAdminToken) != "" {
+					t.Error("a public route must not carry the admin token")
+				}
 			case AuthOnboard:
 				if req.header.Get(HeaderSignature) != "" {
 					t.Error("an onboarding route must not be signed")
@@ -173,17 +173,19 @@ func TestEveryRouteHasAMethodWiredToIt(t *testing.T) {
 				if req.header.Get(HeaderAdminToken) != "adm" {
 					t.Error("an onboarding route must carry the admin token")
 				}
-			default:
-				want := "pk_test_1"
-				if spec.Auth == AuthPayout {
-					want = "wk_test_1"
-				}
-				if got := req.header.Get(HeaderPublicID); got != want {
-					t.Errorf("X-Public-Id = %q, want %q (auth %s)", got, want, spec.Auth)
+			case AuthKey:
+				// One API key signs every gated route: payments and payouts alike.
+				if got := req.header.Get(HeaderPublicID); got != "pk_test_1" {
+					t.Errorf("X-Public-Id = %q, want %q", got, "pk_test_1")
 				}
 				if !hexish(req.header.Get(HeaderSignature), 32) {
 					t.Errorf("X-Signature = %q", req.header.Get(HeaderSignature))
 				}
+				if req.header.Get(HeaderAdminToken) != "" {
+					t.Error("a signed route must not carry the admin token")
+				}
+			default:
+				t.Errorf("unknown auth gate %q", spec.Auth)
 			}
 			idempotencyKey := req.header.Get(HeaderIdempotencyKey)
 			if spec.Idempotent && idempotencyKey == "" {

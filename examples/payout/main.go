@@ -14,9 +14,9 @@ import (
 )
 
 func main() {
-	// Money-out routes want the payout key; a wrong key kind is 403 merchant.wrong_key_kind.
-	client, err := oblodai.New(oblodai.WithPayoutCredentials(
-		os.Getenv("OBLODAI_PAYOUT_PUBLIC_ID"), os.Getenv("OBLODAI_PAYOUT_SECRET")))
+	// One API key signs everything, payouts included.
+	client, err := oblodai.New(oblodai.WithCredentials(
+		os.Getenv("OBLODAI_PUBLIC_ID"), os.Getenv("OBLODAI_SECRET")))
 	if err != nil {
 		log.Fatal(err)
 	}

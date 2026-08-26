@@ -3,8 +3,7 @@ package oblodai
 import "context"
 
 // PayoutLinksService mints payout links (cheques): funds are reserved now and claimed later by
-// whoever holds the token. It wants the payout key; the recipient-facing calls need no
-// credentials.
+// whoever holds the token. The recipient-facing calls need no credentials.
 type PayoutLinksService struct{ c *Client }
 
 // Create reserves the funds and mints a claim token (POST /v1/payout/link). ClaimToken and
@@ -13,8 +12,7 @@ type PayoutLinksService struct{ c *Client }
 //
 // Errors worth branching on: payout_link.disabled, payout.insufficient_funds (retryable),
 // payout.funds_maturing (retryable), payout.bad_amount, payout.bad_address,
-// payout.reference_collision (that Reference already minted a different link),
-// merchant.wrong_key_kind.
+// payout.reference_collision (that Reference already minted a different link).
 func (s *PayoutLinksService) Create(ctx context.Context, params PayoutLinkParams, opts ...RequestOption) (*PayoutLink, error) {
 	return post[PayoutLink](ctx, s.c, "POST /v1/payout/link", params, opts)
 }
@@ -44,9 +42,8 @@ func (s *PayoutLinksService) Cancel(ctx context.Context, linkID string, opts ...
 // 200 can still contain failures. Reference is required on every item.
 //
 // Errors worth branching on (call level): payout.batch_too_large (more than 500),
-// payout.empty_batch, payout_link.disabled, payout.insufficient_funds (retryable),
-// merchant.wrong_key_kind. Per-element failures arrive as ErrorCode, with the vocabulary of
-// Create.
+// payout.empty_batch, payout_link.disabled, payout.insufficient_funds (retryable). Per-element
+// failures arrive as ErrorCode, with the vocabulary of Create.
 func (s *PayoutLinksService) Batch(ctx context.Context, params PayoutLinkBatchParams, opts ...RequestOption) ([]BatchElement[PayoutLink], error) {
 	return items[BatchElement[PayoutLink]](ctx, s.c, "POST /v1/payout/link/batch", params, opts)
 }
@@ -74,7 +71,7 @@ func (s *PayoutLinksService) Claim(ctx context.Context, token string, params Pos
 }
 
 // PaymentLinksService manages reusable payment links (tip jars, price tags): every checkout
-// spawns an invoice. Signed with the payment key; the payer-facing calls need no credentials.
+// spawns an invoice. Signed with the API key; the payer-facing calls need no credentials.
 type PaymentLinksService struct{ c *Client }
 
 // Create opens a payment link (POST /v1/payment/link).

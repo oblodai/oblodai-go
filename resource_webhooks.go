@@ -13,7 +13,7 @@ func (s *WebhooksService) Register(ctx context.Context, url string, opts ...Requ
 }
 
 // RotateSecret issues a new signing secret (POST /v1/webhooks/rotate-secret). The old one keeps
-// verifying until PreviousSecretValidUntil — keep both in your receiver until then. Payout key.
+// verifying until PreviousSecretValidUntil — keep both in your receiver until then.
 func (s *WebhooksService) RotateSecret(ctx context.Context, opts ...RequestOption) (*WebhookSecretRotated, error) {
 	return post[WebhookSecretRotated](ctx, s.c, "POST /v1/webhooks/rotate-secret", nil, opts)
 }
@@ -41,7 +41,6 @@ type WebhookTestParams struct {
 
 // Test delivers a sample event of that kind to URLCallback, signed exactly like a real one
 // (POST /v1/test-webhook/{payment|payout|wallet}) — the way to exercise a receiver end to end.
-// It wants the payout key for WebhookKindPayout.
 func (s *WebhooksService) Test(ctx context.Context, kind WebhookKind, params WebhookTestParams, opts ...RequestOption) (*WebhookTestResult, error) {
 	switch kind {
 	case WebhookKindPayment, WebhookKindPayout, WebhookKindWallet:
@@ -64,7 +63,7 @@ func (s *WebhooksService) TestLegacy(ctx context.Context, params PaymentTestingW
 // deposits and a webhook inspector.
 type SandboxService struct{ c *Client }
 
-// Faucet credits test funds (POST /v1/sandbox/faucet). Payout key.
+// Faucet credits test funds (POST /v1/sandbox/faucet).
 func (s *SandboxService) Faucet(ctx context.Context, params SandboxFaucetParams, opts ...RequestOption) (*FaucetResult, error) {
 	return post[FaucetResult](ctx, s.c, "POST /v1/sandbox/faucet", params, opts)
 }
@@ -95,7 +94,6 @@ func (s *SandboxService) Replay(ctx context.Context, deliveryID string, opts ...
 }
 
 // Reset cancels the store's open invoices and zeroes its balances (POST /v1/sandbox/reset).
-// Payout key.
 func (s *SandboxService) Reset(ctx context.Context, opts ...RequestOption) (*SandboxReset, error) {
 	return post[SandboxReset](ctx, s.c, "POST /v1/sandbox/reset", nil, opts)
 }
@@ -105,8 +103,8 @@ func (s *SandboxService) Reset(ctx context.Context, opts ...RequestOption) (*San
 // (WithAdminToken).
 type MerchantsService struct{ c *Client }
 
-// Create provisions a merchant and mints its payment and payout keys (POST /v1/merchants). The
-// secrets are shown once.
+// Create provisions a merchant and mints its one API key (POST /v1/merchants). The secret is
+// shown once.
 func (s *MerchantsService) Create(ctx context.Context, params MerchantsParams, opts ...RequestOption) (*MerchantOnboarded, error) {
 	return post[MerchantOnboarded](ctx, s.c, "POST /v1/merchants", params, opts)
 }

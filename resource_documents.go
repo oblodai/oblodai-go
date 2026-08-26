@@ -7,8 +7,8 @@ import (
 )
 
 // DocumentsService downloads generated documents. Every method returns the bytes; a large range
-// goes through an asynchronous job instead (CreateJob, JobInfo, JobFile). Payment key, except the
-// signed public download.
+// goes through an asynchronous job instead (CreateJob, JobInfo, JobFile). Signed with the API
+// key, except the signed public download.
 type DocumentsService struct{ c *Client }
 
 // DocumentQuery is the common query of every document: the language it is rendered in.

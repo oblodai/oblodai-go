@@ -11,44 +11,35 @@ import (
 // Client configuration. Every option has an environment fallback so a deployment can move keys and
 // endpoints out of the code:
 //
-//	OBLODAI_PUBLIC_ID / OBLODAI_SECRET                merchant key pair
-//	OBLODAI_PAYOUT_PUBLIC_ID / OBLODAI_PAYOUT_SECRET  dedicated payout key pair
-//	OBLODAI_BASE_URL                                  API origin
-//	OBLODAI_ADMIN_TOKEN                               admin token of a self-hosted gateway
-//	OBLODAI_LOG                                       debug | info | warn | error
-//	OBLODAI_ALLOW_INSECURE=1                          permit a plain http:// base URL
+//	OBLODAI_PUBLIC_ID / OBLODAI_SECRET  the merchant's API key pair
+//	OBLODAI_BASE_URL                    API origin
+//	OBLODAI_ADMIN_TOKEN                 admin token of a self-hosted gateway
+//	OBLODAI_LOG                         debug | info | warn | error
+//	OBLODAI_ALLOW_INSECURE=1            permit a plain http:// base URL
 
 // Option configures a Client. Options are applied in order; later ones win.
 type Option func(*config)
 
 type config struct {
-	baseURL        string
-	publicID       string
-	secret         string
-	payoutPublicID string
-	payoutSecret   string
-	httpClient     *http.Client
-	timeout        time.Duration
-	budget         time.Duration
-	retry          RetryOptions
-	logger         Logger
-	headers        map[string]string
-	adminToken     string
-	allowInsecure  bool
-	now            func() time.Time
-	random         func() float64
+	baseURL       string
+	publicID      string
+	secret        string
+	httpClient    *http.Client
+	timeout       time.Duration
+	budget        time.Duration
+	retry         RetryOptions
+	logger        Logger
+	headers       map[string]string
+	adminToken    string
+	allowInsecure bool
+	now           func() time.Time
+	random        func() float64
 }
 
-// WithCredentials sets the merchant key pair used for payment and unrestricted routes, and for
-// payout routes when no payout pair is configured.
+// WithCredentials sets the merchant's API key pair. One key signs every route the gateway gates:
+// payments, payouts, settings, documents.
 func WithCredentials(publicID, secret string) Option {
 	return func(c *config) { c.publicID, c.secret = publicID, secret }
-}
-
-// WithPayoutCredentials sets the dedicated payout key pair. The core issues payment and payout
-// keys separately; using the wrong kind is a 403 merchant.wrong_key_kind.
-func WithPayoutCredentials(publicID, secret string) Option {
-	return func(c *config) { c.payoutPublicID, c.payoutSecret = publicID, secret }
 }
 
 // WithBaseURL overrides the API origin. A path prefix is kept (https://gw.corp/oblodai).
@@ -132,12 +123,6 @@ func resolve(opts []Option) (*config, *Error) {
 	if (c.publicID == "") != (c.secret == "") {
 		return nil, newConfigError(CodeBadConfig,
 			"the public id and the secret must be provided together (or set both OBLODAI_PUBLIC_ID and OBLODAI_SECRET)", "")
-	}
-	c.payoutPublicID = firstNonEmpty(c.payoutPublicID, os.Getenv("OBLODAI_PAYOUT_PUBLIC_ID"))
-	c.payoutSecret = firstNonEmpty(c.payoutSecret, os.Getenv("OBLODAI_PAYOUT_SECRET"))
-	if (c.payoutPublicID == "") != (c.payoutSecret == "") {
-		return nil, newConfigError(CodeBadConfig,
-			"the payout public id and the payout secret must be provided together", "")
 	}
 	c.adminToken = firstNonEmpty(c.adminToken, os.Getenv("OBLODAI_ADMIN_TOKEN"))
 

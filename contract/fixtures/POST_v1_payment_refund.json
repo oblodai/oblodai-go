@@ -5,7 +5,7 @@
   "address": "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
   "amount": "5",
   "reference": "sdk-ref-1",
-  "uuid": "361cf859-6692-4371-9823-b8dea53c78b8"
+  "uuid": "857f83e8-c8ae-4e77-8d8f-4eb367a1c0ea"
  },
  "response": {
   "result": {
@@ -13,9 +13,9 @@
    "amount": "5.000000",
    "approval_required": false,
    "commission": "0.000000",
-   "created_at": "2026-08-26T10:50:05Z",
+   "created_at": "2026-08-26T15:26:31Z",
    "currency": "USDT",
-   "document_url": "http://127.0.0.1:45579/v1/documents/payout/4d26b56f-63ab-44e5-9c1d-f56c245c91a1?exp=1787745005\u0026sig=d62f3b62bd6bd4675071e312f42c6c377c8d1ece6f6ae846bc6dbf484f014f47",
+   "document_url": "http://127.0.0.1:44917/v1/documents/payout/1df240d0-4776-4df4-a1d5-2667af043ef6?exp=1787761592\u0026sig=637485c03a4563bc76a16dd086395e028966f338e241fa4552b1f2a1b82d3d04",
    "fee_bearer": "gateway",
    "is_final": false,
    "is_refund": true,
@@ -24,12 +24,12 @@
    "order_id": null,
    "payer_amount": "5.000000",
    "payment_order_id": "sdk-inv-1",
-   "refund_for": "361cf859-6692-4371-9823-b8dea53c78b8",
+   "refund_for": "857f83e8-c8ae-4e77-8d8f-4eb367a1c0ea",
    "source": "api",
    "status": "approved",
    "txid": "",
-   "updated_at": "2026-08-26T10:50:05Z",
-   "uuid": "4d26b56f-63ab-44e5-9c1d-f56c245c91a1"
+   "updated_at": "2026-08-26T15:26:31Z",
+   "uuid": "1df240d0-4776-4df4-a1d5-2667af043ef6"
   },
   "state": 0
  },

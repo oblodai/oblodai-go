@@ -20,31 +20,29 @@ import (
 
 // transport carries the configuration shared by every call.
 type transport struct {
-	baseURL     string
-	creds       *credentials
-	payoutCreds *credentials
-	httpClient  *http.Client
-	timeout     time.Duration
-	budget      time.Duration
-	retry       RetryOptions
-	clock       *skewClock
-	logger      Logger
-	headers     map[string]string
-	adminToken  string
-	userAgent   string
-	random      func() float64
+	baseURL    string
+	creds      *credentials
+	httpClient *http.Client
+	timeout    time.Duration
+	budget     time.Duration
+	retry      RetryOptions
+	clock      *skewClock
+	logger     Logger
+	headers    map[string]string
+	adminToken string
+	userAgent  string
+	random     func() float64
 }
 
 // callOptions is the per-call state a RequestOption may change.
 type callOptions struct {
-	body            any
-	query           url.Values
-	pathParams      map[string]string
-	idempotencyKey  string
-	preferPayoutKey bool
-	timeout         time.Duration
-	budget          time.Duration
-	headers         map[string]string
+	body           any
+	query          url.Values
+	pathParams     map[string]string
+	idempotencyKey string
+	timeout        time.Duration
+	budget         time.Duration
+	headers        map[string]string
 }
 
 // Response size caps. A JSON answer is a document the core composed; a bare route streams a
@@ -123,17 +121,6 @@ func callFile(ctx context.Context, t *transport, key string, o callOptions) (*Fi
 	return &FileResult{Bytes: raw.body, ContentType: contentType, Filename: filenameFrom(raw.header.Get("Content-Disposition"))}, nil
 }
 
-// credentialsFor picks the key pair that signs a route. `any` routes take the payment key unless
-// the caller asked for the payout one.
-func (t *transport) credentialsFor(r Route, preferPayout bool) *credentials {
-	if r.Auth == AuthPayout || (r.Auth == AuthAny && preferPayout) {
-		if t.payoutCreds != nil {
-			return t.payoutCreds
-		}
-	}
-	return t.creds
-}
-
 func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawResponse, *Error) {
 	if ctx == nil {
 		return nil, newConfigError(CodeBadConfig, "a non-nil context is required", "ctx")
@@ -207,7 +194,7 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 			pathParams:     o.pathParams,
 			query:          o.query,
 			body:           body,
-			creds:          t.credentialsFor(r, o.preferPayoutKey),
+			creds:          t.creds,
 			idempotencyKey: idempotencyKey,
 			ts:             ts,
 			userAgent:      t.userAgent,

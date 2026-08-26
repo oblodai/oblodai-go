@@ -8,8 +8,6 @@ import (
 func TestConfigReadsCredentialsAndBaseURLFromTheEnvironment(t *testing.T) {
 	t.Setenv("OBLODAI_PUBLIC_ID", "pk")
 	t.Setenv("OBLODAI_SECRET", "s")
-	t.Setenv("OBLODAI_PAYOUT_PUBLIC_ID", "wk")
-	t.Setenv("OBLODAI_PAYOUT_SECRET", "ws")
 	t.Setenv("OBLODAI_BASE_URL", "https://x.test/")
 	t.Setenv("OBLODAI_ADMIN_TOKEN", "adm")
 
@@ -22,9 +20,6 @@ func TestConfigReadsCredentialsAndBaseURLFromTheEnvironment(t *testing.T) {
 	}
 	if client.transport.creds.publicID != "pk" || client.transport.creds.secret != "s" {
 		t.Fatalf("credentials = %+v", client.transport.creds)
-	}
-	if client.transport.payoutCreds.publicID != "wk" {
-		t.Fatalf("payout credentials = %+v", client.transport.payoutCreds)
 	}
 	if client.transport.adminToken != "adm" {
 		t.Fatalf("admin token = %q", client.transport.adminToken)
@@ -64,8 +59,8 @@ func TestConfigRefusesHalfAKeyPair(t *testing.T) {
 	if _, err := New(WithCredentials("pk", "")); !IsCode(err, CodeBadConfig) {
 		t.Fatalf("half a key pair must be refused, got %v", err)
 	}
-	if _, err := New(WithPayoutCredentials("", "s")); !IsCode(err, CodeBadConfig) {
-		t.Fatalf("half a payout key pair must be refused, got %v", err)
+	if _, err := New(WithCredentials("", "s")); !IsCode(err, CodeBadConfig) {
+		t.Fatalf("half a key pair must be refused, got %v", err)
 	}
 }
 

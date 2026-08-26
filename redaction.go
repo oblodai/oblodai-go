@@ -113,8 +113,8 @@ func (t *transport) String() string {
 	if t == nil {
 		return "oblodai.Client{}"
 	}
-	return fmt.Sprintf("oblodai.Client{baseURL: %q, credentials: %s, payoutCredentials: %s, timeout: %s, budget: %s}",
-		t.baseURL, t.creds, t.payoutCreds, t.timeout, t.budget)
+	return fmt.Sprintf("oblodai.Client{baseURL: %q, credentials: %s, timeout: %s, budget: %s}",
+		t.baseURL, t.creds, t.timeout, t.budget)
 }
 
 // GoString renders the transport without its keys (%#v).
@@ -140,8 +140,8 @@ func (c *config) String() string {
 	if c.adminToken != "" {
 		admin = redactedPlaceholder
 	}
-	return fmt.Sprintf("oblodai.config{baseURL: %q, publicID: %q, secret: %s, payoutPublicID: %q, payoutSecret: %s, adminToken: %s}",
-		c.baseURL, c.publicID, redactedPlaceholder, c.payoutPublicID, redactedPlaceholder, admin)
+	return fmt.Sprintf("oblodai.config{baseURL: %q, publicID: %q, secret: %s, adminToken: %s}",
+		c.baseURL, c.publicID, redactedPlaceholder, admin)
 }
 
 // GoString renders the resolved configuration without its keys (%#v).
