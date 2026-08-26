@@ -124,7 +124,7 @@ func TestLiveSweep(t *testing.T) {
 		batch, err := client.Payments.Batch(ctx, PaymentBatchParams{
 			OnError: BatchOnErrorContinue,
 			Payments: []PaymentBatchParamsPaymentItem{{
-				Amount: "3", Currency: "USDT", Network: NetworkTron, OrderID: stamp("sw-b"),
+				Amount: "5", Currency: "USDT", Network: NetworkTron, OrderID: stamp("sw-b"),
 			}},
 		})
 		if err != nil {
@@ -135,7 +135,7 @@ func TestLiveSweep(t *testing.T) {
 			t.Errorf("Batches.Info: %v", err)
 		}
 		toCancel, err := client.Payments.Create(ctx, PaymentParams{
-			Amount: "1", Currency: "USDT", Network: NetworkTron, OrderID: stamp("sw-c"),
+			Amount: "5", Currency: "USDT", Network: NetworkTron, OrderID: stamp("sw-c"),
 		})
 		if err != nil {
 			t.Fatalf("Payments.Create: %v", err)
@@ -180,7 +180,7 @@ func TestLiveSweep(t *testing.T) {
 		})))
 		tolerate(t, "Refunds.Batch", discard(client.Refunds.Batch(ctx, RefundBatchParams{
 			Refunds: []RefundBatchParamsRefundItem{{
-				UUID: invoice.UUID, Address: liveAddress, Amount: "1", Reference: stamp("sw-rb"),
+				UUID: invoice.UUID, Address: liveAddress, Amount: "5", Reference: stamp("sw-rb"),
 			}},
 		})))
 	})
@@ -212,13 +212,13 @@ func TestLiveSweep(t *testing.T) {
 		tolerate(t, "Payouts.Approve", discard(client.Payouts.Approve(ctx, payout.UUID)))
 
 		mass, err := client.Payouts.Mass(ctx, PayoutMassParams{Payouts: []PayoutMassParamsPayoutItem{{
-			Amount: "1", Currency: "USDT", Network: NetworkTron, Address: liveAddress, OrderID: stamp("sw-m"),
+			Amount: "5", Currency: "USDT", Network: NetworkTron, Address: liveAddress, OrderID: stamp("sw-m"),
 		}}})
 		if err != nil || len(mass) == 0 || mass[0].Idx != 0 {
 			t.Errorf("Payouts.Mass: %v (%d elements)", err, len(mass))
 		}
 		batch, err := client.Payouts.Batch(ctx, PayoutBatchParams{Payouts: []PayoutBatchParamsPayoutItem{{
-			Amount: "1", Currency: "USDT", Network: NetworkTron, Address: liveAddress, OrderID: stamp("sw-pb"),
+			Amount: "5", Currency: "USDT", Network: NetworkTron, Address: liveAddress, OrderID: stamp("sw-pb"),
 		}}})
 		if err != nil || batch.BatchID == "" {
 			t.Errorf("Payouts.Batch: %v", err)
@@ -273,7 +273,7 @@ func TestLiveSweep(t *testing.T) {
 			t.Errorf("PayoutLinks.Claim: %v", err)
 		}
 		second, err := client.PayoutLinks.Create(ctx, PayoutLinkParams{
-			Amount: "1", Currency: "USDT", Network: NetworkTron, Reference: stamp("sw-pl2"),
+			Amount: "5", Currency: "USDT", Network: NetworkTron, Reference: stamp("sw-pl2"),
 		})
 		if err != nil {
 			t.Fatalf("PayoutLinks.Create: %v", err)
@@ -282,7 +282,7 @@ func TestLiveSweep(t *testing.T) {
 			t.Errorf("PayoutLinks.Cancel: %v", err)
 		}
 		batch, err := client.PayoutLinks.Batch(ctx, PayoutLinkBatchParams{Items: []PayoutLinkBatchParamsItemItem{{
-			Amount: "1", Currency: "USDT", Network: NetworkTron, Reference: stamp("sw-plb"),
+			Amount: "5", Currency: "USDT", Network: NetworkTron, Reference: stamp("sw-plb"),
 		}}})
 		if err != nil || len(batch) == 0 || !batch[0].OK {
 			t.Errorf("PayoutLinks.Batch: %v (%+v)", err, batch)
@@ -461,14 +461,14 @@ func TestLiveSweep(t *testing.T) {
 		tolerate(t, "Wallets.RefundBlockedDeposit", discard(client.Wallets.RefundBlockedDeposit(ctx,
 			WalletBlockedAddressRefundParams{UUID: randomUUID(t), Address: liveAddress})))
 		tolerate(t, "Transfers.ToPersonal", discard(client.Transfers.ToPersonal(ctx, TransferToPersonalParams{
-			Amount: "1", Currency: "USDT",
+			Amount: "5", Currency: "USDT",
 		})))
 		tolerate(t, "Transfers.ToUser", discard(client.Transfers.ToUser(ctx, TransferToUserParams{
-			ToUserID: randomUUID(t), Amount: "1", Currency: "USDT",
+			ToUserID: randomUUID(t), Amount: "5", Currency: "USDT",
 		})))
 		tolerate(t, "Transfers.Batch", discard(client.Transfers.Batch(ctx, TransferBatchParams{
 			Transfers: []TransferBatchParamsTransferItem{{
-				ToUserID: randomUUID(t), Amount: "1", Currency: "USDT", OrderID: stamp("sw-tb"),
+				ToUserID: randomUUID(t), Amount: "5", Currency: "USDT", OrderID: stamp("sw-tb"),
 			}},
 		})))
 	})

@@ -126,7 +126,7 @@ func TestLiveSandboxJourney(t *testing.T) {
 
 	t.Run("replays an idempotent create and refuses a reused key", func(t *testing.T) {
 		key := fmt.Sprintf("sdk-go-idem-%d", time.Now().UnixNano())
-		params := PaymentParams{Amount: "1", Currency: "USDT", Network: NetworkTron, OrderID: key + "-o"}
+		params := PaymentParams{Amount: "5", Currency: "USDT", Network: NetworkTron, OrderID: key + "-o"}
 		first, err := client.Payments.Create(ctx, params, WithIdempotencyKey(key))
 		if err != nil {
 			t.Fatalf("first create: %v", err)
