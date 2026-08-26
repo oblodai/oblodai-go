@@ -1,5 +1,5 @@
-// A webhook receiver: verify every delivery over the raw bytes, deduplicate by delivery id, and
-// ignore events that arrive out of order.
+// A webhook receiver: verify every delivery over the raw bytes, deduplicate by delivery id, ignore
+// events that arrive out of order, and never act on a rehearsal (test) delivery as if money moved.
 package main
 
 import (
@@ -36,6 +36,13 @@ func main() {
 			// Never act on a body that did not verify.
 			log.Printf("rejected a delivery: %v", err)
 			http.Error(w, "bad signature", http.StatusBadRequest)
+			return
+		}
+		if delivery.IsTest {
+			// A rehearsal delivery (Webhooks.Test, sandbox): signed like a live one, but no money
+			// moved. Acknowledge it and let it touch no order and no balance.
+			log.Printf("test delivery %s (%s): acknowledged, not acted on", delivery.ID, delivery.EventType)
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 		if store.alreadyHandled(delivery.ID, delivery.Event) {

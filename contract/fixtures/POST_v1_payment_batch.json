@@ -14,7 +14,7 @@
  },
  "response": {
   "result": {
-   "batch_id": "c4878468-8ccb-483a-a8b2-635e02cd1684",
+   "batch_id": "6d07f1b0-77a8-4677-8671-76d38b8c084d",
    "count": 1,
    "kind": "payment",
    "status": "pending"

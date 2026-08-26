@@ -175,6 +175,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad signature", http.StatusBadRequest)
 		return
 	}
+	if delivery.IsTest { // a rehearsal delivery: signed like a live one, but no money moved
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	switch event := delivery.Event.(type) {
 	case *oblodai.PaymentEvent:
 		if event.Status == oblodai.PaymentStatusPaid {
@@ -187,7 +191,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-Verification always runs over the **raw** bytes. `delivery.ID` (`X-Webhook-Id`) is stable across
+Verification always runs over the **raw** bytes. Rehearsal deliveries (`Webhooks.Test`, sandbox) are
+signed exactly like live ones and carry `test: true` in the body (and `X-Webhook-Test: true`): check
+`delivery.IsTest` (or `webhooks.IsTestEvent(event)`) and never act on one as if money moved — no
+order shipped, no balance credited. `delivery.ID` (`X-Webhook-Id`) is stable across
 retries — use it to deduplicate; `event.Seq()` orders events (`webhooks.IsStale`). After
 `Webhooks.RotateSecret` keep the old secret in `Options.PreviousSecret` for at least 26 hours.
 

@@ -22,8 +22,13 @@
 //	X-Webhook-Event:           invoice.<status> | payout.<status> | wallet.paid
 //	X-Webhook-Id:              stable per delivery (identical across retries) — your dedup key
 //	X-Webhook-Event-Time:      unix seconds when the state change committed (order events by it)
+//	X-Webhook-Test:            "true" on a rehearsal delivery (Webhooks.Test, sandbox)
 //
 // Always verify over the RAW request bytes: a re-serialized parse will not match the signature.
+//
+// Rehearsal deliveries are signed exactly like live ones and carry test: true in the body (and the
+// X-Webhook-Test header). Check Delivery.IsTest — or IsTestEvent — and never act on one as if
+// money moved.
 package webhooks
 
 import (
@@ -47,6 +52,7 @@ const (
 	HeaderEvent         = "X-Webhook-Event"
 	HeaderID            = "X-Webhook-Id"
 	HeaderEventTime     = "X-Webhook-Event-Time"
+	HeaderTest          = "X-Webhook-Test"
 )
 
 // DefaultTolerance is how far a delivery's timestamp may be from now before it is refused.
@@ -86,6 +92,9 @@ type Delivery struct {
 	EventTime time.Time
 	// SentAt is X-Webhook-Timestamp: when this delivery attempt was sent.
 	SentAt time.Time
+	// IsTest marks a rehearsal delivery (X-Webhook-Test: true, or test: true in the signed body):
+	// it is signed like a live one, but no money moved.
+	IsTest bool
 	// Raw is the exact body that was verified.
 	Raw []byte
 }
@@ -182,6 +191,7 @@ func VerifyDelivery(rawBody []byte, headers http.Header, opts Options) (*Deliver
 		ID:        headers.Get(HeaderID),
 		EventType: oblodai.EventType(headers.Get(HeaderEvent)),
 		SentAt:    time.Unix(ts, 0).UTC(),
+		IsTest:    strings.EqualFold(headers.Get(HeaderTest), "true") || event.IsTest(),
 		Raw:       rawBody,
 	}
 	if eventTime, err := strconv.ParseInt(headers.Get(HeaderEventTime), 10, 64); err == nil {
@@ -220,6 +230,13 @@ func Parse(rawBody []byte) (oblodai.WebhookEvent, error) {
 		return nil, signatureError(oblodai.CodeWebhookBadSignature, "the body does not match the "+string(head.Type)+" event shape")
 	}
 	return event, nil
+}
+
+// IsTestEvent reports whether an event is a rehearsal delivery (Webhooks.Test, sandbox). Such a
+// body is signed like a live one, so a handler must check it and never act on a test event as if
+// money moved.
+func IsTestEvent(event oblodai.WebhookEvent) bool {
+	return event != nil && event.IsTest()
 }
 
 // IsStale reports whether an event is not newer than the last sequence you processed for that

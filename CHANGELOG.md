@@ -8,7 +8,7 @@ Rewrite generated from the gateway's contract snapshot. See MIGRATION-1.3.md.
 - Fixed: models, statuses, pagination and parameter names match the current API vocabulary, field for field, checked against response bodies recorded from a live core.
 - Added: every merchant route (107) — cancel/validate, batches, documents, fee configs, split opt-in, secret rotation, the payer-facing checkout and claim endpoints, merchant provisioning.
 - Added: `*List[T]` lists (`Page`, `Pager`, `All`) that request nothing until consumed, `retryable`-driven retries, automatic idempotency keys, clock-skew correction, dual key pairs, a per-attempt timeout and a per-call budget.
-- Added: `github.com/oblodai/oblodai-go/webhooks` — rotation-aware `Verify`, `VerifyRequest`, `VerifyDelivery`, `Parse`, `IsStale`; no client and no API key needed.
+- Added: `github.com/oblodai/oblodai-go/webhooks` — rotation-aware `Verify`, `VerifyRequest`, `VerifyDelivery`, `Parse`, `IsStale`, `IsTestEvent` (with `Delivery.IsTest` for rehearsal deliveries); no client and no API key needed.
 - Added: `contract/` snapshot plus `internal/codegen` (`go generate ./...`, `go run ./internal/codegen -check` as a drift gate), contract tests against the golden bodies and 43 real signed webhook deliveries, and a live journey behind `OBLODAI_LIVE_URL`.
 - Changed: every call takes a `context.Context`; options are functional (`oblodai.New(oblodai.WithCredentials(…))`); one error type `*oblodai.Error` with `errors.As` and `Is*` predicates; amounts stay decimal strings.
 - Changed: still zero third-party dependencies, Go ≥ 1.22, standard `net/http` only.

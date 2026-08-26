@@ -3,13 +3,13 @@
  "status": 200,
  "request": {
   "email": "buyer@example.com",
-  "uuid": "c65b4740-6f19-4d56-a314-8c151b8a3f83"
+  "uuid": "d5b73aa7-7059-4e60-9594-cbb3fdf880bb"
  },
  "response": {
   "result": {
    "email": "buyer@example.com",
    "ok": true,
-   "uuid": "c65b4740-6f19-4d56-a314-8c151b8a3f83"
+   "uuid": "d5b73aa7-7059-4e60-9594-cbb3fdf880bb"
   },
   "state": 0
  },

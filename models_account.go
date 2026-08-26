@@ -51,6 +51,9 @@ type Wallet struct {
 	// URL is the hosted page showing the address and its QR.
 	URL         string `json:"url"`
 	DocumentURL string `json:"document_url"`
+	// Blocked is true once Wallets.Block was called: new deposits on this address are quarantined
+	// instead of credited.
+	Blocked bool `json:"blocked"`
 	// DestinationTag is the XRP destination tag, and Memo the TON or Stellar memo, when the network
 	// needs one.
 	DestinationTag  string `json:"destination_tag,omitempty"`

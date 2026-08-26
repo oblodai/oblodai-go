@@ -2,26 +2,26 @@
  "route": "POST /v1/payment/cancel",
  "status": 200,
  "request": {
-  "uuid": "a84a9242-d011-4e89-8e83-3d2581c66b01"
+  "uuid": "eebbe290-2047-48c7-b669-d7fc84377027"
  },
  "response": {
   "result": {
    "additional_data": "",
-   "address": "sandbox:a84a9242-d011-4e89-8e83-3d2581c66b01",
+   "address": "sandbox:eebbe290-2047-48c7-b669-d7fc84377027",
    "address_muxed": "",
-   "address_qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAABlBMVEX///8AAABVwtN+AAACBUlEQVR42uyZsZH1IAyElyEgpARKoTPbdEYplEBIwHj/kfCdn29e9EfGYyVvzv4SGbHS6vDGG2/8X6wk2QDWsMOzI7B7ecZnAQBMQwQCyWxb2ODz8WIewJKphdwR0sjNdJ/JMiNAy7KywpKcF8i2htQ84Yp5JKA1KQCMfIcGfCvauwOqDyF3XxZXo20hfROQmwMjRNqKkRTlsL5I+s0BKTnVaqk8z3FYJMuzAHTPHVqTi6vobpyk+71ZkwCIkubRmazmFw25zQSstsZNsy2r1iQTebl6UwCSn8wFIz84/dk/btYjANgad1fiR+clszlb0hzA+DPCl0UO1TF1n+HOop0CALC4Iiq3uRpJGQ8Id2lJ9we6z9pcq9yqzKZTwqEYzwFWeG6j8y7DBO3w2bTAmYAxCYkoiH3I+lOx/3Wtdwc49KGPsU4fyVz9cfUmAFbWmFh0SnCqcvJmx3mazwBE9KQmEdi0JennOAVkDkDcT5PO9GOCTNddwjYXQO6HhRj2YR1VirmAilU0TWY5dQdmmDs+CvjxeodkdFfWLkPFOQXNAHwsDxOr3qzu8+dpTgH87kC0Ji2ZNM0/K9C7A+fycBvuQEpuv24PngNYFjM2vUk87Je93ByA5Ba742bVUGAq4FwbLGofuNmrmE8BHMtDsdWOP/8BMe1srI8A3njjjWv8CwAA//883WIU/OVTdgAAAABJRU5ErkJggg==",
+   "address_qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAABlBMVEX///8AAABVwtN+AAACAUlEQVR42uyYMZLsLAyEmyIg5AgchZuNPTfjKByBkICi/xLy/Ot5b6MXWS6ramts75fIyK2W8MQTT/xbbCTZ5SpNRA4kjijPeC8AgBMgkj0W39OOWI5/2AE8+e6JvqU9HBnHQlaTgDxig9wNu4BndT0SobpbAqsmU1mfU4PX0/yraK8OLH0QoL5Cy76n928CcnFAIxXfVCZCff0m6RcHpOREFEi+SfoOt9Ks9wJEMnakwgZ5ASNwehLh5zQtAKJ9G2tGrK4jL31Adqf3YAEAW56SJlcxeh5hDACymhwcacrlRNrvBQzgFWpmSyrm0oTpflqSCWDzLIeX29eXJY2Vrv+fpglAaxJZ9CG0LDmOWNypJZkAoLdDiky8NRwb5rkp3QNA3oPIIPfAMtYsJOe7WQI2xLLEHOlNlvXTzvpgAtDGCogL0kLcyEJ9aAZQk7PsAUL74BOJNwNaFheEyLcOQdsSc9oC5K+noxizTHRsUqG7KcCTM1SMpXDLy1E0/ct4Xx/QgZRDfmKR6YDkueRuARyznrYk5OUfZCSqmyXgszxULyenuY1YZqgwBRyHhVhF5UYQp4CzmJsAdB8lWv0Z5VbJ/bkCvQmwOu8xPrQ8Q7UI8LN1D2q8+9eq5/rAZxKVia5JMU6/0rQF6PJwKbNu3aXkzrPeLYAnnnjiO/4LAAD//0zhStajm09CAAAAAElFTkSuQmCC",
    "address_xaddress": "",
    "amount": "5.000000",
    "amount_paid": "0.000000",
    "amount_remaining": "5.000000",
    "commission": "0.000000",
    "confirmations": 0,
-   "created_at": "2026-08-25T22:08:56Z",
+   "created_at": "2026-08-26T00:50:16Z",
    "currency": "USDT",
    "destination_tag": "",
-   "document_url": "http://127.0.0.1:39381/v1/documents/payment/a84a9242-d011-4e89-8e83-3d2581c66b01?exp=1787699336\u0026sig=7ee0b8cd94fd59dcd1a6f21a0d1cd56f9a3b7b91440162b569bf8003b868ceb7",
+   "document_url": "http://127.0.0.1:39227/v1/documents/payment/eebbe290-2047-48c7-b669-d7fc84377027?exp=1787709016\u0026sig=a3f9a6a6a318176e642a790ea80a1fe1b9b813df6a9cc28ede0457fabd4446ca",
    "exchange_rate": "1",
-   "expired_at": "2026-08-25T23:08:56Z",
+   "expired_at": "2026-08-26T01:50:16Z",
    "is_final": true,
    "is_multi": false,
    "is_test": true,
@@ -35,16 +35,16 @@
    "payer_amount": "5.000000",
    "payer_currency": "USDT",
    "payer_email": "",
-   "rate_expires_at": "2026-08-25T22:13:56Z",
+   "rate_expires_at": "2026-08-26T00:55:16Z",
    "required_confirmations": 20,
    "status": "cancelled",
    "tx_list": [],
    "txid": "",
-   "updated_at": "2026-08-25T22:08:56Z",
-   "url": "http://127.0.0.1:39381/pay/a84a9242-d011-4e89-8e83-3d2581c66b01",
+   "updated_at": "2026-08-26T00:50:16Z",
+   "url": "http://127.0.0.1:39227/pay/eebbe290-2047-48c7-b669-d7fc84377027",
    "url_return": "",
    "url_success": "",
-   "uuid": "a84a9242-d011-4e89-8e83-3d2581c66b01"
+   "uuid": "eebbe290-2047-48c7-b669-d7fc84377027"
   },
   "state": 0
  },
