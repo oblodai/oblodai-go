@@ -74,6 +74,16 @@ type Descriptions struct {
 // Routes outside the merchant surface: health probes, docs, internal endpoints.
 var skipPath = regexp.MustCompile(`^/(healthz|readyz|docs|openapi\.json|internal)`)
 
+// authNames is the whole auth vocabulary of the contract, mapped to the Go constant it generates.
+// A merchant has one API key, so a signed route is simply "key"; "public" is unsigned and
+// "onboard" is the admin token. Anything else is a contract this SDK does not understand — it is
+// refused rather than translated into a credential the client does not have.
+var authNames = map[string]string{
+	"public":  "Public",
+	"key":     "Key",
+	"onboard": "Onboard",
+}
+
 func main() {
 	check := flag.Bool("check", false, "fail when the committed generated files are out of date")
 	flag.Parse()
@@ -142,6 +152,10 @@ func prepare(all []*Route) []*Route {
 			fmt.Fprintf(os.Stderr, "codegen: route %s has no \"safe\" field — re-export contract/contract.json from a core that declares it\n", r.key)
 			os.Exit(1)
 		}
+		if _, ok := authNames[r.Auth]; !ok {
+			fmt.Fprintf(os.Stderr, "codegen: route %s declares auth %q; the contract's vocabulary is public, key, onboard\n", r.key, r.Auth)
+			os.Exit(1)
+		}
 		r.baseName = routeBaseName(r.Path)
 		out = append(out, r)
 	}
@@ -183,7 +197,7 @@ func emitRoutes(routes []*Route, coreCommit string) []byte {
 			list = "ListPlain"
 		}
 		fmt.Fprintf(&b, "\t%q: {Method: %q, Path: %q, Auth: Auth%s, Idempotent: %t, Safe: %t, Bare: %t, List: %s},\n",
-			r.key, r.Method, r.Path, goName(r.Auth), r.Idempotent, *r.Safe, r.Bare, list)
+			r.key, r.Method, r.Path, authNames[r.Auth], r.Idempotent, *r.Safe, r.Bare, list)
 	}
 	b.WriteString("}\n\n")
 	b.WriteString("// RouteKeys lists every key of Routes in a stable order.\nvar RouteKeys = []string{\n")

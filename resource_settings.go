@@ -2,8 +2,8 @@ package oblodai
 
 import "context"
 
-// SettingsService is the merchant-level configuration the API exposes. The payer-facing settings
-// take the payment key; the auto-withdraw and IP allow-list routes take the payout key.
+// SettingsService is the merchant-level configuration the API exposes: pricing accuracy,
+// discounts, accepted methods, auto-withdraw rules and the API IP allow-list.
 type SettingsService struct{ c *Client }
 
 // SetDiscount sets a payer-facing discount or markup per currency and network
@@ -63,49 +63,48 @@ func (s *SettingsService) SetPaymentFeeConfig(ctx context.Context, params Paymen
 	return post[PaymentFeeConfig](ctx, s.c, "POST /v1/payment/fee-config/set", params, opts)
 }
 
-// ListAutoWithdraw lists the automatic withdrawal rules (POST /v1/auto-withdraw/list). Payout key.
+// ListAutoWithdraw lists the automatic withdrawal rules (POST /v1/auto-withdraw/list).
 func (s *SettingsService) ListAutoWithdraw(ctx context.Context, opts ...RequestOption) ([]AutoWithdrawRule, error) {
 	return items[AutoWithdrawRule](ctx, s.c, "POST /v1/auto-withdraw/list", nil, opts)
 }
 
 // SetAutoWithdraw sweeps a currency to an address once the balance passes MinAmount
-// (POST /v1/auto-withdraw/set) and returns the full rule set. Payout key.
+// (POST /v1/auto-withdraw/set) and returns the full rule set.
 func (s *SettingsService) SetAutoWithdraw(ctx context.Context, params AutoWithdrawSetParams, opts ...RequestOption) ([]AutoWithdrawRule, error) {
 	return items[AutoWithdrawRule](ctx, s.c, "POST /v1/auto-withdraw/set", params, opts)
 }
 
 // DeleteAutoWithdraw drops the rule for a currency (POST /v1/auto-withdraw/delete) and returns
-// what is left. Payout key.
+// what is left.
 func (s *SettingsService) DeleteAutoWithdraw(ctx context.Context, currency string, opts ...RequestOption) ([]AutoWithdrawRule, error) {
 	return items[AutoWithdrawRule](ctx, s.c, "POST /v1/auto-withdraw/delete",
 		AutoWithdrawDeleteParams{Currency: currency}, opts)
 }
 
-// ListAPIAllowlist lists the source IPs allowed to use the API keys
-// (POST /v1/api-allowlist/list). Payout key.
+// ListAPIAllowlist lists the source IPs allowed to use the API key
+// (POST /v1/api-allowlist/list).
 func (s *SettingsService) ListAPIAllowlist(ctx context.Context, opts ...RequestOption) (*APIAllowlist, error) {
 	return post[APIAllowlist](ctx, s.c, "POST /v1/api-allowlist/list", nil, opts)
 }
 
-// AddAPIAllowlist adds an IP or CIDR to the allow-list (POST /v1/api-allowlist/add). Payout key.
+// AddAPIAllowlist adds an IP or CIDR to the allow-list (POST /v1/api-allowlist/add).
 func (s *SettingsService) AddAPIAllowlist(ctx context.Context, cidr string, opts ...RequestOption) (*APIAllowlist, error) {
 	return post[APIAllowlist](ctx, s.c, "POST /v1/api-allowlist/add", APIAllowlistAddParams{CIDR: cidr}, opts)
 }
 
 // RemoveAPIAllowlist drops an entry from the allow-list (POST /v1/api-allowlist/remove).
-// Payout key.
 func (s *SettingsService) RemoveAPIAllowlist(ctx context.Context, cidr string, opts ...RequestOption) (*APIAllowlist, error) {
 	return post[APIAllowlist](ctx, s.c, "POST /v1/api-allowlist/remove", APIAllowlistRemoveParams{CIDR: cidr}, opts)
 }
 
 // EnableAPIAllowlist switches enforcement on or off, keeping the list
-// (POST /v1/api-allowlist/enable). Payout key.
+// (POST /v1/api-allowlist/enable).
 func (s *SettingsService) EnableAPIAllowlist(ctx context.Context, enabled bool, opts ...RequestOption) (*APIAllowlist, error) {
 	return post[APIAllowlist](ctx, s.c, "POST /v1/api-allowlist/enable",
 		APIAllowlistEnableParams{Enabled: enabled}, opts)
 }
 
-// SplitsService forwards a share of every payment to a partner. It wants the payout key.
+// SplitsService forwards a share of every payment to a partner.
 type SplitsService struct{ c *Client }
 
 // CreateRule adds a split rule (POST /v1/split/rule) — to an external address (Address plus

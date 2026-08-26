@@ -2,11 +2,11 @@
  "route": "POST /v1/payout/link/cheque",
  "status": 200,
  "request": {
-  "claim_token": "LJ-pZgkY9QtVRGvps0InzTwANoO8eevFnqG2j2SY_cw",
+  "claim_token": "mB2SVcilcwRzEj7UydNU9uX0mZ5fqaiLcdSRgZF_Hho",
   "lang": "en"
  },
  "headers": {
-  "Content-Disposition": "inline; filename=\"oblodai-cheque-ef59847a.pdf\"",
+  "Content-Disposition": "inline; filename=\"oblodai-cheque-b5a11090.pdf\"",
   "Content-Length": "46",
   "Content-Type": "application/pdf"
  }

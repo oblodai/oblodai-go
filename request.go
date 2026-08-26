@@ -135,15 +135,11 @@ func buildRequest(in buildInput) (*builtRequest, *Error) {
 		headers[HeaderAdminToken] = in.adminToken
 	}
 
-	if in.route.Auth != AuthPublic && in.route.Auth != AuthOnboard {
+	if in.route.Auth == AuthKey {
 		if in.creds == nil {
-			kind := string(in.route.Auth)
-			if in.route.Auth == AuthAny {
-				kind = "merchant"
-			}
 			return nil, newConfigError(CodeMissingCredentials, fmt.Sprintf(
-				"%s %s needs a %s API key: pass oblodai.WithCredentials(publicID, secret) or set OBLODAI_PUBLIC_ID and OBLODAI_SECRET",
-				in.route.Method, in.route.Path, kind), "")
+				"%s %s needs the merchant's API key: pass oblodai.WithCredentials(publicID, secret) or set OBLODAI_PUBLIC_ID and OBLODAI_SECRET",
+				in.route.Method, in.route.Path), "")
 		}
 		signed := in.body
 		if !hasBody {

@@ -1,6 +1,6 @@
 // Package oblodai is the official Go client for the Oblodai crypto payment gateway.
 //
-// One client per API key pair; it is safe to share across goroutines:
+// One client per API key; it is safe to share across goroutines:
 //
 //	client, err := oblodai.New(oblodai.WithCredentials("oblodai_…", "oblodai_live_…"))
 //	invoice, err := client.Payments.Create(ctx, oblodai.PaymentParams{
@@ -18,8 +18,8 @@
 //     CompareAmounts instead of parsing them.
 //   - Errors are always *Error: check Code (a stable family.reason string) and Retryable, not the
 //     message. The client has already retried whatever was safe to retry.
-//   - Payout-shaped routes want the payout key when the merchant has one
-//     (WithPayoutCredentials); a wrong key kind is 403 merchant.wrong_key_kind.
+//   - One API key signs everything: payments, payouts, settings, documents. Only merchant
+//     provisioning is different — it takes an admin token (WithAdminToken).
 package oblodai
 
 //go:generate go run ./internal/codegen
@@ -43,12 +43,9 @@ type Auth string
 const (
 	// AuthPublic routes are unsigned: payer-facing pages and the currency catalog.
 	AuthPublic Auth = "public"
-	// AuthPayment routes are signed with the payment key.
-	AuthPayment Auth = "payment"
-	// AuthPayout routes are signed with the payout key (the payment key when none is configured).
-	AuthPayout Auth = "payout"
-	// AuthAny routes accept either key kind.
-	AuthAny Auth = "any"
+	// AuthKey routes are signed with the merchant's API key — every route that touches merchant
+	// money or configuration, payments and payouts alike.
+	AuthKey Auth = "key"
 	// AuthOnboard routes are unsigned merchant provisioning; a self-hosted gateway gates them with
 	// an admin token.
 	AuthOnboard Auth = "onboard"

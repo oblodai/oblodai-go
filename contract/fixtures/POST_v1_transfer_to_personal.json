@@ -11,9 +11,9 @@
    "amount": "1.000000",
    "currency": "USDT",
    "direction": "to_personal",
-   "document_url": "http://127.0.0.1:45579/v1/documents/transfer/eb60f90a-d0bc-49d7-a8e5-d3cdefdb8d8d?exp=1787745005\u0026sig=4bc68a9d6a06a93684b470b5f01df499fc2f993c81dbc2702ce347887e27057e",
+   "document_url": "http://127.0.0.1:44917/v1/documents/transfer/e464fd60-9bc7-4c66-85c5-f0d4a520f30c?exp=1787761592\u0026sig=c04d8fe46aeda6ef85ed03273a68fd4c16387f661df6bf226b4d3d68ab5400ad",
    "personal_balance": "1.000000",
-   "uuid": "eb60f90a-d0bc-49d7-a8e5-d3cdefdb8d8d"
+   "uuid": "e464fd60-9bc7-4c66-85c5-f0d4a520f30c"
   },
   "state": 0
  },

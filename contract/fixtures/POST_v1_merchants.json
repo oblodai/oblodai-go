@@ -2,27 +2,16 @@
  "route": "POST /v1/merchants",
  "status": 201,
  "request": {
-  "email": "sdk-onboard-cfb39449@example.com",
+  "email": "sdk-onboard-5f4ceaa3@example.com",
   "name": "SDK Onboard"
  },
  "response": {
   "result": {
-   "merchant_id": "58f81489-8b64-43ed-87c7-565714012ebe",
-   "project_id": "5eef9c4d-4634-4a8c-baea-f91add597e11",
+   "merchant_id": "3ba4eb12-d8aa-41ef-8266-7363c1316c5a",
+   "project_id": "794eaf3c-4135-4039-b3ac-9813e36dd612",
    "api_key": {
-    "public_id": "oblodai_8c7902ab100153984c3e",
-    "secret": "oblodai_live_376ada8f1099ea3d8aa1aabd2c8bdd16616ced1d5feba41c1828f659c5c85845",
-    "kind": "api"
-   },
-   "payment_key": {
-    "public_id": "oblodai_8c7902ab100153984c3e",
-    "secret": "oblodai_live_376ada8f1099ea3d8aa1aabd2c8bdd16616ced1d5feba41c1828f659c5c85845",
-    "kind": "api"
-   },
-   "payout_key": {
-    "public_id": "oblodai_8c7902ab100153984c3e",
-    "secret": "oblodai_live_376ada8f1099ea3d8aa1aabd2c8bdd16616ced1d5feba41c1828f659c5c85845",
-    "kind": "api"
+    "public_id": "oblodai_86b491a9cce7aa8b7ef0",
+    "secret": "oblodai_live_acefffb52256e5659479823dec6d610718571960f7af919a5c9701d16de5b9cd"
    }
   },
   "state": 0

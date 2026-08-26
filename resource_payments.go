@@ -3,7 +3,7 @@ package oblodai
 import "context"
 
 // PaymentsService covers invoices: create, look up, cancel, list, plus the payer-facing checkout
-// endpoints. Signed with the payment key; the payer-facing calls need no credentials at all.
+// endpoints. Signed with the API key; the payer-facing calls need no credentials at all.
 type PaymentsService struct{ c *Client }
 
 // Create opens an invoice (POST /v1/payment). It is idempotent twice over: by your OrderID, and

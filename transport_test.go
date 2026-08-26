@@ -162,7 +162,7 @@ func TestErrorEnvelopeIsClassified(t *testing.T) {
 		}),
 		apiError(401, map[string]any{"code": "merchant.bad_signature", "message": "bad", "retryable": false}),
 		apiError(409, map[string]any{"code": "idempotency.key_reused", "message": "reused", "retryable": false}),
-		apiError(403, map[string]any{"code": "merchant.wrong_key_kind", "retryable": false}),
+		apiError(403, map[string]any{"code": "merchant.key_mode_mismatch", "retryable": false}),
 		apiError(404, map[string]any{"code": "payment.not_found", "retryable": false}),
 	)
 	client := api.client(WithRetry(RetryOptions{MaxRetries: 0}))
@@ -181,7 +181,7 @@ func TestErrorEnvelopeIsClassified(t *testing.T) {
 	if !IsIdempotencyConflict(err) || !IsConflict(err) {
 		t.Fatalf("expected an idempotency conflict (which is also a conflict), got %v", err)
 	}
-	if _, err := client.Account.Balance(ctx); !IsPermission(err) || !IsCode(err, CodeWrongKeyKind) {
+	if _, err := client.Account.Balance(ctx); !IsPermission(err) || !IsCode(err, "merchant.key_mode_mismatch") {
 		t.Fatalf("expected a permission error, got %v", err)
 	}
 	if _, err := client.Account.Balance(ctx); !IsNotFound(err) {
@@ -225,9 +225,10 @@ func TestPerAttemptTimeout(t *testing.T) {
 	}
 }
 
-func TestPayoutCredentialsSignPayoutRoutes(t *testing.T) {
+// One API key signs every gated route: the money-out side is not a separate credential.
+func TestTheOneAPIKeySignsPayoutsAndPaymentsAlike(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{"uuid": "p"}), ok(map[string]any{"uuid": "i"}))
-	client := api.client(WithPayoutCredentials("wk_test_1", "secret-2"))
+	client := api.client()
 	ctx := context.Background()
 	if _, err := client.Payouts.Create(ctx, PayoutParams{Amount: "1", Currency: "USDT", Address: "T", OrderID: "o"}); err != nil {
 		t.Fatalf("Payouts.Create: %v", err)
@@ -235,11 +236,13 @@ func TestPayoutCredentialsSignPayoutRoutes(t *testing.T) {
 	if _, err := client.Payments.Create(ctx, PaymentParams{Amount: "1", Currency: "USDT"}); err != nil {
 		t.Fatalf("Payments.Create: %v", err)
 	}
-	if got := api.at(0).header.Get(HeaderPublicID); got != "wk_test_1" {
-		t.Fatalf("a payout route must use the payout key, got %q", got)
-	}
-	if got := api.at(1).header.Get(HeaderPublicID); got != "pk_test_1" {
-		t.Fatalf("a payment route must use the payment key, got %q", got)
+	for i, label := range []string{"a payout route", "a payment route"} {
+		if got := api.at(i).header.Get(HeaderPublicID); got != "pk_test_1" {
+			t.Fatalf("%s must use the merchant's API key, got %q", label, got)
+		}
+		if !hexish(api.at(i).header.Get(HeaderSignature), 32) {
+			t.Fatalf("%s is not signed", label)
+		}
 	}
 }
 

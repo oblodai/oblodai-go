@@ -27,7 +27,8 @@ const (
 	KindValidation Kind = "validation"
 	// KindAuthentication is HTTP 401: bad signature, unknown key, clock skew, IP not allow-listed.
 	KindAuthentication Kind = "authentication"
-	// KindPermission is HTTP 403: the key is valid but may not do this (wrong key kind, feature off).
+	// KindPermission is HTTP 403: the key is valid but may not do this (a feature is off, an
+	// object belongs to someone else).
 	KindPermission Kind = "permission"
 	// KindNotFound is HTTP 404: no such object for this merchant.
 	KindNotFound Kind = "not_found"
@@ -82,7 +83,9 @@ const (
 
 	// CodeIdempotencyKeyReused is the core's 409 for a key replayed with a different body.
 	CodeIdempotencyKeyReused = "idempotency.key_reused"
-	// CodeWrongKeyKind is the core's 403 for a payout route signed with the payment key.
+	// CodeWrongKeyKind is a legacy 403: it can only reach a merchant who still holds an old split
+	// key pair (oblodai_pk_… / oblodai_wk_…). One API key signs everything, so a current merchant
+	// never sees it — the constant is kept so an old integration can still branch on it.
 	CodeWrongKeyKind = "merchant.wrong_key_kind"
 	// CodeBadSignature and CodeBadTimestamp are the two 401s that can mean clock skew.
 	CodeBadSignature = "merchant.bad_signature"

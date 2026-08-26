@@ -22,12 +22,9 @@ import (
 // "// snippet:<name>" and an "// endsnippet" comment below are the source of truth, and
 // TestReadmeSnippetsMatchCompiledCode fails when a README drifts from them.
 
-func snippetCredentials(publicID, secret, payoutPublicID, payoutSecret string) *oblodai.Client {
+func snippetCredentials(publicID, secret string) *oblodai.Client {
 	// snippet:credentials
-	client, err := oblodai.New(
-		oblodai.WithCredentials(publicID, secret),
-		oblodai.WithPayoutCredentials(payoutPublicID, payoutSecret),
-	)
+	client, err := oblodai.New(oblodai.WithCredentials(publicID, secret))
 	// endsnippet
 	if err != nil {
 		log.Fatal(err)

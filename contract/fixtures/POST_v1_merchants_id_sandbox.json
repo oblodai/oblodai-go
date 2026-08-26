@@ -4,22 +4,11 @@
  "request": {},
  "response": {
   "result": {
-   "merchant_id": "44665692-c06e-4f70-b1bc-f6fcf6dcffed",
-   "project_id": "131d4c05-6da0-479e-a996-19248479dfb6",
+   "merchant_id": "21605d89-7c7a-43ad-9808-ffb8aef49aa7",
+   "project_id": "b85f577b-a703-4cbd-862c-74be39cf2bdf",
    "api_key": {
-    "public_id": "test_oblodai_6edb28b7597e3c9e25a7",
-    "secret": "oblodai_test_cfbf5522118b97ecc9baf1233da623f4f2f4a1cd210b8766ffca0fdd47fab887",
-    "kind": "api"
-   },
-   "payment_key": {
-    "public_id": "test_oblodai_6edb28b7597e3c9e25a7",
-    "secret": "oblodai_test_cfbf5522118b97ecc9baf1233da623f4f2f4a1cd210b8766ffca0fdd47fab887",
-    "kind": "api"
-   },
-   "payout_key": {
-    "public_id": "test_oblodai_6edb28b7597e3c9e25a7",
-    "secret": "oblodai_test_cfbf5522118b97ecc9baf1233da623f4f2f4a1cd210b8766ffca0fdd47fab887",
-    "kind": "api"
+    "public_id": "test_oblodai_8a52066df461b882cac9",
+    "secret": "oblodai_test_6fba8a38695900028f0e35a1e46636d0f2f7801654fec88a3c2321764e0a2dce"
    },
    "created": true
   },

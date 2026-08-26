@@ -12,17 +12,15 @@ snapshot in `contract/contract.json`, from which `contract_routes.go`, `contract
   `CompareAmounts`, `AmountsEqual`, `AddAmounts`, `SubtractAmounts`, `IsZeroAmount`; anything that is
   not `-?digits[.digits]` (≤ 64 chars) is a `ConfigError` with `sdk.bad_amount`.
 - Every method takes `ctx context.Context` first and `...RequestOption` last:
-  `WithIdempotencyKey`, `WithRequestTimeout`, `WithRequestBudget`, `WithRequestHeader`,
-  `WithPayoutKey`.
-- Two key kinds. A live pair is `oblodai_<hex>` / `oblodai_live_<hex>` — one unified key that opens
-  both sides; older merchants hold them apart as `oblodai_pk_<hex>` (payment) and
-  `oblodai_wk_<hex>` (payout). A sandbox pair (`test_oblodai_<hex>` / `oblodai_test_<hex>`) serves
-  both kinds at once. The **payout key** is required for `Payouts.*`, `Refunds.*` (including `Resolve`),
-  `PayoutLinks.*`, `Transfers.*`, `Splits.*`, `Wallets.RefundBlockedDeposit`, `Settings.*AutoWithdraw`,
-  `Settings.*APIAllowlist`, `Webhooks.RotateSecret`, `Webhooks.Test(WebhookKindPayout, …)`,
-  `Sandbox.Faucet`, `Sandbox.Reset`. Configure it with `WithPayoutCredentials` (or
-  `OBLODAI_PAYOUT_PUBLIC_ID`/`OBLODAI_PAYOUT_SECRET`); the wrong kind is a 403
-  `merchant.wrong_key_kind`. On routes that accept either kind, `WithPayoutKey()` picks the payout one.
+  `WithIdempotencyKey`, `WithRequestTimeout`, `WithRequestBudget`, `WithRequestHeader`.
+- **One API key.** A live pair is `oblodai_<hex>` / `oblodai_live_<hex>`, a sandbox pair
+  `test_oblodai_<hex>` / `oblodai_test_<hex>`; either one signs every gated route — payments,
+  payouts, refunds, payout links, transfers, splits, settings, documents, sandbox. Configure it with
+  `WithCredentials` (or `OBLODAI_PUBLIC_ID`/`OBLODAI_SECRET`). The route table's `Auth` is `public`
+  (unsigned), `key` (that API key) or `onboard` (`WithAdminToken`, merchant provisioning only) — no
+  other value exists, and codegen refuses a contract that carries one. `merchant.wrong_key_kind` is
+  legacy: it can only reach a merchant still holding an old `oblodai_pk_…`/`oblodai_wk_…` split
+  pair.
 - List methods return `*List[T]` and request **nothing** until consumed: `Page()` is the first page
   (`{Items, Paginate}`), `Pager()` walks every item one page at a time, `All(max)` collects. The
   first page is memoized and safe to ask for from several goroutines; a `Pager` belongs to one.
@@ -73,9 +71,9 @@ Client-raised codes: `sdk.missing_credentials`, `sdk.bad_config`, `sdk.bad_idemp
 `webhook.bad_signature|stale_timestamp|missing_header|bad_payload`.
 
 Codes worth handling: `payout.insufficient_funds` (retryable), `payout.funds_maturing` (retryable),
-`idempotency.key_reused`, `invoice.not_payable`, `payment.not_found`, `merchant.wrong_key_kind`,
-`merchant.bad_signature`, `request.rate_limited`. The full list is `oblodai.ErrorCodes` (471); the
-money-moving methods name the ones to branch on in their own doc comments.
+`idempotency.key_reused`, `invoice.not_payable`, `payment.not_found`, `merchant.bad_signature`,
+`request.rate_limited`. The full list is `oblodai.ErrorCodes` (469); the money-moving methods name
+the ones to branch on in their own doc comments.
 
 ## Statuses
 
@@ -109,14 +107,14 @@ false for an event without a sequence. During a rotation pass `PreviousSecret` f
 ## Machine-readable surface
 
 `Routes` and `RouteKeys` (107 routes: Method, Path, Auth, Idempotent, Safe, Bare, List), the
-generated `…Params` request bodies, `ErrorCodes` (471), `Networks`, `PaymentStatuses`,
+generated `…Params` request bodies, `ErrorCodes` (469), `Networks`, `PaymentStatuses`,
 `PayoutStatuses`, `EventTypes`, `ContractCoreCommit`/`ContractExportedAt`/`ContractHash`, and
 `contract/` in the repository (schemas, golden response bodies per route, error samples, 43 signed
 webhook deliveries).
 
-Environment: `OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`, `OBLODAI_PAYOUT_PUBLIC_ID`,
-`OBLODAI_PAYOUT_SECRET`, `OBLODAI_BASE_URL`, `OBLODAI_ADMIN_TOKEN`, `OBLODAI_ALLOW_INSECURE`,
-`OBLODAI_LOG` (`debug|info|warn|error`).
+Environment (six variables, all of them): `OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`,
+`OBLODAI_ADMIN_TOKEN`, `OBLODAI_BASE_URL`, `OBLODAI_LOG` (`debug|info|warn|error`),
+`OBLODAI_ALLOW_INSECURE`.
 
 ## Working in this repository
 
