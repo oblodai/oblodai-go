@@ -23,6 +23,9 @@ type Suite struct {
 	Source      *Source    `json:"source"`
 	Checks      []Check    `json:"checks"`
 	Scenarios   []Scenario `json:"scenarios"`
+	// Headers (webhook_delivery): delivery header → the snake_case field of the delivery info that
+	// must carry its value; "" — the header is consumed by the signature check.
+	Headers map[string]string `json:"headers"`
 }
 
 // Source points at the vectors: the spec (relative to the suite directory) and a JSON pointer.
@@ -38,6 +41,8 @@ type Check struct {
 	Mutate    string          `json:"mutate"`
 	NowFromTS json.RawMessage `json:"now_from_ts"`
 	Expect    string          `json:"expect"`
+	// Key (webhook_delivery): which secret verifies — "current" (secret) or "previous".
+	Key string `json:"key"`
 }
 
 // Scenario is one call on scripted responses.
