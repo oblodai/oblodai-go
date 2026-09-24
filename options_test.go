@@ -133,4 +133,12 @@ func TestIdempotencyKeyGoesIntoTheBodyFieldOfTheFaucet(t *testing.T) {
 	if body := api.at(1).jsonBody(t); body["idempotency_key"] != "own" {
 		t.Fatalf("body = %v", body)
 	}
+	// Both — the field and the option — is a key given twice: refused before the network.
+	_, err := client.Sandbox.Faucet(ctx, &FaucetRequest{Amount: "1", Asset: "USDT", IdempotencyKey: Ptr("own")}, WithIdempotencyKey("tap-2"))
+	if !IsConfig(err) || !IsCode(err, CodeBadConfig) {
+		t.Fatalf("a key given twice: %v", err)
+	}
+	if api.count() != 2 {
+		t.Fatalf("nothing may be sent for a key given twice, saw %d requests", api.count())
+	}
 }

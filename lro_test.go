@@ -2,6 +2,7 @@ package oblodai
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 )
@@ -124,5 +125,56 @@ func TestJobForFollowsAnyLongRunningCall(t *testing.T) {
 	}
 	if _, err := JobFor[DocumentJobView](client, "createPayment", "x"); !IsConfig(err) {
 		t.Fatalf("createPayment is not long-running: %v", err)
+	}
+}
+
+// The tables are generated from the contract (x-sdk-poll): each poll ends on exactly the final
+// values of the status it reads (x-status-classes), and a Job of the wrong model is refused.
+func TestPollsEndOnTheFinalStatusesOfTheContract(t *testing.T) {
+	finals := map[string][]string{}
+	for _, s := range BatchStatusFinalValues {
+		finals["getBatchInfo"] = append(finals["getBatchInfo"], string(s))
+	}
+	for _, s := range DocumentJobStatusFinalValues {
+		finals["getDocumentJob"] = append(finals["getDocumentJob"], string(s))
+	}
+	for op, want := range finals {
+		p := Polls[op]
+		if p.StatusField != "status" || !slices.Equal(p.Terminal, want) {
+			t.Errorf("Polls[%s] = %+v, want terminal %v", op, p, want)
+		}
+	}
+	for _, p := range Polls {
+		for _, s := range p.Terminal {
+			if !slices.Contains(TerminalStatuses, s) {
+				t.Errorf("TerminalStatuses %v lacks %s", TerminalStatuses, s)
+			}
+		}
+	}
+}
+
+func TestJobForRefusesAModelThePollDoesNotAnswerWith(t *testing.T) {
+	client := newFakeAPI(t).client()
+	if _, err := JobFor[BatchInfoResponse](client, "createDocumentJob", "j1"); !IsConfig(err) || !IsCode(err, CodeBadConfig) {
+		t.Fatalf("a document job is not a batch: %v", err)
+	}
+	for _, create := range []string{"createPaymentBatch", "createPayoutBatch", "createRefundBatch", "createTransferBatch"} {
+		if _, err := JobFor[BatchInfoResponse](client, create, "b1"); err != nil {
+			t.Errorf("%s: %v", create, err)
+		}
+	}
+}
+
+func TestAJobOfAModelNoOperationPollsReportsBadConfig(t *testing.T) {
+	api := newFakeAPI(t)
+	job := jobOf[PaymentView](api.client(), "x", nil)
+	if _, err := job.Wait(context.Background()); !IsCode(err, CodeBadConfig) {
+		t.Fatalf("Wait: %v", err)
+	}
+	if _, err := job.Download(context.Background()); !IsCode(err, CodeBadConfig) {
+		t.Fatalf("Download: %v", err)
+	}
+	if api.count() != 0 {
+		t.Fatal("nothing may be sent")
 	}
 }

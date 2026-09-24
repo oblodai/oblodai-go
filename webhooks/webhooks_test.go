@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -391,5 +392,29 @@ func TestEveryEventKindDecodesToItsOwnType(t *testing.T) {
 	}
 	if len(seen) < 2 {
 		t.Fatalf("the recorded deliveries cover only %v", seen)
+	}
+}
+
+// The kinds and their bodies are generated from the contract's webhooks: every event name maps to
+// a kind this release models, and every kind parses into its typed body.
+func TestEveryEventOfTheContractIsAKnownKind(t *testing.T) {
+	if len(webhooks.EventKinds) == 0 {
+		t.Fatal("EventKinds is empty")
+	}
+	for name, kind := range webhooks.EventKinds {
+		if !slices.Contains(webhooks.KnownKinds, kind) {
+			t.Errorf("event %s: kind %q is not in KnownKinds %v", name, kind, webhooks.KnownKinds)
+		}
+	}
+	for _, kind := range webhooks.KnownKinds {
+		event, err := webhooks.Parse([]byte(`{"type":"` + kind + `","uuid":"u1","id":"i1"}`))
+		if err != nil || !event.IsKnown() {
+			t.Errorf("kind %s: %v %+v", kind, err, event)
+		}
+	}
+	for _, kind := range []string{webhooks.KindPayment, webhooks.KindPayout, webhooks.KindWallet, webhooks.KindConversion} {
+		if !slices.Contains(webhooks.KnownKinds, kind) {
+			t.Errorf("KnownKinds %v lacks %s", webhooks.KnownKinds, kind)
+		}
 	}
 }

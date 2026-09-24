@@ -974,3 +974,95 @@ func (v WebhookEventName) IsKnown() bool {
 	}
 	return false
 }
+
+// BatchStatusFinalValues are the values of BatchStatus after which nothing else happens.
+var BatchStatusFinalValues = []BatchStatus{BatchStatusCompleted, BatchStatusStopped}
+
+// BatchStatusSuccessValues are the final values of BatchStatus that mean success.
+var BatchStatusSuccessValues = []BatchStatus{}
+
+// IsFinal reports whether v is one of BatchStatusFinalValues: nothing else happens after it.
+func (v BatchStatus) IsFinal() bool {
+	switch v {
+	case BatchStatusCompleted, BatchStatusStopped:
+		return true
+	}
+	return false
+}
+
+// IsSuccess reports whether v is one of BatchStatusSuccessValues.
+func (v BatchStatus) IsSuccess() bool {
+	return false
+}
+
+// DocumentJobStatusFinalValues are the values of DocumentJobStatus after which nothing else happens.
+var DocumentJobStatusFinalValues = []DocumentJobStatus{DocumentJobStatusDone, DocumentJobStatusFailed, DocumentJobStatusExpired}
+
+// DocumentJobStatusSuccessValues are the final values of DocumentJobStatus that mean success.
+var DocumentJobStatusSuccessValues = []DocumentJobStatus{DocumentJobStatusDone}
+
+// IsFinal reports whether v is one of DocumentJobStatusFinalValues: nothing else happens after it.
+func (v DocumentJobStatus) IsFinal() bool {
+	switch v {
+	case DocumentJobStatusDone, DocumentJobStatusFailed, DocumentJobStatusExpired:
+		return true
+	}
+	return false
+}
+
+// IsSuccess reports whether v is one of DocumentJobStatusSuccessValues.
+func (v DocumentJobStatus) IsSuccess() bool {
+	switch v {
+	case DocumentJobStatusDone:
+		return true
+	}
+	return false
+}
+
+// PaymentStatusFinalValues are the values of PaymentStatus after which nothing else happens.
+var PaymentStatusFinalValues = []PaymentStatus{PaymentStatusPaid, PaymentStatusPaidOver, PaymentStatusWrongAmount, PaymentStatusExpired, PaymentStatusCancelled}
+
+// PaymentStatusSuccessValues are the final values of PaymentStatus that mean success.
+var PaymentStatusSuccessValues = []PaymentStatus{PaymentStatusPaid, PaymentStatusPaidOver}
+
+// IsFinal reports whether v is one of PaymentStatusFinalValues: nothing else happens after it.
+func (v PaymentStatus) IsFinal() bool {
+	switch v {
+	case PaymentStatusPaid, PaymentStatusPaidOver, PaymentStatusWrongAmount, PaymentStatusExpired, PaymentStatusCancelled:
+		return true
+	}
+	return false
+}
+
+// IsSuccess reports whether v is one of PaymentStatusSuccessValues.
+func (v PaymentStatus) IsSuccess() bool {
+	switch v {
+	case PaymentStatusPaid, PaymentStatusPaidOver:
+		return true
+	}
+	return false
+}
+
+// PayoutStatusFinalValues are the values of PayoutStatus after which nothing else happens.
+var PayoutStatusFinalValues = []PayoutStatus{PayoutStatusCancelled, PayoutStatusConfirmed, PayoutStatusFailed}
+
+// PayoutStatusSuccessValues are the final values of PayoutStatus that mean success.
+var PayoutStatusSuccessValues = []PayoutStatus{PayoutStatusConfirmed}
+
+// IsFinal reports whether v is one of PayoutStatusFinalValues: nothing else happens after it.
+func (v PayoutStatus) IsFinal() bool {
+	switch v {
+	case PayoutStatusCancelled, PayoutStatusConfirmed, PayoutStatusFailed:
+		return true
+	}
+	return false
+}
+
+// IsSuccess reports whether v is one of PayoutStatusSuccessValues.
+func (v PayoutStatus) IsSuccess() bool {
+	switch v {
+	case PayoutStatusConfirmed:
+		return true
+	}
+	return false
+}

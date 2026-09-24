@@ -1,9 +1,12 @@
 package oblodai
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -231,5 +234,53 @@ func serializeBody(body any, method string) ([]byte, *Error) {
 	if string(encoded) == "null" {
 		return []byte("{}"), nil
 	}
+	if err := refuseFloats(encoded); err != nil {
+		return nil, err
+	}
 	return encoded, nil
+}
+
+// refuseFloats walks an encoded body and refuses a JSON number with a fraction or an exponent under
+// any name but the numeric fields the contract declares are not money (nonMoneyNumbers, generated):
+// a typed amount is a Decimal and cannot be a float, but a free-form member (a map[string]any, a
+// model's Extra) can, and a float in an amount is sdk.float_amount before anything is sent.
+func refuseFloats(encoded []byte) *Error {
+	decoder := json.NewDecoder(bytes.NewReader(encoded))
+	decoder.UseNumber()
+	var body any
+	if decoder.Decode(&body) != nil {
+		return nil // json.Marshal wrote it; nothing to add
+	}
+	return walkFloats(body, "")
+}
+
+func walkFloats(value any, name string) *Error {
+	switch v := value.(type) {
+	case map[string]any:
+		for _, key := range slices.Sorted(maps.Keys(v)) {
+			if err := walkFloats(v[key], key); err != nil {
+				return err
+			}
+		}
+	case []any:
+		for _, item := range v {
+			if err := walkFloats(item, name); err != nil {
+				return err
+			}
+		}
+	case json.Number:
+		if strings.ContainsAny(string(v), ".eE") && !nonMoneyNumbers[name] {
+			return newConfigError(CodeFloatAmount, fmt.Sprintf(
+				"%s is the JSON number %s: an amount must be a decimal string such as \"25.10\" — a float cannot hold money exactly",
+				orBody(name), v), name)
+		}
+	}
+	return nil
+}
+
+func orBody(name string) string {
+	if name == "" {
+		return "the body"
+	}
+	return name
 }

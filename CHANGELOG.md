@@ -31,7 +31,18 @@ the same generator every Oblodai SDK uses. Breaking: see [MIGRATION-2.0.md](MIGR
 - `Client.WithOptions` and `WithHooks` (`OnRequest`/`OnResponse` per attempt).
 - `List.Items()` and `List.ByPage()` iterators.
 - Waiters for long-running operations: `BatchJob`, `DocumentJob`, `JobFor[T]` with `Wait` and
-  `Download`, driven by the `LRO` table.
+  `Download`, driven by the `LRO` and `Polls` tables generated from the contract's `x-sdk-poll`
+  (`Poll` carries the status field and the terminal statuses of each poll).
+- Status classes generated from the contract's `x-status-classes`: `PaymentStatusFinalValues`,
+  `PaymentStatus.IsFinal()`, `IsSuccess()` and the same for every classified status;
+  `IsPaymentFinal`, `IsPaymentPaid`, `IsPayoutFinal`, `IsPayoutSucceeded` read them.
+- `webhooks.KnownKinds`, `webhooks.EventKinds` and the kinds' typed bodies (`webhooks.Bodies`,
+  embedded in `Event`) generated from the contract's webhooks.
+- A JSON number with a fraction in a free-form request member (a model's `Extra`) is
+  `sdk.float_amount` before anything is sent, except in the numeric fields the contract declares
+  are not money.
+- An idempotency key given twice to the sandbox faucet — in its `idempotency_key` field and with
+  `WithIdempotencyKey` — is refused before anything is sent.
 - The backend's shared conformance suite (signing and webhook vectors from `x-oblodai-signing`,
   retry, money and forward-compatibility scenarios), a generated-code drift check, a sweep that
   calls every generated method, and README and examples executed in the tests; `make ci`.

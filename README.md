@@ -143,29 +143,34 @@ fmt.Println(deposit.Txid, deposit.Confirmations)
 
 ## Method overview
 
-16 services, 120 operations — the whole merchant surface, `client.<Service>.<Method>`.
+The whole merchant surface, `client.<Service>.<Method>` (the table is generated from the contract):
 
-| Service | Methods | Operations |
-| ------- | ------- | ---------- |
-| `Payments` | Create · GetInfo · GetQR · ListHistory · ListServices · Cancel · SendEmail · SetCheckoutConfig · GetCheckoutConfig · GetAmlLinks · Resolve | 11 |
-| `PaymentLinks` | Create · List · Get · Toggle | 4 |
-| `Refunds` | Payment · BlockedWallet | 2 |
-| `Payouts` | Create · CreateMass · GetInfo · ListHistory · Calculate · Validate · Cancel · Approve · ListServices · TransferToPersonal · TransferToUser · CreateTransferBatch | 12 |
-| `PayoutLinks` | Create · CreateBatch · List · Get · Cancel · GetPayoutClaim · ClaimPayout | 7 |
-| `Batches` | CreatePayment · CreateRefund · CreatePayout · GetInfo | 4 |
-| `Splits` | CreateRule · ListRules · DeleteRule · SetConfig · GetConfig · SetRecipientOptIn · GetRecipientOptIn | 7 |
-| `Wallets` | Create · Block · GetQR | 3 |
-| `Account` | GetBalance · GetSummary · ListExchangeRates | 3 |
-| `Webhooks` | ResendPayment · Register · ListDeliveries · RequeueDelivery · SendLegacyTest · SendTestPayment · SendTestWallet · SendTestPayout · SendTestConversion · RotateSecret · SetActive | 11 |
-| `Settings` | SetAccuracy · GetAccuracy · SetAutoRefund · GetAutoRefund · SetDiscount · ListDiscounts · ListAPILog · GetAutoConvert · SetAutoConvert · SetAcceptedCurrencies · ListAcceptedCurrencies · SetPayoutFeeConfig · GetPayoutFeeConfig · SetRefundFeeConfig · GetRefundFeeConfig · SetPaymentFeeConfig · GetPaymentFeeConfig · SetAutoWithdrawRule · ListAutoWithdrawRules · DeleteAutoWithdrawRule · ConfigureVrcs | 21 |
-| `APIAllowlist` | List · AddEntry · RemoveEntry · SetEnabled | 4 |
-| `Referrals` | GetInfo | 1 |
-| `Documents` | GetSigned · GetBalance · GetFees · GetLedger · GetSplit · GetPayoutLinkCheque · GetStatement · GetBatch · GetPaymentLink · GetWalletStatement · GetReferrals · CreateJob · GetJob · DownloadJobFile | 14 |
-| `Checkout` | GetSourceOfFundsForm · SubmitSourceOfFunds · GetPublicPaymentLink · PaymentLink · ListCurrencies · Get · SelectMethod · StartOnramp · GetOnramp · GetQR | 10 |
-| `Sandbox` | OnboardStore · Faucet · SimulateDeposit · Reset · ListWebhooks · ReplayWebhook | 6 |
+<!-- sdkgen:methods -->
+16 resources, 120 methods.
+
+| Resource | Methods |
+| --- | --- |
+| `Payments` | `Create` · `GetInfo` · `GetQR` · `ListHistory` · `ListServices` · `Cancel` · `SendEmail` · `SetCheckoutConfig` · `GetCheckoutConfig` · `GetAmlLinks` · `Resolve` |
+| `PaymentLinks` | `Create` · `List` · `Get` · `Toggle` |
+| `Refunds` | `Payment` · `BlockedWallet` |
+| `Payouts` | `Create` · `CreateMass` · `GetInfo` · `ListHistory` · `Calculate` · `Validate` · `Cancel` · `Approve` · `ListServices` · `TransferToPersonal` · `TransferToUser` · `CreateTransferBatch` |
+| `PayoutLinks` | `Create` · `CreateBatch` · `List` · `Get` · `Cancel` · `GetPayoutClaim` · `ClaimPayout` |
+| `Batches` | `CreatePayment` · `CreateRefund` · `CreatePayout` · `GetInfo` |
+| `Splits` | `CreateRule` · `ListRules` · `DeleteRule` · `SetConfig` · `GetConfig` · `SetRecipientOptIn` · `GetRecipientOptIn` |
+| `Wallets` | `Create` · `Block` · `GetQR` |
+| `Account` | `GetBalance` · `GetSummary` · `ListExchangeRates` |
+| `Webhooks` | `ResendPayment` · `Register` · `ListDeliveries` · `RequeueDelivery` · `SendLegacyTest` · `SendTestPayment` · `SendTestWallet` · `SendTestPayout` · `SendTestConversion` · `RotateSecret` · `SetActive` |
+| `Settings` | `SetAccuracy` · `GetAccuracy` · `SetAutoRefund` · `GetAutoRefund` · `SetDiscount` · `ListDiscounts` · `ListAPILog` · `GetAutoConvert` · `SetAutoConvert` · `SetAcceptedCurrencies` · `ListAcceptedCurrencies` · `SetPayoutFeeConfig` · `GetPayoutFeeConfig` · `SetRefundFeeConfig` · `GetRefundFeeConfig` · `SetPaymentFeeConfig` · `GetPaymentFeeConfig` · `SetAutoWithdrawRule` · `ListAutoWithdrawRules` · `DeleteAutoWithdrawRule` · `ConfigureVrcs` |
+| `APIAllowlist` | `List` · `AddEntry` · `RemoveEntry` · `SetEnabled` |
+| `Referrals` | `GetInfo` |
+| `Documents` | `GetSigned` · `GetBalance` · `GetFees` · `GetLedger` · `GetSplit` · `GetPayoutLinkCheque` · `GetStatement` · `GetBatch` · `GetPaymentLink` · `GetWalletStatement` · `GetReferrals` · `CreateJob` · `GetJob` · `DownloadJobFile` |
+| `Checkout` | `GetSourceOfFundsForm` · `SubmitSourceOfFunds` · `GetPublicPaymentLink` · `PaymentLink` · `ListCurrencies` · `Get` · `SelectMethod` · `StartOnramp` · `GetOnramp` · `GetQR` |
+| `Sandbox` | `OnboardStore` · `Faucet` · `SimulateDeposit` · `Reset` · `ListWebhooks` · `ReplayWebhook` |
+<!-- /sdkgen:methods -->
+
 Method names follow the contract's `operationId` without the resource name, in Go style; the
-table of names is pinned in [`names.lock`](names.lock), and a name that disappears fails the
-generator as a breaking change. Every method's doc comment lists the error codes it can answer with
+table of names is pinned in [`names.lock`](names.lock): the generator adds the names a newer
+contract brings, and a name that disappears fails it as a breaking change. Every method's doc comment lists the error codes it can answer with
 (`go doc oblodai.PayoutsService.Create`). Document routes return `*FileResult{Bytes, ContentType,
 Filename}`.
 
@@ -195,7 +200,8 @@ for page, err := range client.Payouts.ListHistory(ctx, &oblodai.HistoryRequest{L
 Batches and document exports are accepted at once and finish later. `client.BatchJob(id)` and
 `client.DocumentJob(id)` return a `*Job` whose `Wait` polls until the status is terminal (a
 `failed` job is returned, not raised) and whose `Download` fetches an export's file. Which
-operations are long-running is the `LRO` table; `JobFor[T]` follows any of them.
+operations are long-running is the `LRO` table, generated from the contract; `JobFor[T]` follows
+any of them.
 
 ```go
 accepted, err := client.Batches.CreatePayout(ctx, &oblodai.PayoutBatchRequest{Payouts: payouts})
