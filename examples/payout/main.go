@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/oblodai/oblodai-go"
+	"github.com/oblodai/oblodai-go/v2"
 )
 
 func main() {

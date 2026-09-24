@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oblodai/oblodai-go"
-	"github.com/oblodai/oblodai-go/webhooks"
+	"github.com/oblodai/oblodai-go/v2"
+	"github.com/oblodai/oblodai-go/v2/webhooks"
 )
 
 // Every Go snippet in README.md, README.ru.md, AGENTS.md and MIGRATION-1.3.md, compiled.

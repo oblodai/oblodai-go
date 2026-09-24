@@ -1,3 +1,3 @@
-module github.com/oblodai/oblodai-go
+module github.com/oblodai/oblodai-go/v2
 
-go 1.22
+go 1.25

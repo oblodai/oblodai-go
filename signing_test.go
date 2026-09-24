@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oblodai/oblodai-go/internal/fixtures"
+	"github.com/oblodai/oblodai-go/v2/internal/fixtures"
 )
 
 // The signature is the one thing that cannot be "nearly right": the core recomputes it byte for

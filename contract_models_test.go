@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oblodai/oblodai-go/internal/fixtures"
+	"github.com/oblodai/oblodai-go/v2/internal/fixtures"
 )
 
 // The wire models against the golden bodies the core recorded. Two rules, both one-directional

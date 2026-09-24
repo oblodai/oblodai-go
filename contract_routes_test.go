@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/oblodai/oblodai-go/internal/fixtures"
+	"github.com/oblodai/oblodai-go/v2/internal/fixtures"
 )
 
 // Every route the core declares has exactly one SDK method, wired to the right method, path, auth
