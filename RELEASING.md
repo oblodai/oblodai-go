@@ -2,6 +2,12 @@
 
 This package (`github.com/oblodai/oblodai-go/v2`) is published to **Go modules** by a `v*` tag.
 
+**The version bump is scripted for the whole SDK family.** From the backend checkout,
+`tools/sdkgen/release.sh X.Y.Z` raises the version in all eight SDKs (manifest, version constant,
+lock files, the install lines of the READMEs), closes the `## [X.Y.Z] — Unreleased` (or
+`## [Unreleased]`) section of every `CHANGELOG.md` with today's date, commits and tags `vX.Y.Z`
+locally; `-n` only checks. Pushing the tag — the step that publishes — stays manual.
+
 ## Before a release
 
 1. Regenerate from the backend (`make sdk` there) and commit `zz_generated_*.go`, `webhooks/zz_generated_events.go`, the README method tables and `names.lock`.
