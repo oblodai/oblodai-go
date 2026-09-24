@@ -22,8 +22,8 @@ import (
 // outside it, a captured signed payout could be replayed with the header stripped and would be
 // executed twice.
 //
-// These functions are pure: no clock, no I/O. The vectors in contract/contract.json come from the
-// core's own test suite and are checked in signing_test.go.
+// These functions are pure: no clock, no I/O. The core's vectors (x-oblodai-signing of the
+// contract) are checked by the shared conformance suite in conformance_test.go.
 
 // Headers the core reads on a signed request.
 const (
