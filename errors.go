@@ -148,21 +148,16 @@ type Error struct {
 	cause error
 }
 
-// Error implements the error interface.
+// Error reads as "[code] message (request_id=…)" — the code to branch on, the explanation, and the
+// id to quote to support; the suffix only when there is an id.
 func (e *Error) Error() string {
 	var b strings.Builder
-	b.WriteString("oblodai: ")
-	b.WriteString(e.Code)
+	b.WriteString("[" + e.Code + "]")
 	if e.Message != "" {
-		b.WriteString(": ")
-		b.WriteString(e.Message)
+		b.WriteString(" " + e.Message)
 	}
-	if e.HTTPStatus != 0 {
-		fmt.Fprintf(&b, " (HTTP %d", e.HTTPStatus)
-		if e.RequestID != "" {
-			fmt.Fprintf(&b, ", request %s", e.RequestID)
-		}
-		b.WriteString(")")
+	if e.RequestID != "" {
+		b.WriteString(" (request_id=" + e.RequestID + ")")
 	}
 	return b.String()
 }
