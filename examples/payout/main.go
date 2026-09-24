@@ -1,4 +1,4 @@
-// Validate a payout first (free, no side effects), then send it with your own idempotency key so a
+// Validate a payout first (no side effects), then send it with your own idempotency key so a
 // crash between the two lines cannot pay twice.
 package main
 
@@ -22,22 +22,27 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
+	if err := run(ctx, client); err != nil {
+		log.Fatal(err)
+	}
+}
 
+func run(ctx context.Context, client *oblodai.Client) error {
 	const orderID = "payout-42" // your reference: the core deduplicates by it as well
-	params := oblodai.PayoutParams{
+	params := &oblodai.PayoutRequest{
 		Amount:   "10",
 		Currency: "USDT",
-		Network:  oblodai.NetworkTron,
+		Network:  oblodai.Ptr("tron"),
 		Address:  "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx",
 		OrderID:  orderID,
 	}
 
-	check, err := client.Payouts.Validate(ctx, oblodai.PayoutValidateParams{
+	check, err := client.Payouts.Validate(ctx, &oblodai.PayoutValidateRequest{
 		Amount: params.Amount, Currency: params.Currency, Network: params.Network,
-		Address: params.Address, OrderID: params.OrderID,
+		Address: params.Address, OrderID: &params.OrderID,
 	})
 	if err != nil {
-		log.Fatalf("the payout would fail: %v", err)
+		return fmt.Errorf("the payout would fail: %w", err)
 	}
 	fmt.Printf("will debit %s %s (fee %s, borne by %s)\n",
 		check.PayerAmount, check.Currency, check.Commission, check.FeeBearer)
@@ -46,7 +51,7 @@ func main() {
 	// instead of creating a second payout.
 	key, err := oblodai.NewIdempotencyKey()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	payout, err := client.Payouts.Create(ctx, params, oblodai.WithIdempotencyKey(key))
 	if err != nil {
@@ -54,9 +59,10 @@ func main() {
 		if errors.As(err, &apiErr) && apiErr.Retryable {
 			// The client already retried what was safe to retry; this needs a later attempt with
 			// the SAME key — the balance may still arrive.
-			log.Fatalf("try again later (%s): %v", apiErr.Code, err)
+			return fmt.Errorf("try again later (%s): %w", apiErr.Code, err)
 		}
-		log.Fatalf("payout refused: %v", err)
+		return fmt.Errorf("payout refused: %w", err)
 	}
 	fmt.Printf("payout %s is %s\n", payout.UUID, payout.Status)
+	return nil
 }

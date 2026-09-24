@@ -15,9 +15,9 @@ import (
 func TestGETIsSignedOverPathAndQueryWithNoBody(t *testing.T) {
 	api := newFakeAPI(t, emptyPage())
 	client := api.client()
-	limit, offset := 10, 0
-	if _, err := client.Sandbox.Webhooks(context.Background(), SandboxWebhooksParams{Limit: &limit, Offset: &offset}).Page(); err != nil {
-		t.Fatalf("Sandbox.Webhooks: %v", err)
+	limit, offset := int64(10), int64(0)
+	if _, err := client.Sandbox.ListWebhooks(context.Background(), &SandboxListWebhooksParams{Limit: &limit, Offset: &offset}).Page(); err != nil {
+		t.Fatalf("Sandbox.ListWebhooks: %v", err)
 	}
 	req := api.last()
 	if req.method != "GET" || req.path != "/v1/sandbox/webhooks" {
@@ -52,7 +52,7 @@ func TestIdempotencyKeyIsGeneratedOnceAndReusedAcrossRetries(t *testing.T) {
 		ok(map[string]any{"uuid": "u"}),
 	)
 	client := api.client()
-	if _, err := client.Payments.Create(context.Background(), PaymentParams{Amount: "1", Currency: "USDT"}); err != nil {
+	if _, err := client.Payments.Create(context.Background(), &PaymentRequest{Amount: "1", Currency: "USDT"}); err != nil {
 		t.Fatalf("Payments.Create: %v", err)
 	}
 	if api.count() != 2 {
@@ -75,12 +75,12 @@ func TestCallerIdempotencyKeyAndReadRoutes(t *testing.T) {
 	client := api.client()
 	ctx := context.Background()
 	if _, err := client.Payouts.Create(ctx,
-		PayoutParams{Amount: "1", Currency: "USDT", Address: "T", OrderID: "o"},
+		&PayoutRequest{Amount: "1", Currency: "USDT", Address: "T", OrderID: "o"},
 		WithIdempotencyKey("my-key-1")); err != nil {
 		t.Fatalf("Payouts.Create: %v", err)
 	}
-	if _, err := client.Payments.Info(ctx, PaymentInfoParams{UUID: "u"}); err != nil {
-		t.Fatalf("Payments.Info: %v", err)
+	if _, err := client.Payments.GetInfo(ctx, &LookupRequest{UUID: Ptr("u")}); err != nil {
+		t.Fatalf("Payments.GetInfo: %v", err)
 	}
 	if got := api.at(0).header.Get(HeaderIdempotencyKey); got != "my-key-1" {
 		t.Fatalf("caller key was not used: %q", got)
@@ -92,7 +92,7 @@ func TestCallerIdempotencyKeyAndReadRoutes(t *testing.T) {
 
 func TestNonRetryableErrorIsNotRetriedEvenOn5xx(t *testing.T) {
 	api := newFakeAPI(t, apiError(500, map[string]any{"code": "internal", "retryable": false}))
-	_, err := api.client().Account.Balance(context.Background())
+	_, err := api.client().Account.GetBalance(context.Background())
 	apiErr := requireCode(t, err, "internal")
 	if apiErr.HTTPStatus != 500 || apiErr.Retryable {
 		t.Fatalf("unexpected error: %+v", apiErr)
@@ -109,7 +109,7 @@ func TestRetryableErrorIsRetriedUntilTheBudgetRunsOut(t *testing.T) {
 		apiError(429, rateLimited),
 		apiError(429, rateLimited),
 	)
-	_, err := api.client().Account.Balance(context.Background())
+	_, err := api.client().Account.GetBalance(context.Background())
 	apiErr := requireCode(t, err, "request.rate_limited")
 	if apiErr.Kind != KindRateLimit || !IsRateLimit(err) {
 		t.Fatalf("expected a rate-limit error, got %+v", apiErr)
@@ -126,7 +126,7 @@ func TestTransportFailureIsRetriedOnlyWhenSafeToRepeat(t *testing.T) {
 	ctx := context.Background()
 
 	read := newFakeAPI(t, step{abort: true}, ok(map[string]any{"balance": map[string]any{"merchant": []any{}}}))
-	if _, err := read.client().Account.Balance(ctx); err != nil {
+	if _, err := read.client().Account.GetBalance(ctx); err != nil {
 		t.Fatalf("a read route must be retried after a network failure: %v", err)
 	}
 	if read.count() != 2 {
@@ -135,7 +135,7 @@ func TestTransportFailureIsRetriedOnlyWhenSafeToRepeat(t *testing.T) {
 
 	// A write the core does not deduplicate may have reached it: re-sending could double it.
 	write := newFakeAPI(t, step{abort: true}, ok(map[string]any{}))
-	_, err := write.client().Settings.SetAccuracy(ctx, PaymentAccuracySetParams{Enabled: true})
+	_, err := write.client().Settings.SetAccuracy(ctx, &SetAccuracyRequest{Enabled: true})
 	apiErr := mustError(t, err)
 	if apiErr.Kind != KindTransport || apiErr.Code != CodeTransportNetwork {
 		t.Fatalf("expected a network transport error, got %+v", apiErr)
@@ -146,7 +146,7 @@ func TestTransportFailureIsRetriedOnlyWhenSafeToRepeat(t *testing.T) {
 
 	// A keyed write is deduplicated by the core, so repeating it is safe.
 	keyed := newFakeAPI(t, step{abort: true}, ok(map[string]any{"uuid": "u"}))
-	if _, err := keyed.client().Payments.Create(ctx, PaymentParams{Amount: "1", Currency: "USDT"}); err != nil {
+	if _, err := keyed.client().Payments.Create(ctx, &PaymentRequest{Amount: "1", Currency: "USDT"}); err != nil {
 		t.Fatalf("a keyed write must be retried: %v", err)
 	}
 	if keyed.count() != 2 {
@@ -168,23 +168,23 @@ func TestErrorEnvelopeIsClassified(t *testing.T) {
 	client := api.client(WithRetry(RetryOptions{MaxRetries: 0}))
 	ctx := context.Background()
 
-	_, err := client.Payments.Create(ctx, PaymentParams{Amount: "0", Currency: "USDT"})
+	_, err := client.Payments.Create(ctx, &PaymentRequest{Amount: "0", Currency: "USDT"})
 	validation := requireCode(t, err, "payment.below_minimum")
 	if !IsValidation(err) || validation.Field != "amount" || validation.RequestID != "rq-1" || validation.Family() != "payment" {
 		t.Fatalf("unexpected validation error: %+v", validation)
 	}
 
-	if _, err := client.Account.Balance(ctx); !IsAuthentication(err) {
+	if _, err := client.Account.GetBalance(ctx); !IsAuthentication(err) {
 		t.Fatalf("expected an authentication error, got %v", err)
 	}
-	_, err = client.Payments.Create(ctx, PaymentParams{Amount: "1", Currency: "USDT"})
+	_, err = client.Payments.Create(ctx, &PaymentRequest{Amount: "1", Currency: "USDT"})
 	if !IsIdempotencyConflict(err) || !IsConflict(err) {
 		t.Fatalf("expected an idempotency conflict (which is also a conflict), got %v", err)
 	}
-	if _, err := client.Account.Balance(ctx); !IsPermission(err) || !IsCode(err, "merchant.key_mode_mismatch") {
+	if _, err := client.Account.GetBalance(ctx); !IsPermission(err) || !IsCode(err, "merchant.key_mode_mismatch") {
 		t.Fatalf("expected a permission error, got %v", err)
 	}
-	if _, err := client.Account.Balance(ctx); !IsNotFound(err) {
+	if _, err := client.Account.GetBalance(ctx); !IsNotFound(err) {
 		t.Fatalf("expected a not-found error, got %v", err)
 	}
 }
@@ -197,8 +197,8 @@ func TestClockSkewIsCorrectedOnceFromTheServerDate(t *testing.T) {
 		ok(map[string]any{"balance": map[string]any{"merchant": []any{}}}),
 	)
 	client := api.client(WithRetry(RetryOptions{MaxRetries: 0}))
-	if _, err := client.Account.Balance(context.Background()); err != nil {
-		t.Fatalf("Account.Balance: %v", err)
+	if _, err := client.Account.GetBalance(context.Background()); err != nil {
+		t.Fatalf("Account.GetBalance: %v", err)
 	}
 	if api.count() != 2 {
 		t.Fatalf("expected the call to be re-signed once, saw %d attempts", api.count())
@@ -218,7 +218,7 @@ func TestClockSkewIsCorrectedOnceFromTheServerDate(t *testing.T) {
 func TestPerAttemptTimeout(t *testing.T) {
 	api := newFakeAPI(t, step{delay: 300 * time.Millisecond, body: map[string]any{"state": 0, "result": map[string]any{}}})
 	client := api.client(WithTimeout(20*time.Millisecond), WithRetry(RetryOptions{MaxRetries: 0}))
-	_, err := client.Account.Balance(context.Background())
+	_, err := client.Account.GetBalance(context.Background())
 	apiErr := requireCode(t, err, CodeTransportTimeout)
 	if !IsTransport(err) || !apiErr.Retryable {
 		t.Fatalf("a timeout is a retryable transport error, got %+v", apiErr)
@@ -230,10 +230,10 @@ func TestTheOneAPIKeySignsPayoutsAndPaymentsAlike(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{"uuid": "p"}), ok(map[string]any{"uuid": "i"}))
 	client := api.client()
 	ctx := context.Background()
-	if _, err := client.Payouts.Create(ctx, PayoutParams{Amount: "1", Currency: "USDT", Address: "T", OrderID: "o"}); err != nil {
+	if _, err := client.Payouts.Create(ctx, &PayoutRequest{Amount: "1", Currency: "USDT", Address: "T", OrderID: "o"}); err != nil {
 		t.Fatalf("Payouts.Create: %v", err)
 	}
-	if _, err := client.Payments.Create(ctx, PaymentParams{Amount: "1", Currency: "USDT"}); err != nil {
+	if _, err := client.Payments.Create(ctx, &PaymentRequest{Amount: "1", Currency: "USDT"}); err != nil {
 		t.Fatalf("Payments.Create: %v", err)
 	}
 	for i, label := range []string{"a payout route", "a payment route"} {
@@ -253,10 +253,10 @@ func TestCredentialsAreOnlyRequiredWhereTheRouteNeedsThem(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 	ctx := context.Background()
-	if _, err := client.Catalog.Currencies(ctx); err != nil {
+	if _, err := client.Checkout.ListCurrencies(ctx); err != nil {
 		t.Fatalf("a public route must work without credentials: %v", err)
 	}
-	_, err = client.Account.Balance(ctx)
+	_, err = client.Account.GetBalance(ctx)
 	if !IsConfig(err) || !IsCode(err, CodeMissingCredentials) {
 		t.Fatalf("expected sdk.missing_credentials, got %v", err)
 	}
@@ -268,8 +268,8 @@ func TestCredentialsAreOnlyRequiredWhereTheRouteNeedsThem(t *testing.T) {
 func TestOnboardRoutesCarryTheAdminTokenAndNoSignature(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{"merchant_id": "m1"}))
 	client := api.client(WithAdminToken("adm"))
-	if _, err := client.Merchants.Create(context.Background(), MerchantsParams{Email: "a@b.c", Name: "A"}); err != nil {
-		t.Fatalf("Merchants.Create: %v", err)
+	if _, err := client.Sandbox.OnboardStore(context.Background(), "m1"); err != nil {
+		t.Fatalf("Sandbox.OnboardStore: %v", err)
 	}
 	req := api.last()
 	if got := req.header.Get(HeaderAdminToken); got != "adm" {
@@ -285,7 +285,7 @@ func TestErrorSerializationKeepsTheMessageAndDropsTheBody(t *testing.T) {
 		"code": "payment.below_minimum", "message": "too small", "retryable": false,
 		"secret_echo": "must never be logged",
 	}))
-	_, err := api.client().Payments.Create(context.Background(), PaymentParams{Amount: "0", Currency: "USDT"})
+	_, err := api.client().Payments.Create(context.Background(), &PaymentRequest{Amount: "0", Currency: "USDT"})
 	apiErr := requireCode(t, err, "payment.below_minimum")
 
 	encoded, marshalErr := json.Marshal(apiErr)

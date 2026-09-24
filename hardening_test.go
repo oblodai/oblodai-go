@@ -21,7 +21,7 @@ import (
 func TestPathParametersAreEscapedExactlyOnce(t *testing.T) {
 	for _, value := range []string{"a b", "id+plus", "%41", "ünïcode", "a?b#c"} {
 		api := newFakeAPI(t, ok(map[string]any{"link_id": "l1"}))
-		if _, err := api.client().PaymentLinks.PublicView(context.Background(), value); err != nil {
+		if _, err := api.client().Checkout.GetPublicPaymentLink(context.Background(), value); err != nil {
 			t.Fatalf("PublicView(%q): %v", value, err)
 		}
 		got := api.last()
@@ -39,7 +39,7 @@ func TestPathParametersAreEscapedExactlyOnce(t *testing.T) {
 func TestWhatIsSignedIsWhatIsSent(t *testing.T) {
 	built, err := buildRequest(buildInput{
 		baseURL:    "https://api.example",
-		route:      Route{Method: "POST", Path: "/v1/claim/{token}", Auth: AuthKey},
+		route:      RouteSpec{Method: "POST", Path: "/v1/claim/{token}", Auth: AuthKey},
 		pathParams: map[string]string{"token": "tok en"},
 		body:       []byte("{}"),
 		creds:      &credentials{publicID: "pk", secret: "sk"},
@@ -65,11 +65,11 @@ func TestWhatIsSignedIsWhatIsSent(t *testing.T) {
 // Run with -race: before the fix this wrote first/firstErr/fetched without synchronisation.
 func TestListFirstPageIsFetchedOnceUnderConcurrency(t *testing.T) {
 	api := newFakeAPI(t, pageOf([]any{map[string]any{"uuid": "p1"}}, 0, 1, 50))
-	list := api.client().Payments.History(context.Background(), PaymentHistoryParams{})
+	list := api.client().Payments.ListHistory(context.Background(), nil)
 
 	const readers = 8
 	var wg sync.WaitGroup
-	pages := make([]*Page[Payment], readers)
+	pages := make([]*Page[PaymentView], readers)
 	errs := make([]error, readers)
 	start := make(chan struct{})
 	for i := 0; i < readers; i++ {
@@ -108,7 +108,7 @@ func TestDeadlineErrorCarriesTheLastAPIError(t *testing.T) {
 		WithCallBudget(30*time.Millisecond),
 		WithRetry(RetryOptions{MaxRetries: 5, BaseDelay: time.Second, MaxDelay: time.Second, MaxRetryAfter: time.Second}),
 	)
-	_, err := client.Payments.Info(context.Background(), PaymentInfoParams{UUID: "p1"})
+	_, err := client.Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")})
 
 	var apiErr *Error
 	if !errors.As(err, &apiErr) {
@@ -155,8 +155,8 @@ func TestCallerHeadersCannotClaimWhatTheClientOwns(t *testing.T) {
 		WithHeader("X-Admin-Token", "stolen"),
 		WithHeader("X-Trace", "keep-me"),
 	)
-	if _, err := client.Merchants.Create(context.Background(), MerchantsParams{Email: "a@b.c"}); err != nil {
-		t.Fatalf("Merchants.Create: %v", err)
+	if _, err := client.Sandbox.OnboardStore(context.Background(), "m1"); err != nil {
+		t.Fatalf("Sandbox.OnboardStore: %v", err)
 	}
 	got := api.last()
 	if agent := got.header.Get("User-Agent"); !strings.HasPrefix(agent, "oblodai-go/") {
@@ -172,8 +172,8 @@ func TestCallerHeadersCannotClaimWhatTheClientOwns(t *testing.T) {
 	// A payment route must not carry the admin token at all, however the caller asks.
 	payments := newFakeAPI(t, ok(map[string]any{"uuid": "p1"}))
 	client = payments.client(WithAdminToken("real-admin"), WithHeader("x-admin-token", "stolen"))
-	if _, err := client.Payments.Info(context.Background(), PaymentInfoParams{UUID: "p1"}); err != nil {
-		t.Fatalf("Payments.Info: %v", err)
+	if _, err := client.Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")}); err != nil {
+		t.Fatalf("Payments.GetInfo: %v", err)
 	}
 	if token := payments.last().header.Get(HeaderAdminToken); token != "" {
 		t.Errorf("a merchant route carried X-Admin-Token %q", token)
@@ -188,7 +188,7 @@ func TestUnsendableCallerHeadersAreRefused(t *testing.T) {
 	} {
 		api := newFakeAPI(t, ok(map[string]any{"uuid": "p1"}))
 		client := api.client(WithHeader(header[0], header[1]))
-		_, err := client.Payments.Info(context.Background(), PaymentInfoParams{UUID: "p1"})
+		_, err := client.Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")})
 		if !IsConfig(err) || !IsCode(err, CodeBadHeader) {
 			t.Errorf("%s: want sdk.bad_header, got %v", name, err)
 		}
@@ -201,9 +201,9 @@ func TestUnsendableCallerHeadersAreRefused(t *testing.T) {
 func TestPerCallHeaderWinsOverTheClientOne(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{"uuid": "p1"}))
 	client := api.client(WithHeader("X-Trace", "client"))
-	if _, err := client.Payments.Info(context.Background(), PaymentInfoParams{UUID: "p1"},
+	if _, err := client.Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")},
 		WithRequestHeader("X-Trace", "call")); err != nil {
-		t.Fatalf("Payments.Info: %v", err)
+		t.Fatalf("Payments.GetInfo: %v", err)
 	}
 	if got := api.last().header.Get("X-Trace"); got != "call" {
 		t.Fatalf("X-Trace = %q, want the per-call value", got)
@@ -215,7 +215,7 @@ func TestPerCallHeaderWinsOverTheClientOne(t *testing.T) {
 func TestARedirectFollowedByAnInjectedClientIsCaught(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{"uuid": "p1"}))
 	client := api.client(WithHTTPClient(&http.Client{Transport: redirectingTransport{}}))
-	_, err := client.Payments.Info(context.Background(), PaymentInfoParams{UUID: "p1"})
+	_, err := client.Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")})
 	apiErr := mustError(t, err)
 	if !strings.Contains(apiErr.Message, "unexpected redirect") {
 		t.Fatalf("want an unexpected-redirect error, got %v", err)
@@ -237,29 +237,25 @@ func (redirectingTransport) RoundTrip(req *http.Request) (*http.Response, error)
 	}, nil
 }
 
-// A secret reads normally as a field and never prints.
-func TestSecretsAreRedactedWhenPrintedAndSerialized(t *testing.T) {
-	endpoint := WebhookEndpoint{EndpointID: "e1", URL: "https://shop.example", Secret: "whsec_live"}
-	rotated := WebhookSecretRotated{EndpointID: "e1", Secret: "whsec_new"}
-	keys := APIKeyPair{PublicID: "pk_live_1", Secret: "sk_live_1"}
-	link := PayoutLink{
+// A secret reads normally as a field and never prints: fmt goes through the model's String and
+// GoString, which hide secret-looking fields. JSON stays faithful — it is what a model is sent and
+// stored as.
+func TestSecretsAreRedactedWhenPrinted(t *testing.T) {
+	rotated := RotateWebhookSecretResult{Secret: "whsec_new"}
+	registered := RegisterWebhookResult{Secret: Ptr("whsec_live")}
+	key := OnboardKey{PublicID: "pk_live_1", Secret: "sk_live_1"}
+	link := PayoutLinkCreated{
 		LinkID:     "l1",
 		ClaimToken: "cl4im-tok3n",
 		ClaimURL:   "https://pay.test/claim/cl4im-tok3n",
-		Passcode:   "1234",
+		Passcode:   Ptr("1234"),
 	}
-
-	if endpoint.Secret != "whsec_live" || keys.Secret != "sk_live_1" || link.Passcode != "1234" {
+	if key.Secret != "sk_live_1" || *link.Passcode != "1234" || link.ClaimURL != "https://pay.test/claim/cl4im-tok3n" {
 		t.Fatal("the fields themselves must keep the real value")
 	}
-	if link.ClaimURL != "https://pay.test/claim/cl4im-tok3n" {
-		t.Fatal("the claim URL must stay readable as a field")
-	}
 	for _, rendered := range []string{
-		fmt.Sprintf("%v", endpoint), fmt.Sprintf("%+v", endpoint), fmt.Sprintf("%#v", endpoint),
-		fmt.Sprintf("%v", rotated), fmt.Sprintf("%v", keys), fmt.Sprintf("%+v", link),
-		mustJSON(t, endpoint), mustJSON(t, rotated), mustJSON(t, keys), mustJSON(t, link),
-		mustJSON(t, MerchantOnboarded{APIKey: keys}),
+		fmt.Sprintf("%v", rotated), fmt.Sprintf("%+v", registered), fmt.Sprintf("%#v", key),
+		fmt.Sprintf("%v", &key), fmt.Sprintf("%+v", link), fmt.Sprint([]PayoutLinkCreated{link}),
 	} {
 		for _, secret := range []string{"whsec_live", "whsec_new", "sk_live_1", "cl4im-tok3n", "pay.test/claim", `"1234"`} {
 			if strings.Contains(rendered, secret) {
@@ -270,30 +266,23 @@ func TestSecretsAreRedactedWhenPrintedAndSerialized(t *testing.T) {
 			t.Errorf("nothing was redacted in %s", rendered)
 		}
 	}
+	if got := fmt.Sprint(key); !strings.Contains(got, "OnboardKey") || !strings.Contains(got, "pk_live_1") {
+		t.Errorf("the safe half is gone: %s", got)
+	}
+	if !strings.Contains(mustJSON(t, key), "sk_live_1") {
+		t.Error("JSON is the model as sent and stored: it keeps the value")
+	}
 }
 
-// A claim URL embeds the claim token, so it is a bearer secret wherever it travels — including
-// inside a batch element, which is how a bulk mint hands links back.
-func TestAClaimURLIsRedactedInsideABatchElement(t *testing.T) {
-	link := PayoutLink{LinkID: "l1", ClaimToken: "cl4im-tok3n", ClaimURL: "https://pay.test/claim/cl4im-tok3n"}
-	element := BatchElement[PayoutLink]{Idx: 0, OK: true, OrderID: "order-1", Result: &link}
-
-	if element.Result.ClaimURL != "https://pay.test/claim/cl4im-tok3n" {
-		t.Fatal("the element's own field must keep the real value")
+// Printing is short: fields left unset (nil, empty) are not listed.
+func TestAModelPrintsTheFieldsThatAreSet(t *testing.T) {
+	got := fmt.Sprint(PaymentRequest{Amount: "25", Currency: "USDT", OrderID: Ptr("o-1")})
+	want := `oblodai.PaymentRequest{amount: "25", currency: "USDT", order_id: "o-1"}`
+	if got != want {
+		t.Fatalf("got  %s\nwant %s", got, want)
 	}
-	for _, rendered := range []string{
-		fmt.Sprintf("%v", element), fmt.Sprintf("%+v", element), mustJSON(t, element),
-		mustJSON(t, []BatchElement[PayoutLink]{element}),
-	} {
-		if strings.Contains(rendered, "cl4im-tok3n") || strings.Contains(rendered, "pay.test/claim") {
-			t.Errorf("a claim URL leaked into %s", rendered)
-		}
-		if !strings.Contains(rendered, redactedPlaceholder) {
-			t.Errorf("nothing was redacted in %s", rendered)
-		}
-		if !strings.Contains(rendered, "order-1") {
-			t.Errorf("the safe half of the element is gone from %s", rendered)
-		}
+	if got := fmt.Sprint(PaymentView{IsFinal: false, Confirmations: 3}); !strings.Contains(got, "is_final: false") || !strings.Contains(got, "confirmations: 3") {
+		t.Fatalf("false and 0 are values, not absence: %s", got)
 	}
 }
 
@@ -340,8 +329,8 @@ func TestAnInjectedLoggerNeverReceivesASecret(t *testing.T) {
 	recorder := &recordingLogger{}
 	api := newFakeAPI(t, ok(map[string]any{"uuid": "p1"}))
 	client := api.client(WithLogger(recorder))
-	if _, err := client.Payments.Info(context.Background(), PaymentInfoParams{UUID: "p1"}); err != nil {
-		t.Fatalf("Payments.Info: %v", err)
+	if _, err := client.Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")}); err != nil {
+		t.Fatalf("Payments.GetInfo: %v", err)
 	}
 
 	raw := LogFields{"secret": "whsec_live", "x-signature": "deadbeef", "passcode": "1234", "route": "POST /v1/payment"}

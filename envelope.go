@@ -56,7 +56,7 @@ func decodeEnvelope(httpStatus int, body []byte, ctx decodeContext) (json.RawMes
 				detail := errorDetail{Code: "internal", Message: noEnvelope(httpStatus, body)}
 				return nil, apiErrorFrom(httpStatus, detail, body, true, retryAfterHeader)
 			}
-			return nil, newContractError("expected a JSON envelope, got "+describe(body), httpStatus, body)
+			return nil, newContractError("expected a JSON envelope, got "+excerpt(body), httpStatus, body)
 		}
 	}
 
@@ -80,7 +80,7 @@ func decodeEnvelope(httpStatus int, body []byte, ctx decodeContext) (json.RawMes
 	if env.State != nil && *env.State == 0 && env.Result != nil {
 		return env.Result, nil
 	}
-	return nil, newContractError("response is not a {state:0,result} envelope: "+describe(body), httpStatus, body)
+	return nil, newContractError("response is not a {state:0,result} envelope: "+excerpt(body), httpStatus, body)
 }
 
 // decodeErrorDetail reads the error object one field at a time. A field of the wrong type is
@@ -202,11 +202,11 @@ func http1123(value string) (time.Time, error) {
 
 func noEnvelope(status int, body []byte) string {
 	return fmt.Sprintf("HTTP %d without an Oblodai error envelope (%s) — the answer came from a proxy or load balancer, not the API",
-		status, describe(body))
+		status, excerpt(body))
 }
 
-// describe renders a short, single-line excerpt of a body for an error message.
-func describe(body []byte) string {
+// excerpt renders a short, single-line excerpt of a body for an error message.
+func excerpt(body []byte) string {
 	text := strings.Join(strings.Fields(string(body)), " ")
 	if text == "" {
 		return "<empty body>"

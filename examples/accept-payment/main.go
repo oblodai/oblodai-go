@@ -21,37 +21,45 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
+	if err := run(ctx, client, 10*time.Second); err != nil {
+		log.Fatal(err)
+	}
+}
 
-	invoice, err := client.Payments.Create(ctx, oblodai.PaymentParams{
+func run(ctx context.Context, client *oblodai.Client, every time.Duration) error {
+	invoice, err := client.Payments.Create(ctx, &oblodai.PaymentRequest{
 		Amount:     "25", // a decimal string: never a float
 		Currency:   "USDT",
-		Network:    oblodai.NetworkTron, // omit to let the payer choose on the pay page
-		OrderID:    fmt.Sprintf("order-%d", time.Now().Unix()),
-		URLSuccess: "https://shop.example/thanks",
+		Network:    oblodai.Ptr("tron"), // omit to let the payer choose on the pay page
+		OrderID:    oblodai.Ptr(fmt.Sprintf("order-%d", time.Now().Unix())),
+		URLSuccess: oblodai.Ptr("https://shop.example/thanks"),
 	})
 	if err != nil {
-		log.Fatalf("could not open the invoice: %v", err)
+		return fmt.Errorf("could not open the invoice: %w", err)
 	}
 	fmt.Printf("pay at %s\nor send %s %s to %s\n",
 		invoice.URL, invoice.PayerAmount, invoice.PayerCurrency, invoice.Address)
 
-	current := invoice
-	for !oblodai.IsPaymentFinal(current.Status) {
-		time.Sleep(10 * time.Second)
-		current, err = client.Payments.Info(ctx, oblodai.PaymentInfoParams{UUID: invoice.UUID})
+	status := invoice.Status
+	var current *oblodai.PaymentInfoResult
+	for current == nil || !oblodai.IsPaymentFinal(status) {
+		time.Sleep(every)
+		current, err = client.Payments.GetInfo(ctx, &oblodai.LookupRequest{UUID: &invoice.UUID})
 		if err != nil {
-			log.Fatalf("could not read the invoice: %v", err)
+			return fmt.Errorf("could not read the invoice: %w", err)
 		}
+		status = current.Status
 	}
 
 	switch {
-	case oblodai.IsPaymentPaid(current.Status):
+	case oblodai.IsPaymentPaid(status):
 		fmt.Printf("paid %s %s\n", current.AmountPaid, current.PayerCurrency)
-	case oblodai.IsPaymentUnderpaid(current.Status):
+	case oblodai.IsPaymentUnderpaid(status):
 		// The payer sent less than the invoice asked for: keep it or send it back.
-		fmt.Printf("underpaid: %s of %s — resolve it with Refunds.Resolve\n",
+		fmt.Printf("underpaid: %s of %s — resolve it with Payments.Resolve\n",
 			current.AmountPaid, current.PayerAmount)
 	default:
-		fmt.Printf("ended as %s\n", current.Status)
+		fmt.Printf("ended as %s\n", status)
 	}
+	return nil
 }

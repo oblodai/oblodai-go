@@ -57,24 +57,20 @@ func TestMoneyHelpersRefuseWhatIsNotAnAmount(t *testing.T) {
 	}
 }
 
-// A signed download link with no expiry must not be sent as exp=0: the core would reject a link
-// that legitimately carries none.
-func TestDocumentDownloadOmitsAnUnsetExpiry(t *testing.T) {
+// A signed document link travels as its query: exp and sig verbatim, lang only when set.
+func TestSignedDocumentSendsItsLinkQuery(t *testing.T) {
 	api := newFakeAPI(t, step{status: 200, body: "%PDF", headers: map[string]string{"Content-Type": "application/pdf"}})
-	if _, err := api.client().Documents.Download(context.Background(), "invoice", "i1", DownloadQuery{Lang: "en"}); err != nil {
-		t.Fatalf("Download: %v", err)
+	file, err := api.client().Documents.GetSigned(context.Background(), "invoice", "i1",
+		&GetSignedDocumentParams{Exp: 1_800_000_000, Sig: "s"})
+	if err != nil {
+		t.Fatalf("GetSigned: %v", err)
 	}
-	if got := api.last().rawQuery; strings.Contains(got, "exp=") {
-		t.Fatalf("query = %q, an unset expiry must be omitted", got)
+	if string(file.Bytes) != "%PDF" || file.ContentType != "application/pdf" {
+		t.Fatalf("file = %+v", file)
 	}
-
-	signedLink := newFakeAPI(t, step{status: 200, body: "%PDF", headers: map[string]string{"Content-Type": "application/pdf"}})
-	if _, err := signedLink.client().Documents.Download(context.Background(), "invoice", "i1",
-		DownloadQuery{Exp: 1_800_000_000, Sig: "s"}); err != nil {
-		t.Fatalf("Download: %v", err)
-	}
-	if got := signedLink.last().rawQuery; !strings.Contains(got, "exp=1800000000") {
-		t.Fatalf("query = %q, a real expiry must be sent", got)
+	got := api.last()
+	if got.path != "/v1/documents/invoice/i1" || got.rawQuery != "exp=1800000000&sig=s" {
+		t.Fatalf("request = %s?%s", got.path, got.rawQuery)
 	}
 }
 
@@ -134,7 +130,7 @@ func TestClockSkewCorrectionUnderConcurrency(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			<-start
-			_, errs[i] = client.Payments.Info(context.Background(), PaymentInfoParams{UUID: "p1"})
+			_, errs[i] = client.Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")})
 		}(i)
 	}
 	close(start)

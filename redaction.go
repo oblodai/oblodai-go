@@ -1,100 +1,105 @@
 package oblodai
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 )
 
-// Secrets a program holds get printed by accident: a struct dumped with %+v into a log, a model
-// serialized into an audit trail, a client rendered by a debugger. Every value in this package
-// that carries a secret therefore renders it as [redacted] in both paths a Go program prints
-// through — fmt (String/GoString) and encoding/json (MarshalJSON) — while the field itself keeps
-// the real value for the code that needs it.
+// Secrets a program holds get printed by accident: a struct dumped with %+v into a log, a client
+// rendered by a debugger. Every model and the client therefore render a secret as [redacted]
+// through fmt (String/GoString), while the field itself keeps the real value for the code that
+// needs it.
 //
 // The one place a secret is meant to leave the process is the API call it signs.
 
-// debugString renders a value through its own (redacting) MarshalJSON, so a printed struct and a
-// serialized one can never disagree about what is hidden.
-func debugString(name string, value any) string {
-	encoded, err := json.Marshal(value)
+// describe is what fmt prints for a generated model (its String and GoString): the fields that
+// are set, by their JSON names, with the value of every secret-looking field — a webhook secret, a
+// claim token or URL, a passcode — replaced by [redacted] at any depth. JSON encoding is left
+// faithful: it is the model as it is sent and stored.
+func describe(name string, model any) string {
+	encoded, err := json.Marshal(model)
 	if err != nil {
 		return "oblodai." + name + "{}"
 	}
-	return "oblodai." + name + string(encoded)
+	decoder := json.NewDecoder(bytes.NewReader(encoded))
+	decoder.UseNumber()
+	var fields map[string]any
+	if err := decoder.Decode(&fields); err != nil {
+		return "oblodai." + name + "{}"
+	}
+	keys := make([]string, 0, len(fields))
+	for key := range fields {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	b.WriteString("oblodai." + name + "{")
+	first := true
+	for _, key := range keys {
+		value := redactTree(key, fields[key])
+		if unset(value) {
+			continue
+		}
+		rendered, err := json.Marshal(value)
+		if err != nil {
+			continue
+		}
+		if !first {
+			b.WriteString(", ")
+		}
+		first = false
+		b.WriteString(key + ": " + string(rendered))
+	}
+	b.WriteString("}")
+	return b.String()
 }
 
-// String renders the endpoint with its secret hidden.
-func (e WebhookEndpoint) String() string { return debugString("WebhookEndpoint", e) }
+// secretFields are words that make a model field's string value a secret when printed.
+var secretFields = append([]string{"claim_url"}, sensitiveWords...)
 
-// GoString renders the endpoint with its secret hidden (%#v).
-func (e WebhookEndpoint) GoString() string { return e.String() }
-
-// MarshalJSON serializes the endpoint with its secret replaced by [redacted]. Read the Secret
-// field itself to store it where it belongs.
-func (e WebhookEndpoint) MarshalJSON() ([]byte, error) {
-	type plain WebhookEndpoint
-	out := plain(e)
-	if out.Secret != "" {
-		out.Secret = redactedPlaceholder
+// redactTree replaces the string value of a secret-looking key, looking into objects and arrays.
+func redactTree(key string, value any) any {
+	switch typed := value.(type) {
+	case string:
+		lower := strings.ToLower(key)
+		for _, word := range secretFields {
+			if typed != "" && strings.Contains(lower, word) {
+				return redactedPlaceholder
+			}
+		}
+		return typed
+	case map[string]any:
+		out := make(map[string]any, len(typed))
+		for k, v := range typed {
+			out[k] = redactTree(k, v)
+		}
+		return out
+	case []any:
+		out := make([]any, len(typed))
+		for i, v := range typed {
+			out[i] = redactTree(key, v)
+		}
+		return out
 	}
-	return json.Marshal(out)
+	return value
 }
 
-// String renders the rotation result with its secret hidden.
-func (e WebhookSecretRotated) String() string { return debugString("WebhookSecretRotated", e) }
-
-// GoString renders the rotation result with its secret hidden (%#v).
-func (e WebhookSecretRotated) GoString() string { return e.String() }
-
-// MarshalJSON serializes the rotation result with its secret replaced by [redacted].
-func (e WebhookSecretRotated) MarshalJSON() ([]byte, error) {
-	type plain WebhookSecretRotated
-	out := plain(e)
-	if out.Secret != "" {
-		out.Secret = redactedPlaceholder
+// unset reports a value not worth printing: null, "", [] or {}. false and 0 are values.
+func unset(value any) bool {
+	switch typed := value.(type) {
+	case nil:
+		return true
+	case string:
+		return typed == ""
+	case []any:
+		return len(typed) == 0
+	case map[string]any:
+		return len(typed) == 0
 	}
-	return json.Marshal(out)
-}
-
-// String renders the key pair with its secret hidden.
-func (k APIKeyPair) String() string { return debugString("APIKeyPair", k) }
-
-// GoString renders the key pair with its secret hidden (%#v).
-func (k APIKeyPair) GoString() string { return k.String() }
-
-// MarshalJSON serializes the key pair with its secret replaced by [redacted].
-func (k APIKeyPair) MarshalJSON() ([]byte, error) {
-	type plain APIKeyPair
-	out := plain(k)
-	if out.Secret != "" {
-		out.Secret = redactedPlaceholder
-	}
-	return json.Marshal(out)
-}
-
-// String renders the payout link with its claim token, claim URL and passcode hidden — all three
-// are bearer secrets: whoever reads one can claim the money.
-func (l PayoutLink) String() string { return debugString("PayoutLink", l) }
-
-// GoString renders the payout link with its bearer secrets hidden (%#v).
-func (l PayoutLink) GoString() string { return l.String() }
-
-// MarshalJSON serializes the payout link with ClaimToken, ClaimURL and Passcode replaced by
-// [redacted]. ClaimURL is the claim page built around the token and carries it verbatim, so it is
-// hidden with it: read the field to send it to the recipient, do not log the struct.
-func (l PayoutLink) MarshalJSON() ([]byte, error) {
-	type plain PayoutLink
-	out := plain(l)
-	if out.ClaimToken != "" {
-		out.ClaimToken = redactedPlaceholder
-	}
-	if out.ClaimURL != "" {
-		out.ClaimURL = redactedPlaceholder
-	}
-	if out.Passcode != "" {
-		out.Passcode = redactedPlaceholder
-	}
-	return json.Marshal(out)
+	return false
 }
 
 // String renders the client without its keys.

@@ -1,17 +1,51 @@
 package oblodai
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
 )
 
-// Amounts are decimal strings; never parse them into a float64 (USDT has 6 decimals, BTC 8, ETH
-// 18, and binary floating point holds none of them exactly). These helpers compare and add at
-// arbitrary precision, and give back a string in the same shape the API speaks.
+// Decimal is an amount as the API speaks it: a decimal string at the asset's own scale ("25",
+// "10.000000"). It is a string type on purpose — USDT has 6 decimals, BTC 8 and ETH 18, and a
+// float64 holds none of them exactly — so a float does not fit where an amount goes, and a JSON
+// number decoded into one is refused with sdk.float_amount. It goes on the wire verbatim.
 //
-// Money is an alias of string, so Go will happily let you write a < b: do not. "9" < "10" is true
-// as text and false as money. Order amounts with CompareAmounts.
+// Go will happily let you write a < b on two Decimals: do not. "9" < "10" is true as text and
+// false as money. Order amounts with CompareAmounts, add them with AddAmounts.
+type Decimal string
+
+// String is the amount as written.
+func (d Decimal) String() string { return string(d) }
+
+// UnmarshalJSON accepts a JSON string (or null, which leaves d alone) and refuses a JSON number:
+// by the time an amount is a binary float it may already be wrong.
+func (d *Decimal) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if string(data) == "null" {
+		return nil
+	}
+	if len(data) > 0 && data[0] != '"' {
+		return newConfigError(CodeFloatAmount, fmt.Sprintf(
+			"an amount must be a decimal string such as \"25.10\", not the JSON number %s: a float cannot hold money exactly",
+			data), "")
+	}
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	*d = Decimal(s)
+	return nil
+}
+
+// Amount is what the money helpers take: a Decimal, or a plain string — the API sends amounts
+// that may be empty ("" until a payment is paid) as strings.
+type Amount interface{ ~string }
+
+// Amounts are decimal strings; never parse them into a float64. These helpers compare and add at
+// arbitrary precision, and give back a Decimal in the same shape the API speaks.
 //
 // An input that is not -?digits[.digits] (at most 64 characters, no empty integer part, no empty
 // fraction after the dot, no exponent, no spaces) is refused with a ConfigError carrying
@@ -22,8 +56,8 @@ const MaxAmountLength = 64
 
 // CompareAmounts returns -1, 0 or 1 as a is less than, equal to or greater than b. Values of
 // different scale compare correctly: "25" equals "25.000000".
-func CompareAmounts(a, b string) (int, error) {
-	x, y, err := alignedPair(a, b)
+func CompareAmounts[A, B Amount](a A, b B) (int, error) {
+	x, y, err := alignedPair(Decimal(a), Decimal(b))
 	if err != nil {
 		return 0, err
 	}
@@ -32,52 +66,52 @@ func CompareAmounts(a, b string) (int, error) {
 
 // AmountsEqual reports whether two amounts are numerically equal. A malformed amount is not equal
 // to anything.
-func AmountsEqual(a, b string) bool {
+func AmountsEqual[A, B Amount](a A, b B) bool {
 	cmp, err := CompareAmounts(a, b)
 	return err == nil && cmp == 0
 }
 
 // AddAmounts adds two decimal amounts at the wider of their two scales.
-func AddAmounts(a, b string) (string, error) {
-	x, y, err := alignedPair(a, b)
+func AddAmounts[A, B Amount](a A, b B) (Decimal, error) {
+	x, y, err := alignedPair(Decimal(a), Decimal(b))
 	if err != nil {
 		return "", err
 	}
-	return unscale(new(big.Int).Add(x, y), scaleOf(a, b)), nil
+	return Decimal(unscale(new(big.Int).Add(x, y), scaleOf(Decimal(a), Decimal(b)))), nil
 }
 
 // SubtractAmounts subtracts b from a at the wider of their two scales.
-func SubtractAmounts(a, b string) (string, error) {
-	x, y, err := alignedPair(a, b)
+func SubtractAmounts[A, B Amount](a A, b B) (Decimal, error) {
+	x, y, err := alignedPair(Decimal(a), Decimal(b))
 	if err != nil {
 		return "", err
 	}
-	return unscale(new(big.Int).Sub(x, y), scaleOf(a, b)), nil
+	return Decimal(unscale(new(big.Int).Sub(x, y), scaleOf(Decimal(a), Decimal(b)))), nil
 }
 
 // IsZeroAmount reports whether an amount is zero at any scale ("0", "0.000000").
-func IsZeroAmount(a string) bool {
-	scaled, err := scale(a, fracLen(a))
+func IsZeroAmount[A Amount](a A) bool {
+	scaled, err := scale(string(a), fracLen(string(a)))
 	return err == nil && scaled.Sign() == 0
 }
 
-func alignedPair(a, b string) (*big.Int, *big.Int, error) {
+func alignedPair(a, b Decimal) (*big.Int, *big.Int, error) {
 	s := scaleOf(a, b)
-	x, err := scale(a, s)
+	x, err := scale(string(a), s)
 	if err != nil {
 		return nil, nil, err
 	}
-	y, err := scale(b, s)
+	y, err := scale(string(b), s)
 	if err != nil {
 		return nil, nil, err
 	}
 	return x, y, nil
 }
 
-func scaleOf(amounts ...string) int {
+func scaleOf(amounts ...Decimal) int {
 	widest := 0
 	for _, a := range amounts {
-		if n := fracLen(a); n > widest {
+		if n := fracLen(string(a)); n > widest {
 			widest = n
 		}
 	}

@@ -1,6 +1,7 @@
 package oblodai
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"os"
@@ -34,6 +35,8 @@ type config struct {
 	allowInsecure bool
 	now           func() time.Time
 	random        func() float64
+	hooks         Hooks
+	sleep         func(ctx context.Context, d time.Duration) error
 }
 
 // WithCredentials sets the merchant's API key pair. One key signs every route the gateway gates:
@@ -75,6 +78,11 @@ func WithLogger(logger Logger) Option {
 	return func(c *config) { c.logger = logger }
 }
 
+// WithHooks installs request and response hooks (see Hooks); later calls replace earlier ones.
+func WithHooks(hooks Hooks) Option {
+	return func(c *config) { c.hooks = hooks }
+}
+
 // WithHeader adds a header to every request. Headers the client signs or owns are ignored,
 // compared case-insensitively: X-Public-Id, X-Signature, X-Timestamp, Idempotency-Key,
 // X-Admin-Token (sent by the client on onboarding routes only), Accept, User-Agent, Content-Type,
@@ -105,27 +113,23 @@ func WithInsecureBaseURL(allow bool) Option {
 // have no meaning in production.
 func withClock(now func() time.Time) Option   { return func(c *config) { c.now = now } }
 func withRandom(random func() float64) Option { return func(c *config) { c.random = random } }
+func withSleep(sleep func(context.Context, time.Duration) error) Option {
+	return func(c *config) { c.sleep = sleep }
+}
 
 // resolve merges the options with the environment and validates what can be validated up front.
 func resolve(opts []Option) (*config, *Error) {
 	c := &config{retry: DefaultRetry(), now: time.Now, random: defaultRandom}
 	for _, opt := range opts {
-		opt(c)
+		if opt != nil {
+			opt(c)
+		}
 	}
-
-	c.baseURL = strings.TrimRight(firstNonEmpty(c.baseURL, os.Getenv("OBLODAI_BASE_URL"), DefaultBaseURL), "/")
-	if err := checkBaseURL(c.baseURL, c.allowInsecure || os.Getenv("OBLODAI_ALLOW_INSECURE") == "1"); err != nil {
-		return nil, err
-	}
-
+	c.baseURL = firstNonEmpty(c.baseURL, os.Getenv("OBLODAI_BASE_URL"))
+	c.allowInsecure = c.allowInsecure || os.Getenv("OBLODAI_ALLOW_INSECURE") == "1"
 	c.publicID = firstNonEmpty(c.publicID, os.Getenv("OBLODAI_PUBLIC_ID"))
 	c.secret = firstNonEmpty(c.secret, os.Getenv("OBLODAI_SECRET"))
-	if (c.publicID == "") != (c.secret == "") {
-		return nil, newConfigError(CodeBadConfig,
-			"the public id and the secret must be provided together (or set both OBLODAI_PUBLIC_ID and OBLODAI_SECRET)", "")
-	}
 	c.adminToken = firstNonEmpty(c.adminToken, os.Getenv("OBLODAI_ADMIN_TOKEN"))
-
 	if c.logger == nil {
 		if level := strings.ToLower(os.Getenv("OBLODAI_LOG")); level != "" {
 			if _, ok := logOrder[LogLevel(level)]; ok {
@@ -133,12 +137,21 @@ func resolve(opts []Option) (*config, *Error) {
 			}
 		}
 	}
-	if c.logger == nil {
-		c.logger = nopLogger{}
-	} else {
-		// Redaction happens here, once, so no logger — the built-in one or a caller's — ever sees
-		// a secret-looking field value.
-		c.logger = redactingLogger{inner: c.logger}
+	if err := c.finalize(); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// finalize fills defaults and validates a configuration; the environment has been read already.
+func (c *config) finalize() *Error {
+	c.baseURL = strings.TrimRight(firstNonEmpty(c.baseURL, DefaultBaseURL), "/")
+	if err := checkBaseURL(c.baseURL, c.allowInsecure); err != nil {
+		return err
+	}
+	if (c.publicID == "") != (c.secret == "") {
+		return newConfigError(CodeBadConfig,
+			"the public id and the secret must be provided together (or set both OBLODAI_PUBLIC_ID and OBLODAI_SECRET)", "")
 	}
 	if c.timeout <= 0 {
 		c.timeout = 30 * time.Second
@@ -156,7 +169,19 @@ func resolve(opts []Option) (*config, *Error) {
 	if c.random == nil {
 		c.random = defaultRandom
 	}
-	return c, nil
+	return nil
+}
+
+// clone copies a configuration so options applied to the copy leave the original alone.
+func (c *config) clone() *config {
+	out := *c
+	if c.headers != nil {
+		out.headers = make(map[string]string, len(c.headers))
+		for k, v := range c.headers {
+			out.headers[k] = v
+		}
+	}
+	return &out
 }
 
 // checkBaseURL refuses an origin that would carry a signed secret in clear text.

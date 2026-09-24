@@ -3,18 +3,20 @@
 // One client per API key; it is safe to share across goroutines:
 //
 //	client, err := oblodai.New(oblodai.WithCredentials("oblodai_…", "oblodai_live_…"))
-//	invoice, err := client.Payments.Create(ctx, oblodai.PaymentParams{
-//		Amount: "25", Currency: "USDT", Network: oblodai.NetworkTron, OrderID: "order-1",
+//	invoice, err := client.Payments.Create(ctx, &oblodai.PaymentRequest{
+//		Amount: "25", Currency: "USDT", OrderID: oblodai.Ptr("order-1"),
 //	})
 //
-// Everything the client knows about the API — routes, vocabularies, request bodies — is generated
-// from the contract snapshot in contract/contract.json, which the core exports from its own
-// conformance table. Webhook verification lives in the standalone sub-package
-// github.com/oblodai/oblodai-go/webhooks and needs no client and no API key.
+// The API surface — every resource service, method, request and response model, enumeration and
+// route — is generated from the gateway's OpenAPI contract into the zz_generated_*.go files; the
+// rest of the package is the hand-written runtime: signing, retries, errors, pagination, waiters
+// for long-running jobs. Webhook verification lives in the standalone sub-package
+// github.com/oblodai/oblodai-go/v2/webhooks and needs no client and no API key.
 //
 // Three rules that matter more than the rest:
 //
-//   - Amounts are decimal strings ("25", "10.000000"), never floats. Use AddAmounts and
+//   - Amounts are Decimal strings ("25", "10.000000"), never floats: a float64 does not fit the
+//     type, and a JSON number in an amount is refused with sdk.float_amount. Use AddAmounts and
 //     CompareAmounts instead of parsing them.
 //   - Errors are always *Error: check Code (a stable family.reason string) and Retryable, not the
 //     message. The client has already retried whatever was safe to retry.
@@ -22,85 +24,55 @@
 //     provisioning is different — it takes an admin token (WithAdminToken).
 package oblodai
 
-//go:generate go run ./internal/codegen
-
 // Version is the SDK release, sent in User-Agent.
-const Version = "1.3.0"
+const Version = "2.0.0"
 
 // DefaultBaseURL is the production API origin.
 const DefaultBaseURL = "https://api.oblodai.com"
 
-// Money is a decimal amount rendered at the asset's own scale ("10.000000" for USDT). It is a
-// string on purpose: USDT has 6 decimals, BTC 8 and ETH 18, and float64 cannot hold them exactly.
-type Money = string
-
-// Timestamp is an RFC 3339 instant in UTC ("2026-08-25T20:58:55Z").
-type Timestamp = string
-
-// Auth is the credential a route's gate expects. It mirrors the core's conformance table.
-type Auth string
-
+// Credentials a route's gate expects (RouteSpec.Auth).
 const (
 	// AuthPublic routes are unsigned: payer-facing pages and the currency catalog.
-	AuthPublic Auth = "public"
+	AuthPublic = "public"
 	// AuthKey routes are signed with the merchant's API key — every route that touches merchant
-	// money or configuration, payments and payouts alike.
-	AuthKey Auth = "key"
+	// money or configuration.
+	AuthKey = "key"
 	// AuthOnboard routes are unsigned merchant provisioning; a self-hosted gateway gates them with
 	// an admin token.
-	AuthOnboard Auth = "onboard"
+	AuthOnboard = "onboard"
 )
 
-// ListKind tells how a route paginates.
-type ListKind string
+// ListPaged is RouteSpec.ListKind of a route that returns {items, paginate}.
+const ListPaged = "paged"
 
-const (
-	// ListNone is a route that returns a single object.
-	ListNone ListKind = ""
-	// ListPaged returns {items, paginate}.
-	ListPaged ListKind = "paged"
-	// ListPlain returns {items} without a paginate block: the core caps it by catalog size.
-	ListPlain ListKind = "plain"
-)
-
-// Route is one endpoint of the core's merchant surface.
-type Route struct {
+// RouteSpec is one operation of the API, as the generated Routes table lists it.
+type RouteSpec struct {
+	// OperationID is the operation's OpenAPI operationId, the key of Routes.
+	OperationID string
 	// Method is GET or POST.
 	Method string
 	// Path is the path template; {name} segments are filled from path parameters.
 	Path string
-	// Auth is the credential the route's gate expects.
-	Auth Auth
+	// Auth is the credential the route's gate expects: AuthKey, AuthPublic or AuthOnboard.
+	Auth string
 	// Idempotent reports whether the core deduplicates the route by Idempotency-Key. The client
 	// generates a key for such routes and reuses it across retries.
 	Idempotent bool
-	// Safe reports a read-only route: repeating it cannot duplicate a side effect.
+	// Safe reports a route without side effects: repeating it cannot duplicate anything.
 	Safe bool
 	// Bare routes answer outside the JSON envelope (PDF and CSV documents).
 	Bare bool
-	// List is the pagination shape of the result, if any.
-	List ListKind
+	// ListKind is ListPaged for a paged list, else empty.
+	ListKind string
 }
 
-// Key is the route's registry key, "POST /v1/payment".
-func (r Route) Key() string { return r.Method + " " + r.Path }
+// Key is the route's request line, "POST /v1/payment".
+func (r RouteSpec) Key() string { return r.Method + " " + r.Path }
 
-// Paginate is the pagination block of a list result.
-type Paginate struct {
-	// Total is how many items match the filter across all pages.
-	Total int `json:"total"`
-	// PerPage is the page size the core applied.
-	PerPage int `json:"per_page"`
-	// Offset is the offset this page starts at.
-	Offset int `json:"offset"`
-	// HasPages reports whether another page follows.
-	HasPages bool `json:"has_pages"`
-}
-
-// Page is one page of a paged list route.
+// Page is one page of a paged list.
 type Page[T any] struct {
-	Items    []T      `json:"items"`
-	Paginate Paginate `json:"paginate"`
+	Items    []T        `json:"items"`
+	Paginate Pagination `json:"paginate"`
 }
 
 // FileResult is the body of a bare route: a generated PDF or CSV document.
@@ -112,3 +84,8 @@ type FileResult struct {
 	// Filename comes from Content-Disposition when the core sets one.
 	Filename string
 }
+
+// Ptr returns a pointer to v — for the optional fields of request models:
+//
+//	&oblodai.PaymentRequest{Amount: "25", Currency: "USDT", OrderID: oblodai.Ptr("order-1")}
+func Ptr[T any](v T) *T { return &v }

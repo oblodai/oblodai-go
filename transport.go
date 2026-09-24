@@ -3,22 +3,22 @@ package oblodai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"mime"
 	"net/http"
-	"net/url"
+	"strings"
 	"time"
 )
 
-// The HTTP engine every resource goes through. One method, execute, does the whole lifecycle:
+// The HTTP engine every generated method goes through. One method, execute, does the whole lifecycle:
 // serialize -> sign -> send (with a per-attempt timeout) -> decode envelope -> classify error ->
 // retry per policy. Bare routes take the same path and keep their bytes instead of a JSON result.
 
-// transport carries the configuration shared by every call.
+// transport carries the configuration shared by every call. It is the Requester the generated
+// services hold.
 type transport struct {
 	baseURL    string
 	creds      *credentials
@@ -32,18 +32,13 @@ type transport struct {
 	adminToken string
 	userAgent  string
 	random     func() float64
+	hooks      Hooks
+	// sleep waits out a retry pause; tests record the pause instead.
+	sleep func(ctx context.Context, d time.Duration) error
 }
 
-// callOptions is the per-call state a RequestOption may change.
-type callOptions struct {
-	body           any
-	query          url.Values
-	pathParams     map[string]string
-	idempotencyKey string
-	timeout        time.Duration
-	budget         time.Duration
-	headers        map[string]string
-}
+// HeaderRequestID carries the call's id to the core and back (WithRequestID).
+const HeaderRequestID = "X-Request-ID"
 
 // Response size caps. A JSON answer is a document the core composed; a bare route streams a
 // generated PDF or CSV, which is legitimately larger. Past the cap the client reports a contract
@@ -68,89 +63,99 @@ type rawResponse struct {
 // Error codes that mean the core rejected the signature because of the timestamp or the MAC.
 var signatureFailureCodes = map[string]bool{CodeBadSignature: true, CodeBadTimestamp: true}
 
-// route looks up a generated route by its registry key. A missing key is a programming error in
-// this package, never a runtime condition of a caller's program.
-func route(key string) Route {
-	r, ok := Routes[key]
-	if !ok {
-		panic("oblodai: unknown route " + key)
+// request runs one call: serialize, sign, send, classify, retry per policy. The final response —
+// success or error — is stored for WithRawResponse, and every error carries the call's request id
+// when the core did not name one.
+func (t *transport) request(ctx context.Context, call Call, o callOptions) (*rawResponse, *Error) {
+	requestID := o.requestID
+	if requestID == "" {
+		requestID = headerValue(o.headers, HeaderRequestID)
 	}
-	return r
-}
-
-// call performs an envelope route and decodes its result into T.
-func call[T any](ctx context.Context, t *transport, key string, o callOptions) (*T, error) {
-	r := route(key)
-	raw, err := t.execute(ctx, r, o)
-	if err != nil {
+	if requestID == "" {
+		requestID = headerValue(t.headers, HeaderRequestID)
+	}
+	if requestID == "" {
+		generated, err := newIdempotencyKey()
+		if err != nil {
+			return nil, err
+		}
+		requestID = generated
+	}
+	if err := checkHeader(HeaderRequestID, requestID); err != nil {
 		return nil, err
 	}
-	result, decodeErr := decodeEnvelope(raw.status, raw.body, decodeContext{now: time.Now()})
-	if decodeErr != nil {
-		return nil, decodeErr
+	raw, err := t.execute(ctx, call, o, requestID)
+	if raw != nil && o.raw != nil {
+		id := raw.header.Get(HeaderRequestID)
+		if id == "" {
+			id = requestID
+		}
+		*o.raw = &RawResponse{StatusCode: raw.status, Header: raw.header.Clone(), Body: raw.body, RequestID: id}
 	}
-	// The core replays a cached response by Idempotency-Key; when the original was too large to
-	// cache it answers {ok, idempotent_replay: true, detail} instead of the object — surface that
-	// rather than handing back a half-empty struct.
-	var replay struct {
-		IdempotentReplay bool   `json:"idempotent_replay"`
-		Detail           string `json:"detail"`
-	}
-	if json.Unmarshal(result, &replay) == nil && replay.IdempotentReplay {
-		return nil, newContractError(fmt.Sprintf(
-			"%s: the request was already processed but its response was too large to replay — fetch the result by order_id or reference (%s)",
-			key, replay.Detail), raw.status, result)
-	}
-	var out T
-	if err := json.Unmarshal(result, &out); err != nil {
-		return nil, newContractError(fmt.Sprintf("%s: the result does not match the documented shape: %v", key, err), raw.status, result)
-	}
-	return &out, nil
-}
-
-// callFile performs a bare route and returns its bytes.
-func callFile(ctx context.Context, t *transport, key string, o callOptions) (*FileResult, error) {
-	raw, err := t.execute(ctx, route(key), o)
 	if err != nil {
+		if err.RequestID == "" {
+			err.RequestID = requestID
+			if raw != nil && raw.header.Get(HeaderRequestID) != "" {
+				err.RequestID = raw.header.Get(HeaderRequestID)
+			}
+		}
 		return nil, err
 	}
-	contentType := raw.contentType
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-	return &FileResult{Bytes: raw.body, ContentType: contentType, Filename: filenameFrom(raw.header.Get("Content-Disposition"))}, nil
+	return raw, nil
 }
 
-func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawResponse, *Error) {
+// execute is the attempt loop. It returns the last response it read (also next to an error, for
+// WithRawResponse) and the error the call ends with, if any.
+func (t *transport) execute(ctx context.Context, call Call, o callOptions, requestID string) (*rawResponse, *Error) {
+	r := call.Route
 	if ctx == nil {
 		return nil, newConfigError(CodeBadConfig, "a non-nil context is required", "ctx")
 	}
-	body, err := serializeBody(o.body, r.Method)
-	if err != nil {
-		return nil, err
+	if r.Method == "" || r.Path == "" {
+		return nil, newConfigError(CodeBadConfig, "the call names no route (operation "+r.OperationID+")", "")
 	}
 	idempotencyKey := o.idempotencyKey
+	callBody := call.Body
 	if idempotencyKey != "" {
 		if err := checkIdempotencyKey(idempotencyKey); err != nil {
 			return nil, err
 		}
-		if !r.Idempotent {
-			// The core ignores the header here, so a key would only make this client believe a
-			// re-send is deduplicated when it is not — the one belief that turns a lost response
-			// into a double spend.
-			return nil, newConfigError(CodeIdempotencyUnsupported, fmt.Sprintf(
-				"%s %s does not deduplicate by Idempotency-Key; drop WithIdempotencyKey from this call",
-				r.Method, r.Path), "idempotencyKey")
+	}
+	switch {
+	case call.IdempotencyKeyInBody:
+		// The route takes its key in the body and ignores the header (Ruling 10).
+		if idempotencyKey != "" {
+			withKey, err := setBodyField(callBody, "idempotency_key", idempotencyKey)
+			if err != nil {
+				return nil, err
+			}
+			callBody = withKey
 		}
-	} else if r.Idempotent {
+		idempotencyKey = ""
+	case idempotencyKey != "" && !r.Idempotent:
+		// The core ignores the header here, so a key would only make this client believe a
+		// re-send is deduplicated when it is not — the one belief that turns a lost response
+		// into a double spend.
+		return nil, newConfigError(CodeIdempotencyUnsupported, fmt.Sprintf(
+			"%s %s does not deduplicate by Idempotency-Key; drop WithIdempotencyKey from this call",
+			r.Method, r.Path), "idempotencyKey")
+	case idempotencyKey == "" && r.Idempotent:
 		generated, keyErr := newIdempotencyKey()
 		if keyErr != nil {
 			return nil, keyErr
 		}
 		idempotencyKey = generated
 	}
+	body, err := serializeBody(callBody, r.Method)
+	if err != nil {
+		return nil, err
+	}
 	safeToRepeat := r.Safe || (r.Idempotent && idempotencyKey != "")
 
+	retry := t.retry
+	if o.maxRetries != nil {
+		retry.MaxRetries = *o.maxRetries
+	}
 	budget := t.budget
 	if o.budget > 0 {
 		budget = o.budget
@@ -158,16 +163,14 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 	deadline := time.Now().Add(budget)
 	label := r.Method + " " + r.Path
 
-	extra := t.headers
-	if len(o.headers) > 0 {
-		extra = map[string]string{}
-		for k, v := range t.headers {
-			extra[k] = v
-		}
-		// A per-call header wins over the same client-level one; both lose to the headers the
-		// client owns.
-		for k, v := range o.headers {
-			extra[k] = v
+	extra := map[string]string{}
+	// A per-call header wins over the same client-level one; both lose to the headers the client
+	// owns. X-Request-ID is set from requestID, whichever of them named it.
+	for _, source := range []map[string]string{t.headers, o.headers} {
+		for k, v := range source {
+			if !strings.EqualFold(k, HeaderRequestID) {
+				extra[k] = v
+			}
 		}
 	}
 	// The admin token gates merchant provisioning on a self-hosted gateway and goes nowhere else.
@@ -191,8 +194,8 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 		req, err := buildRequest(buildInput{
 			baseURL:        t.baseURL,
 			route:          r,
-			pathParams:     o.pathParams,
-			query:          o.query,
+			pathParams:     call.PathParams,
+			query:          call.Query,
 			body:           body,
 			creds:          t.creds,
 			idempotencyKey: idempotencyKey,
@@ -200,16 +203,26 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 			userAgent:      t.userAgent,
 			extraHeaders:   extra,
 			adminToken:     adminToken,
+			requestID:      requestID,
 		})
 		if err != nil {
 			return nil, err
 		}
-		t.logger.Debug("request", LogFields{"route": label, "attempt": attempt, "idempotencyKey": idempotencyKey})
+		t.logger.Debug("request", LogFields{"route": label, "attempt": attempt, "idempotencyKey": idempotencyKey, "requestId": requestID})
 
+		info := RequestInfo{
+			OperationID: r.OperationID, Method: req.method, URL: req.url, Header: hookHeaders(req.headers),
+			Attempt: attempt + 1, RequestID: requestID,
+		}
+		if t.hooks.OnRequest != nil {
+			t.hooks.OnRequest(info)
+		}
+		started := time.Now()
 		raw, sendErr := t.send(ctx, req, o, deadline, limit)
 		if sendErr != nil {
-			if shouldRetry(sendErr, attempt, safeToRepeat, t.retry) {
-				if pauseErr := t.pause(ctx, sendErr, attempt, deadline); pauseErr != nil {
+			t.report(info, nil, started, sendErr)
+			if shouldRetry(sendErr, attempt, safeToRepeat, retry) {
+				if pauseErr := t.pause(ctx, sendErr, attempt, deadline, retry); pauseErr != nil {
 					return nil, pauseErr
 				}
 				attempt++
@@ -218,10 +231,12 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 			return nil, sendErr
 		}
 		if raw.status >= 200 && raw.status < 300 {
+			t.report(info, raw, started, nil)
 			return raw, nil
 		}
 
 		failure := t.classify(r, raw)
+		t.report(info, raw, started, failure)
 		t.logger.Debug("response", LogFields{
 			"route": label, "status": raw.status, "code": failure.Code, "requestId": failure.RequestID,
 		})
@@ -235,7 +250,7 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 				if offset, ok := t.clock.observeServerDate(raw.header.Get("Date")); ok &&
 					abs(offset-signedOffset) > skewCorrectionThreshold {
 					if time.Now().After(deadline) {
-						return nil, newDeadlineError(
+						return raw, newDeadlineError(
 							"the call budget ran out before the clock-corrected retry; last error: "+failure.Message, failure)
 					}
 					t.logger.Warn("clock skew detected; re-signing with server time",
@@ -252,19 +267,54 @@ func (t *transport) execute(ctx context.Context, r Route, o callOptions) (*rawRe
 				t.clock.revert(skewInstalled, skewBefore)
 			}
 		}
-		if shouldRetry(failure, attempt, safeToRepeat, t.retry) {
-			if pauseErr := t.pause(ctx, failure, attempt, deadline); pauseErr != nil {
-				return nil, pauseErr
+		if shouldRetry(failure, attempt, safeToRepeat, retry) {
+			if pauseErr := t.pause(ctx, failure, attempt, deadline, retry); pauseErr != nil {
+				return raw, pauseErr
 			}
 			attempt++
 			continue
 		}
-		return nil, failure
+		return raw, failure
 	}
 }
 
+// report hands an attempt's outcome to the response hook.
+func (t *transport) report(info RequestInfo, raw *rawResponse, started time.Time, failure *Error) {
+	if t.hooks.OnResponse == nil {
+		return
+	}
+	out := ResponseInfo{Request: info, Elapsed: time.Since(started)}
+	if raw != nil {
+		out.StatusCode, out.Header = raw.status, raw.header.Clone()
+	}
+	if failure != nil {
+		out.Err = failure
+	}
+	t.hooks.OnResponse(out)
+}
+
+// headerValue looks a header up case-insensitively.
+func headerValue(headers map[string]string, name string) string {
+	for k, v := range headers {
+		if strings.EqualFold(k, name) {
+			return v
+		}
+	}
+	return ""
+}
+
+// setBodyField returns body as a JSON object with name set to value.
+func setBodyField(body any, name, value string) (map[string]any, *Error) {
+	fields, err := toFields(body)
+	if err != nil {
+		return nil, err
+	}
+	fields[name] = value
+	return fields, nil
+}
+
 // classify turns a non-2xx answer into the error it describes.
-func (t *transport) classify(r Route, raw *rawResponse) *Error {
+func (t *transport) classify(r RouteSpec, raw *rawResponse) *Error {
 	_, err := decodeEnvelope(raw.status, raw.body, decodeContext{
 		retryAfter: raw.header.Get("Retry-After"),
 		location:   raw.header.Get("Location"),
@@ -277,21 +327,33 @@ func (t *transport) classify(r Route, raw *rawResponse) *Error {
 }
 
 // pause waits before the next attempt, refusing to start one that would outlive the call budget.
-func (t *transport) pause(ctx context.Context, err *Error, attempt int, deadline time.Time) *Error {
-	wait := retryDelay(err, attempt, t.retry, t.random)
+func (t *transport) pause(ctx context.Context, err *Error, attempt int, deadline time.Time, retry RetryOptions) *Error {
+	wait := retryDelay(err, attempt, retry, t.random)
 	if time.Now().Add(wait).After(deadline) {
 		return newDeadlineError("a retry would exceed the call budget; last error: "+err.Message, err)
 	}
 	if wait <= 0 {
 		return nil
 	}
-	timer := time.NewTimer(wait)
+	sleep := t.sleep
+	if sleep == nil {
+		sleep = sleepContext
+	}
+	if sleep(ctx, wait) != nil {
+		return newTransportError(CodeTransportAborted, "the call was cancelled during a retry pause", ctx.Err())
+	}
+	return nil
+}
+
+// sleepContext waits d or until ctx ends, whichever is first.
+func sleepContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
 	defer timer.Stop()
 	select {
 	case <-timer.C:
 		return nil
 	case <-ctx.Done():
-		return newTransportError(CodeTransportAborted, "the call was cancelled during a retry pause", ctx.Err())
+		return ctx.Err()
 	}
 }
 
