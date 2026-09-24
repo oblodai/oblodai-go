@@ -21,8 +21,10 @@ the same generator every Oblodai SDK uses. Breaking: see [MIGRATION-2.0.md](MIGR
 - Status classes generated from the contract's `x-status-classes`: `PaymentStatusFinalValues`,
   `PaymentStatus.IsFinal()`, `IsSuccess()` and the same for every classified status;
   `IsPaymentFinal`, `IsPaymentPaid`, `IsPayoutFinal`, `IsPayoutSucceeded` read them.
-- `webhooks.KnownKinds`, `webhooks.EventKinds` and the kinds' typed bodies (`webhooks.Bodies`,
-  embedded in `Event`) generated from the contract's webhooks.
+- `webhooks.KnownKinds`, `webhooks.EventKinds`, `webhooks.IDFields` (kind → the body field
+  holding the object's id, read by `Event.ID()`) and the kinds' typed bodies (`webhooks.Bodies`,
+  embedded in `Event`) generated from the contract's webhooks. `webhooks.Parse` requires only
+  `type` of a kind this release does not know, and `Event.ID()` is `""` for it.
 - A JSON number with a fraction in a free-form request member (a model's `Extra`) is
   `sdk.float_amount` before anything is sent, except in the numeric fields the contract declares
   are not money.

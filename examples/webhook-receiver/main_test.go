@@ -40,3 +40,30 @@ func TestWebhookReceiver(t *testing.T) {
 		t.Fatalf("authentic but unreadable delivery: %d", code)
 	}
 }
+
+// Ordering is per object: a conversion B arriving after conversion A with a lower sequence is B's
+// first state, not a straggler of A; a stale repeat of A is. Kinds this release does not know have
+// no known object id and are never ordered against each other.
+func TestWebhookReceiverOrdersPerObject(t *testing.T) {
+	s := newSeen()
+	handled := func(body, eventID string) bool {
+		event, err := webhooks.Parse([]byte(body))
+		if err != nil {
+			t.Fatalf("%s: %v", body, err)
+		}
+		return s.alreadyHandled(&webhooks.Delivery{Event: event, EventID: eventID})
+	}
+	if handled(`{"type":"conversion","id":"A","status":"completed","sequence":5}`, "e1") {
+		t.Fatal("conversion A is new")
+	}
+	if handled(`{"type":"conversion","id":"B","status":"completed","sequence":3}`, "e2") {
+		t.Fatal("conversion B with a lower sequence than A was dropped as stale")
+	}
+	if !handled(`{"type":"conversion","id":"A","status":"refunded","sequence":4}`, "e3") {
+		t.Fatal("an older state of conversion A must be stale")
+	}
+	if handled(`{"type":"refund","refund_id":"r1","sequence":9}`, "e4") ||
+		handled(`{"type":"refund","refund_id":"r2","sequence":1}`, "e5") {
+		t.Fatal("events of an unknown kind must not be ordered against each other")
+	}
+}

@@ -260,7 +260,8 @@ func TestUnknownEventTypeIsReturnedNotRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an unknown event type must not be refused: %v", err)
 	}
-	if event.Type != "alien" || event.ID() != "x" || event.Sequence() != 9 || !event.IsFinal() {
+	// Which field identifies an unknown kind's object is not guessed: ID() is "" for it.
+	if event.Type != "alien" || event.ID() != "" || event.Sequence() != 9 || !event.IsFinal() {
 		t.Fatalf("the raw event was not preserved: %+v", event)
 	}
 	if event.IsKnown() || event.Payment != nil {
@@ -274,6 +275,36 @@ func TestUnknownEventTypeIsReturnedNotRefused(t *testing.T) {
 	}
 	if len(event.Raw) == 0 {
 		t.Fatal("the raw body must be kept")
+	}
+}
+
+// A kind newer than this release is not refused for lacking uuid and id: only the contract's
+// kinds have a known id field (IDFields).
+func TestUnknownKindNeedsNoUUIDOrID(t *testing.T) {
+	event, err := webhooks.Parse([]byte(`{"type":"refund","refund_id":"r1","sequence":3}`))
+	if err != nil {
+		t.Fatalf("an unknown kind without uuid/id must parse: %v", err)
+	}
+	if event.Type != "refund" || event.IsKnown() || event.ID() != "" || event.Sequence() != 3 {
+		t.Fatalf("event = %+v", event)
+	}
+}
+
+// A known kind must carry the id field IDFields names for it — the other spelling does not do.
+func TestKnownKindNeedsItsIDField(t *testing.T) {
+	for kind, field := range webhooks.IDFields {
+		other := map[string]string{"uuid": "id", "id": "uuid"}[field]
+		body := `{"type":"` + kind + `","` + other + `":"x","sequence":1}`
+		if _, err := webhooks.Parse([]byte(body)); !oblodai.IsCode(err, oblodai.CodeWebhookBadPayload) {
+			t.Errorf("%s: want webhook.bad_payload, got %v", body, err)
+		}
+		body = `{"type":"` + kind + `","` + field + `":null,"sequence":1}`
+		if _, err := webhooks.Parse([]byte(body)); !oblodai.IsCode(err, oblodai.CodeWebhookBadPayload) {
+			t.Errorf("%s: want webhook.bad_payload, got %v", body, err)
+		}
+	}
+	if len(webhooks.IDFields) != len(webhooks.KnownKinds) {
+		t.Fatalf("IDFields %v, KnownKinds %v", webhooks.IDFields, webhooks.KnownKinds)
 	}
 }
 

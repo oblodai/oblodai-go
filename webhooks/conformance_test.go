@@ -154,3 +154,23 @@ func TestConformanceWebhookDeliveries(t *testing.T) {
 		}
 	}
 }
+
+// forward_compat webhooks: a body parses, keeps its raw type, and is known exactly when expected —
+// a kind newer than this release is delivered, not refused.
+func TestConformanceWebhookParse(t *testing.T) {
+	suite := conformance.Load(t, "forward_compat")
+	if len(suite.Webhooks) == 0 {
+		t.Fatal("forward_compat.json has no webhook bodies")
+	}
+	for _, c := range suite.Webhooks {
+		t.Run(c.Name, func(t *testing.T) {
+			event, err := webhooks.Parse(c.Body)
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			if event.Type != c.Expect.Type || event.IsKnown() != c.Expect.Known {
+				t.Fatalf("type %q known %v, want %q known %v", event.Type, event.IsKnown(), c.Expect.Type, c.Expect.Known)
+			}
+		})
+	}
+}
