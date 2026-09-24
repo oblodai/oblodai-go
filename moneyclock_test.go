@@ -96,7 +96,7 @@ func (s *skewedAPI) handler(t *testing.T) http.HandlerFunc {
 			t.Errorf("no timestamp header: %q", ts)
 		}
 		drift := seconds - s.serverTime.Unix()
-		w.Header().Set("Date", s.serverTime.Format(http.TimeFormat))
+		w.Header().Set("Date", s.serverTime.UTC().Format(http.TimeFormat))
 		w.Header().Set("Content-Type", "application/json")
 		if drift > 300 || drift < -300 {
 			s.mu.Lock()

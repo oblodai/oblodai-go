@@ -9,8 +9,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/oblodai/oblodai-go"
-	"github.com/oblodai/oblodai-go/webhooks"
+	"github.com/oblodai/oblodai-go/v2"
+	"github.com/oblodai/oblodai-go/v2/webhooks"
 )
 
 // seen is a stand-in for your database: deliveries are retried, so the same event id can arrive

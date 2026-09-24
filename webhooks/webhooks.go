@@ -47,7 +47,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/oblodai/oblodai-go"
+	"github.com/oblodai/oblodai-go/v2"
 )
 
 // Delivery headers.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oblodai/oblodai-go/internal/fixtures"
+	"github.com/oblodai/oblodai-go/v2/internal/fixtures"
 )
 
 // Documentation is part of the contract: a method that tells a caller to branch on an error code

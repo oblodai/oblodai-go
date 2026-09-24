@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oblodai/oblodai-go"
-	"github.com/oblodai/oblodai-go/internal/fixtures"
-	"github.com/oblodai/oblodai-go/webhooks"
+	"github.com/oblodai/oblodai-go/v2"
+	"github.com/oblodai/oblodai-go/v2/internal/fixtures"
+	"github.com/oblodai/oblodai-go/v2/webhooks"
 )
 
 // The deliveries in contract/webhook-samples.json were sent by the core's own dispatcher and
