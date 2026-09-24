@@ -58,14 +58,14 @@ func TestWithRequestIDIsSentAndNamesTheError(t *testing.T) {
 	}
 	// An id that cannot be sent verbatim is refused before the network.
 	_, err = client.Account.GetBalance(ctx, WithRequestID("a\r\nb"))
-	requireCode(t, err, CodeBadHeader)
+	_ = requireCode(t, err, CodeBadHeader)
 }
 
 func TestWithMaxRetriesOverridesThePolicyForOneCall(t *testing.T) {
 	down := map[string]any{"code": "db.unavailable", "retryable": true}
 	api := newFakeAPI(t, apiError(503, down), apiError(503, down), apiError(503, down))
 	_, err := api.client().Account.GetBalance(context.Background(), WithMaxRetries(0))
-	requireCode(t, err, "db.unavailable")
+	_ = requireCode(t, err, "db.unavailable")
 	if api.count() != 1 {
 		t.Fatalf("WithMaxRetries(0) made %d attempts", api.count())
 	}
@@ -83,7 +83,7 @@ func TestWithRequestTimeoutBoundsOneAttempt(t *testing.T) {
 	api := newFakeAPI(t, step{delay: 300 * time.Millisecond, body: map[string]any{"state": 0, "result": map[string]any{}}})
 	started := time.Now()
 	_, err := api.client().Account.GetBalance(context.Background(), WithRequestTimeout(20*time.Millisecond), WithMaxRetries(0))
-	requireCode(t, err, CodeTransportTimeout)
+	_ = requireCode(t, err, CodeTransportTimeout)
 	if time.Since(started) > 250*time.Millisecond {
 		t.Fatal("the per-call timeout was not applied")
 	}

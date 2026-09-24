@@ -17,6 +17,14 @@ import (
 	"github.com/oblodai/oblodai-go/v2"
 )
 
+// Fail scripts an error answer: the core's error envelope with this status and code.
+type Fail struct {
+	Status    int
+	Code      string
+	Message   string
+	Retryable bool
+}
+
 // Request is one request the fake gateway received.
 type Request struct {
 	OperationID string
@@ -130,6 +138,14 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	if !found {
 		s.t.Errorf("fakeapi: the code called a route the API does not have: %s %s", r.Method, r.URL.Path)
 		http.Error(w, `{"error":{"code":"test.no_route","retryable":false}}`, http.StatusNotFound)
+		return
+	}
+	if fail, ok := result.(Fail); ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(fail.Status)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{
+			"code": fail.Code, "message": fail.Message, "retryable": fail.Retryable, "request_id": "fake-rq",
+		}})
 		return
 	}
 	if spec.Bare {
