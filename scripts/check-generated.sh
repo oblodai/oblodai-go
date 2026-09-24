@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Fail when zz_generated_*.go are not what the generator makes of the gateway's contract.
+# Fail when the generated files are not what the generator makes of the gateway's contract:
+# zz_generated_*.go (root and webhooks/), the method tables of README.md and README.ru.md, and
+# names.lock (a lock behind the contract fails, it is not rewritten here).
 #
 # Regenerates into a temporary directory with the backend's tools/sdkgen (from
-# services/core/api/openapi.json, checked against names.lock) and compares file by file. The
+# services/core/api/openapi.json, checked against names.lock with -frozen-lock) and compares file
+# by file. The
 # backend checkout is $OBLODAI_BACKEND, else ../oblodai-backend next to this repository. Without a
 # backend that has tools/sdkgen the check is skipped, loudly — unless OBLODAI_BACKEND is set or
 # --require is passed, when it fails instead. Fix drift by regenerating (`make sdk` in the
@@ -25,9 +28,11 @@ fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+mkdir -p "$tmp/webhooks"
+cp "$root/README.md" "$root/README.ru.md" "$tmp/"
 # The generator is its own module with its own toolchain; the SDK's GOTOOLCHAIN does not apply.
 if ! (cd "$sdkgen" && GOTOOLCHAIN="${SDKGEN_GOTOOLCHAIN:-go1.26.6}" GOFLAGS= GOWORK=off \
-  go run ./cmd/sdkgen -spec "$spec" -lang go -out "$tmp" -lock "$root/names.lock") >"$tmp.log" 2>&1; then
+  go run ./cmd/sdkgen -spec "$spec" -lang go -out "$tmp" -lock "$root/names.lock" -frozen-lock) >"$tmp.log" 2>&1; then
   echo "check-generated: sdkgen failed:" >&2
   cat "$tmp.log" >&2
   rm -f "$tmp.log"
@@ -36,8 +41,11 @@ fi
 rm -f "$tmp.log"
 
 stale=()
-for f in "$tmp"/zz_generated_*.go "$root"/zz_generated_*.go; do
-  name="$(basename "$f")"
+shopt -s nullglob
+for f in "$tmp"/zz_generated_*.go "$root"/zz_generated_*.go "$tmp"/webhooks/zz_generated_*.go \
+  "$root"/webhooks/zz_generated_*.go "$tmp"/README.md "$tmp"/README.ru.md; do
+  name="${f#"$tmp"/}"
+  name="${name#"$root"/}"
   if ! cmp -s "$tmp/$name" "$root/$name"; then
     stale+=("$name")
   fi

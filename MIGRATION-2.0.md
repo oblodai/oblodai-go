@@ -191,5 +191,21 @@ Old method → new method, with the language-neutral name pinned in `names.lock`
 | `Webhooks.Deliveries` | `Webhooks.ListDeliveries` | `webhooks.list_deliveries` |
 | `Webhooks.Register` | `Webhooks.Register` | `webhooks.register` |
 | `Webhooks.RotateSecret` | `Webhooks.RotateSecret` | `webhooks.rotate_secret` |
-| `Webhooks.Test(ctx, kind, …)` | `Webhooks.SendTestPayment` · `SendTestPayout` · `SendTestWallet` · `SendTestConversion` | `webhooks.send_test_*` |
+| `Webhooks.Test(ctx, kind, …)` | `Webhooks.SendTestConversion` | `webhooks.send_test_conversion` |
+| `Webhooks.Test(ctx, kind, …)` | `Webhooks.SendTestPayment` | `webhooks.send_test_payment` |
+| `Webhooks.Test(ctx, kind, …)` | `Webhooks.SendTestPayout` | `webhooks.send_test_payout` |
+| `Webhooks.Test(ctx, kind, …)` | `Webhooks.SendTestWallet` | `webhooks.send_test_wallet` |
 | `Webhooks.TestLegacy` | `Webhooks.SendLegacyTest` | `webhooks.send_legacy_test` |
+| — (new in 2.0) | `Account.GetSummary` | `account.get_summary` |
+| — (new in 2.0) | `Checkout.GetOnramp` | `checkout.get_onramp` |
+| — (new in 2.0) | `Checkout.GetSourceOfFundsForm` | `checkout.get_source_of_funds_form` |
+| — (new in 2.0) | `Checkout.StartOnramp` | `checkout.start_onramp` |
+| — (new in 2.0) | `Checkout.SubmitSourceOfFunds` | `checkout.submit_source_of_funds` |
+| — (new in 2.0) | `Payments.GetAmlLinks` | `payments.get_aml_links` |
+| — (new in 2.0) | `Payments.GetCheckoutConfig` | `payments.get_checkout_config` |
+| — (new in 2.0) | `Payments.SetCheckoutConfig` | `payments.set_checkout_config` |
+| — (new in 2.0) | `Settings.GetAutoConvert` | `settings.get_auto_convert` |
+| — (new in 2.0) | `Settings.ListAPILog` | `settings.list_api_log` |
+| — (new in 2.0) | `Settings.SetAutoConvert` | `settings.set_auto_convert` |
+| — (new in 2.0) | `Webhooks.RequeueDelivery` | `webhooks.requeue_delivery` |
+| — (new in 2.0) | `Webhooks.SetActive` | `webhooks.set_active` |

@@ -22,7 +22,7 @@
 //	X-Webhook-Timestamp:       unix seconds
 //	X-Webhook-Signature:       hex(HMAC-SHA256(secret, "<ts>." + rawBody))
 //	X-Webhook-Signature-Prev:  the same with the previous secret — only during a rotation overlap
-//	X-Webhook-Event:           invoice.<status> | payout.<status> | wallet.paid
+//	X-Webhook-Event:           the event name, a key of EventKinds: invoice.paid, payout.sent, …
 //	X-Webhook-Id:              stable per delivery (identical across retries of THAT delivery)
 //	X-Webhook-Event-Id:        stable per STATE — the same for a resend of a state you handled,
 //	                           different as soon as the state differs: the key to deduplicate on
@@ -38,7 +38,8 @@
 // a failure at all: it arrives as an Event with its raw Type and no typed body (Event.IsKnown).
 //
 // The typed bodies are the generated models of the contract's webhook schemas
-// (oblodai.PaymentWebhook, PayoutWebhook, WalletWebhook, ConversionWebhook).
+// (oblodai.PaymentWebhook, …): which kinds exist and which model each carries is generated from
+// the contract (zz_generated_events.go), never listed by hand.
 //
 // Rehearsal deliveries are signed exactly like live ones and carry test: true in the body (and the
 // X-Webhook-Test header). Check Delivery.IsTest — or Event.IsTest — and never act on one as if
@@ -108,7 +109,7 @@ type Delivery struct {
 	// original, its retries and every resend of that state, different as soon as the state differs.
 	// Keep the ids you have handled and skip repeats. Empty from a core that predates it.
 	EventID string
-	// EventType is X-Webhook-Event: invoice.<status>, payout.<status>, wallet.paid.
+	// EventType is X-Webhook-Event: the event name (invoice.paid, payout.sent, …; see EventKinds).
 	EventType oblodai.WebhookEventName
 	// EventTime is X-Webhook-Event-Time: when the state change committed. Zero when absent.
 	EventTime time.Time
@@ -256,24 +257,14 @@ func normalizeSignature(value string) (string, error) {
 	return strings.ToLower(value), nil
 }
 
-// Kinds of event (Event.Type) this release models.
-const (
-	KindPayment    = "payment"
-	KindPayout     = "payout"
-	KindWallet     = "wallet"
-	KindConversion = "conversion"
-)
-
 // Event is a delivery body. Type names the kind; for a kind this release models exactly one of
-// the typed bodies is set, for any other none is — a newer core may add a kind, and dropping it
-// would lose a real event, so it still arrives with its Raw body.
+// the typed bodies (the generated Bodies: Payment, Payout, …) is set, for any other none is — a
+// newer core may add a kind, and dropping it would lose a real event, so it still arrives with its
+// Raw body. The kinds (KindPayment, …, KnownKinds) come from the contract's webhooks.
 type Event struct {
-	// Type is the body's type: KindPayment, KindPayout, KindWallet, KindConversion or a newer one.
-	Type       string
-	Payment    *oblodai.PaymentWebhook
-	Payout     *oblodai.PayoutWebhook
-	Wallet     *oblodai.WalletWebhook
-	Conversion *oblodai.ConversionWebhook
+	// Type is the body's type: one of KnownKinds or a newer one.
+	Type string
+	Bodies
 	// Raw is the body as delivered.
 	Raw json.RawMessage
 
@@ -309,9 +300,7 @@ func (e *Event) IsFinal() bool { return e.head.IsFinal }
 func (e *Event) IsTest() bool { return e.head.Test }
 
 // IsKnown reports whether the event's kind is one this release models with a typed body.
-func (e *Event) IsKnown() bool {
-	return e.Payment != nil || e.Payout != nil || e.Wallet != nil || e.Conversion != nil
-}
+func (e *Event) IsKnown() bool { return e.known() }
 
 // Parse reads a (previously verified) delivery body. A kind this release does not model is not an
 // error; a body that is not JSON, or lacks the type and id every event carries, is
@@ -325,21 +314,8 @@ func Parse(rawBody []byte) (*Event, error) {
 	if event.Type == "" || event.ID() == "" {
 		return nil, payloadError("the body lacks the type and uuid (or id) fields every event carries")
 	}
-	var target any
-	switch event.Type {
-	case KindPayment:
-		event.Payment = new(oblodai.PaymentWebhook)
-		target = event.Payment
-	case KindPayout:
-		event.Payout = new(oblodai.PayoutWebhook)
-		target = event.Payout
-	case KindWallet:
-		event.Wallet = new(oblodai.WalletWebhook)
-		target = event.Wallet
-	case KindConversion:
-		event.Conversion = new(oblodai.ConversionWebhook)
-		target = event.Conversion
-	default:
+	target := event.target(event.Type)
+	if target == nil {
 		return event, nil
 	}
 	if err := json.Unmarshal(rawBody, target); err != nil {

@@ -132,6 +132,17 @@ func TestStatusHelpersFollowTheCoreVocabulary(t *testing.T) {
 	if !IsPayoutSucceeded(PayoutStatusConfirmed) || IsPayoutSucceeded(PayoutStatusFailed) {
 		t.Fatal("payout success is wrong")
 	}
+	// The helpers read the contract's status classes (x-status-classes), generated.
+	for _, s := range FinalPaymentStatuses {
+		if !IsPaymentFinal(s) || !s.IsFinal() {
+			t.Errorf("%s is final", s)
+		}
+	}
+	for _, s := range FinalPayoutStatuses {
+		if !IsPayoutFinal(s) || !s.IsFinal() {
+			t.Errorf("%s is final", s)
+		}
+	}
 }
 
 func TestIdempotencyKeysAreUUIDsAndValidated(t *testing.T) {

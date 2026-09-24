@@ -4,7 +4,7 @@ This package (`github.com/oblodai/oblodai-go/v2`) is published to **Go modules**
 
 ## Before a release
 
-1. Regenerate from the backend (`make sdk` there) and commit `zz_generated_*.go` and `names.lock`.
+1. Regenerate from the backend (`make sdk` there) and commit `zz_generated_*.go`, `webhooks/zz_generated_events.go`, the README method tables and `names.lock`.
 2. `OBLODAI_BACKEND=/path/to/oblodai-backend make ci` — every gate green, locally.
 3. Bump `Version` in `oblodai.go` and add the `CHANGELOG.md` entry (`make package` checks both).
 

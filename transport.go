@@ -309,6 +309,12 @@ func setBodyField(body any, name, value string) (map[string]any, *Error) {
 	if err != nil {
 		return nil, err
 	}
+	if current, set := fields[name]; set && current != nil && current != "" {
+		// Two keys for one call: which one the caller meant is a guess, and a wrong guess
+		// re-credits or refuses a retry. Refused before anything is sent, as in every SDK.
+		return nil, newConfigError(CodeBadConfig, fmt.Sprintf(
+			"the idempotency key is given twice: in the body field %s and by WithIdempotencyKey; keep one", name), name)
+	}
 	fields[name] = value
 	return fields, nil
 }
