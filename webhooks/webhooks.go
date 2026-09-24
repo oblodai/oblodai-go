@@ -269,26 +269,22 @@ type Event struct {
 	Raw json.RawMessage
 
 	head eventHead
+	id   string
 }
 
-// eventHead is what every event body carries, whatever its kind.
+// eventHead is what the runtime reads of an event of any kind, without its model. The generator
+// refuses a contract whose webhook body lacks one of these fields, so no kind parses them as zeros.
 type eventHead struct {
 	Type     string `json:"type"`
-	UUID     string `json:"uuid"`
-	ID       string `json:"id"`
 	Sequence int64  `json:"sequence"`
 	IsFinal  bool   `json:"is_final"`
 	Test     bool   `json:"test"`
 }
 
-// ID is the id of the object the event is about: the payment, payout or wallet uuid, the
-// conversion id.
-func (e *Event) ID() string {
-	if e.head.UUID != "" {
-		return e.head.UUID
-	}
-	return e.head.ID
-}
+// ID is the id of the object the event is about: the body field IDFields names for its kind (a
+// payment's uuid, a conversion's id, …). Key per-object state on it (the last Sequence). It is
+// "" for a kind this release does not know: which field identifies that object is not guessed.
+func (e *Event) ID() string { return e.id }
 
 // Sequence orders the events of one object; 0 when the body carries none (a rehearsal).
 func (e *Event) Sequence() int64 { return e.head.Sequence }
@@ -303,16 +299,23 @@ func (e *Event) IsTest() bool { return e.head.Test }
 func (e *Event) IsKnown() bool { return e.known() }
 
 // Parse reads a (previously verified) delivery body. A kind this release does not model is not an
-// error; a body that is not JSON, or lacks the type and id every event carries, is
-// webhook.bad_payload.
+// error, and only its type is required; a body that is not JSON, lacks the type every event
+// carries, or is of a known kind without its object's id (IDFields) is webhook.bad_payload.
 func Parse(rawBody []byte) (*Event, error) {
 	event := &Event{Raw: append(json.RawMessage(nil), rawBody...)}
 	if err := json.Unmarshal(rawBody, &event.head); err != nil {
 		return nil, payloadError("the body is not a JSON event: " + err.Error())
 	}
 	event.Type = event.head.Type
-	if event.Type == "" || event.ID() == "" {
-		return nil, payloadError("the body lacks the type and uuid (or id) fields every event carries")
+	if event.Type == "" {
+		return nil, payloadError("the body lacks the type field every event carries")
+	}
+	if field := IDFields[event.Type]; field != "" {
+		var fields map[string]json.RawMessage
+		_ = json.Unmarshal(rawBody, &fields) // the head above decoded, so this is a JSON object
+		if json.Unmarshal(fields[field], &event.id) != nil || event.id == "" {
+			return nil, payloadError("the " + event.Type + " body lacks the string " + field + " field")
+		}
 	}
 	target := event.target(event.Type)
 	if target == nil {

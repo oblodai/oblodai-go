@@ -26,6 +26,19 @@ type Suite struct {
 	// Headers (webhook_delivery): delivery header → the snake_case field of the delivery info that
 	// must carry its value; "" — the header is consumed by the signature check.
 	Headers map[string]string `json:"headers"`
+	// Webhooks (forward_compat): delivery bodies the SDK's parse must read — with their raw type,
+	// known or not as expected.
+	Webhooks []WebhookParse `json:"webhooks"`
+}
+
+// WebhookParse is one delivery body (a JSON object) and what parsing it gives.
+type WebhookParse struct {
+	Name   string          `json:"name"`
+	Body   json.RawMessage `json:"body"`
+	Expect struct {
+		Known bool   `json:"known"`
+		Type  string `json:"type"`
+	} `json:"expect"`
 }
 
 // Source points at the vectors: the spec (relative to the suite directory) and a JSON pointer.

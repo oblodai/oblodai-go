@@ -94,10 +94,15 @@ func (s *seen) alreadyHandled(delivery *webhooks.Delivery) bool {
 		return true
 	}
 	event := delivery.Event
-	if webhooks.IsStale(event, s.sequence[event.ID()]) {
+	// The object: its kind and the id the contract names for that kind. A kind this release does
+	// not know has no known id (ID() is ""), so its deliveries are not ordered against each other.
+	object := event.Type + ":" + event.ID()
+	if event.ID() != "" && webhooks.IsStale(event, s.sequence[object]) {
 		return true
 	}
 	s.handled[key] = true
-	s.sequence[event.ID()] = event.Sequence()
+	if event.ID() != "" {
+		s.sequence[object] = event.Sequence()
+	}
 	return false
 }

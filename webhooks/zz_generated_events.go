@@ -42,6 +42,15 @@ var EventKinds = map[string]string{
 	"wallet.paid":            KindWallet,
 }
 
+// IDFields maps each kind to the body field holding the id of the object the event is about, as
+// the contract declares it; a kind whose body has no such field is not listed.
+var IDFields = map[string]string{
+	KindConversion: "id",
+	KindPayment:    "uuid",
+	KindPayout:     "uuid",
+	KindWallet:     "uuid",
+}
+
 // Bodies holds the typed body of an event: for a kind this release models exactly one is set, for
 // any other none is.
 type Bodies struct {
