@@ -159,8 +159,8 @@ func TestALongRetryAfterIsReportedButNotSlept(t *testing.T) {
 		ok(map[string]any{"uuid": "p1"}))
 	client := api.client(WithRetry(RetryOptions{MaxRetries: 1, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, MaxRetryAfter: 5 * time.Millisecond}))
 	started := time.Now()
-	if _, err := client.Payments.Info(context.Background(), PaymentInfoParams{UUID: "p1"}); err != nil {
-		t.Fatalf("Payments.Info: %v", err)
+	if _, err := client.Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")}); err != nil {
+		t.Fatalf("Payments.GetInfo: %v", err)
 	}
 	if waited := time.Since(started); waited > time.Second {
 		t.Fatalf("the client slept %s; MaxRetryAfter must bound the wait", waited)
@@ -169,7 +169,7 @@ func TestALongRetryAfterIsReportedButNotSlept(t *testing.T) {
 	failing := newFakeAPI(t, apiError(429, map[string]any{
 		"code": "request.rate_limited", "message": "slow", "retryable": true, "retry_after": 3600,
 	}))
-	_, err := failing.client(WithRetry(RetryOptions{MaxRetries: 0})).Payments.Info(context.Background(), PaymentInfoParams{UUID: "p1"})
+	_, err := failing.client(WithRetry(RetryOptions{MaxRetries: 0})).Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")})
 	apiErr := mustError(t, err)
 	if apiErr.RetryAfter == nil || *apiErr.RetryAfter != 3600 {
 		t.Fatalf("the reported Retry-After must survive: %+v", apiErr.RetryAfter)
@@ -180,7 +180,7 @@ func TestALongRetryAfterIsReportedButNotSlept(t *testing.T) {
 func TestResponseLargerThanTheCapIsRefused(t *testing.T) {
 	huge := `{"state":0,"result":{"uuid":"` + strings.Repeat("a", maxJSONResponseBytes) + `"}}`
 	api := newFakeAPI(t, step{status: 200, body: huge})
-	_, err := api.client().Payments.Info(context.Background(), PaymentInfoParams{UUID: "p1"})
+	_, err := api.client().Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")})
 	apiErr := mustError(t, err)
 	if !IsContract(err) || apiErr.Code != CodeResponseTooLarge {
 		t.Fatalf("want sdk.response_too_large, got %v", err)

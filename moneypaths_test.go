@@ -25,7 +25,7 @@ func html(status int, headers ...map[string]string) step {
 
 func TestCallerKeyIsRefusedOnRoutesTheCoreDoesNotDeduplicate(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{}))
-	_, err := api.client().Payouts.Approve(context.Background(), "p1", WithIdempotencyKey("k1"))
+	_, err := api.client().Payouts.Approve(context.Background(), &ApproveRequest{UUID: "p1"}, WithIdempotencyKey("k1"))
 	if !IsConfig(err) || !IsCode(err, CodeIdempotencyUnsupported) {
 		t.Fatalf("expected sdk.idempotency_unsupported, got %v", err)
 	}
@@ -38,7 +38,7 @@ func TestUnsafeWriteIsNotReSentAfterAProxyAnswer(t *testing.T) {
 	// A 503 without an envelope came from a proxy: the core may have received the request and
 	// approved the payout. Repeating it could approve twice.
 	api := newFakeAPI(t, html(503), ok(map[string]any{}))
-	_, err := api.client().Payouts.Approve(context.Background(), "p1")
+	_, err := api.client().Payouts.Approve(context.Background(), &ApproveRequest{UUID: "p1"})
 	apiErr := mustError(t, err)
 	if apiErr.HTTPStatus != 503 || !apiErr.Synthetic || !apiErr.Retryable {
 		t.Fatalf("expected a synthetic retryable 503, got %+v", apiErr)
@@ -57,15 +57,15 @@ func TestReadRouteIsRetriedAfterAProxyAnswerAndHonoursRetryAfter(t *testing.T) {
 		html(504, map[string]string{"Retry-After": "0"}),
 		ok(map[string]any{"balance": map[string]any{"merchant": []any{}}}),
 	)
-	if _, err := api.client().Account.Balance(context.Background()); err != nil {
-		t.Fatalf("Account.Balance: %v", err)
+	if _, err := api.client().Account.GetBalance(context.Background()); err != nil {
+		t.Fatalf("Account.GetBalance: %v", err)
 	}
 	if api.count() != 3 {
 		t.Fatalf("expected 3 attempts, saw %d", api.count())
 	}
 
 	capped := newFakeAPI(t, html(429, map[string]string{"Retry-After": "120"}))
-	_, err := capped.client(WithRetry(RetryOptions{MaxRetries: 0})).Account.Balance(context.Background())
+	_, err := capped.client(WithRetry(RetryOptions{MaxRetries: 0})).Account.GetBalance(context.Background())
 	apiErr := mustError(t, err)
 	if apiErr.RetryAfter == nil || *apiErr.RetryAfter != 120 {
 		t.Fatalf("the Retry-After header must reach the caller, got %v", apiErr.RetryAfter)
@@ -78,7 +78,7 @@ func TestEnvelopeErrorIsRetriedEvenOnAnUnsafeWrite(t *testing.T) {
 		apiError(409, map[string]any{"code": "payout.funds_maturing", "retryable": true, "retry_after": 0}),
 		ok(map[string]any{"uuid": "p"}),
 	)
-	if _, err := api.client().Payouts.Approve(context.Background(), "p1"); err != nil {
+	if _, err := api.client().Payouts.Approve(context.Background(), &ApproveRequest{UUID: "p1"}); err != nil {
 		t.Fatalf("Payouts.Approve: %v", err)
 	}
 	if api.count() != 2 {
@@ -89,7 +89,7 @@ func TestEnvelopeErrorIsRetriedEvenOnAnUnsafeWrite(t *testing.T) {
 func TestListRequestsNothingUntilConsumedAndNeverCarriesACallerKey(t *testing.T) {
 	api := newFakeAPI(t, apiError(404, map[string]any{"code": "payment.not_found", "retryable": false}))
 	client := api.client()
-	list := client.Payments.History(context.Background(), PaymentHistoryParams{})
+	list := client.Payments.ListHistory(context.Background(), nil)
 	if api.count() != 0 {
 		t.Fatal("a list must not request anything before it is consumed")
 	}
@@ -103,7 +103,7 @@ func TestListRequestsNothingUntilConsumedAndNeverCarriesACallerKey(t *testing.T)
 	// A key on a list is refused, not dropped: one key per page would make the core replay page
 	// one for ever, and a caller who passed one must not be left believing the re-send is keyed.
 	keyed := newFakeAPI(t, emptyPage())
-	_, err := keyed.client().Payouts.History(context.Background(), PayoutHistoryParams{},
+	_, err := keyed.client().Payouts.ListHistory(context.Background(), nil,
 		WithIdempotencyKey("k")).Page()
 	if !IsConfig(err) || !IsCode(err, CodeIdempotencyUnsupported) {
 		t.Fatalf("expected sdk.idempotency_unsupported on a list, got %v", err)
@@ -117,7 +117,7 @@ func TestClockCorrectionIsOnlyAppliedToSignatureFailures(t *testing.T) {
 	far := map[string]string{"Date": time.Now().Add(4000 * time.Second).UTC().Format(http.TimeFormat)}
 	api := newFakeAPI(t, apiError(401, map[string]any{"code": "auth.ip_not_allowed", "retryable": false}, far))
 	client := api.client(WithRetry(RetryOptions{MaxRetries: 0}))
-	if _, err := client.Account.Balance(context.Background()); !IsCode(err, "auth.ip_not_allowed") {
+	if _, err := client.Account.GetBalance(context.Background()); !IsCode(err, "auth.ip_not_allowed") {
 		t.Fatalf("expected auth.ip_not_allowed, got %v", err)
 	}
 	if api.count() != 1 {
@@ -139,10 +139,10 @@ func TestClockCorrectionIsRevertedWhenItDoesNotHelp(t *testing.T) {
 	)
 	client := api.client(WithRetry(RetryOptions{MaxRetries: 0}))
 	ctx := context.Background()
-	if _, err := client.Account.Balance(ctx); !IsCode(err, CodeBadSignature) {
+	if _, err := client.Account.GetBalance(ctx); !IsCode(err, CodeBadSignature) {
 		t.Fatalf("expected merchant.bad_signature, got %v", err)
 	}
-	if _, err := client.Account.Balance(ctx); err != nil {
+	if _, err := client.Account.GetBalance(ctx); err != nil {
 		t.Fatalf("the next call must sign with the local clock again: %v", err)
 	}
 	if client.ClockOffset() != 0 {
@@ -157,8 +157,8 @@ func TestClockCorrectionIsRevertedWhenItDoesNotHelp(t *testing.T) {
 func TestBaseURLPathPrefixIsKeptAndSigned(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{"balance": map[string]any{"merchant": []any{}}}))
 	client := api.client(WithBaseURL(api.server.URL + "/oblodai/"))
-	if _, err := client.Account.Balance(context.Background()); err != nil {
-		t.Fatalf("Account.Balance: %v", err)
+	if _, err := client.Account.GetBalance(context.Background()); err != nil {
+		t.Fatalf("Account.GetBalance: %v", err)
 	}
 	req := api.last()
 	if req.path != "/oblodai/v1/balance" {
@@ -174,8 +174,8 @@ func TestBaseURLPathPrefixIsKeptAndSigned(t *testing.T) {
 func TestCallerHeadersCannotOverrideSignedOnes(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{"balance": map[string]any{"merchant": []any{}}}))
 	client := api.client(WithHeader("X-Signature", "zz"), WithHeader("X-Trace", "t1"))
-	if _, err := client.Account.Balance(context.Background()); err != nil {
-		t.Fatalf("Account.Balance: %v", err)
+	if _, err := client.Account.GetBalance(context.Background()); err != nil {
+		t.Fatalf("Account.GetBalance: %v", err)
 	}
 	req := api.last()
 	if !hexish(req.header.Get(HeaderSignature), 32) {
@@ -191,7 +191,7 @@ func TestPathParametersCannotRewriteTheURL(t *testing.T) {
 	client := api.client()
 	ctx := context.Background()
 	for _, bad := range []string{"", ".", "..", "a/b"} {
-		_, err := client.Payments.PublicView(ctx, bad)
+		_, err := client.Checkout.Get(ctx, bad)
 		if !IsCode(err, CodeBadPathParam) {
 			t.Fatalf("path parameter %q was accepted (%v)", bad, err)
 		}
@@ -203,9 +203,9 @@ func TestPathParametersCannotRewriteTheURL(t *testing.T) {
 
 func TestDocumentReportsSendTheIDAsUUID(t *testing.T) {
 	api := newFakeAPI(t, step{status: 200, body: "%PDF-1.4", headers: map[string]string{"Content-Type": "application/pdf"}})
-	document, err := api.client().Documents.BatchReport(context.Background(), "b-1", FormatQuery{Format: "csv"})
+	document, err := api.client().Documents.GetBatch(context.Background(), &GetBatchDocumentParams{UUID: "b-1", Format: Ptr("csv")})
 	if err != nil {
-		t.Fatalf("Documents.BatchReport: %v", err)
+		t.Fatalf("Documents.GetBatch: %v", err)
 	}
 	if document.ContentType != "application/pdf" || string(document.Bytes) != "%PDF-1.4" {
 		t.Fatalf("unexpected document: %+v", document)
@@ -226,7 +226,7 @@ func TestCancellationDuringARetryPause(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 		cancel()
 	}()
-	_, err := client.Account.Balance(ctx)
+	_, err := client.Account.GetBalance(ctx)
 	if !IsCode(err, CodeTransportAborted) {
 		t.Fatalf("expected transport.aborted, got %v", err)
 	}
@@ -239,7 +239,7 @@ func TestRetryStopsWhenTheBudgetWouldBeExceeded(t *testing.T) {
 	)
 	client := api.client(WithCallBudget(100*time.Millisecond),
 		WithRetry(RetryOptions{MaxRetries: 2, MaxRetryAfter: 5 * time.Second}))
-	_, err := client.Account.Balance(context.Background())
+	_, err := client.Account.GetBalance(context.Background())
 	if !IsCode(err, CodeTransportDeadline) {
 		t.Fatalf("expected transport.deadline, got %v", err)
 	}
@@ -251,7 +251,7 @@ func TestRetryStopsWhenTheBudgetWouldBeExceeded(t *testing.T) {
 func TestRedirectIsReportedWithItsTarget(t *testing.T) {
 	api := newFakeAPI(t, step{status: 301, body: "", headers: map[string]string{"Location": "https://www.api.test/v1/balance"}})
 	client := api.client(WithRetry(RetryOptions{MaxRetries: 0}))
-	_, err := client.Account.Balance(context.Background())
+	_, err := client.Account.GetBalance(context.Background())
 	apiErr := mustError(t, err)
 	if apiErr.HTTPStatus != 301 || !strings.Contains(apiErr.Message, "www.api.test") {
 		t.Fatalf("a redirect must name its target instead of being followed: %+v", apiErr)

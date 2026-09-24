@@ -1,9 +1,0 @@
-{
- "route": "GET /v1/documents/link",
- "status": 200,
- "headers": {
-  "Content-Disposition": "inline; filename=\"oblodai-paylink-report-4e2d3162.pdf\"",
-  "Content-Length": "46",
-  "Content-Type": "application/pdf"
- }
-}

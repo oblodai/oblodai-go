@@ -5,36 +5,45 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/oblodai/oblodai-go/v2"
-	"github.com/oblodai/oblodai-go/v2/internal/fixtures"
 	"github.com/oblodai/oblodai-go/v2/webhooks"
 )
 
-// The deliveries in contract/webhook-samples.json were sent by the core's own dispatcher and
-// recorded byte for byte, signed with the endpoint secret in force at that moment — the one the
-// recorded rotate-secret call returned. If verification passes here, it passes in production.
+// testdata/deliveries.json holds deliveries the core's own dispatcher sent, recorded byte for byte
+// and signed with the endpoint secret in force at that moment. If verification passes here, it
+// passes in production.
 
-func endpointSecret(t *testing.T) string {
-	t.Helper()
-	rotated := fixtures.LoadFixtures(t)["POST /v1/webhooks/rotate-secret"]
-	var result struct {
-		Secret string `json:"secret"`
-	}
-	if err := json.Unmarshal(rotated.Response.Result, &result); err != nil {
-		t.Fatalf("cannot read the recorded endpoint secret: %v", err)
-	}
-	if result.Secret == "" {
-		t.Fatal("the recorded rotate-secret call carries no secret")
-	}
-	return result.Secret
+type recorded struct {
+	Headers map[string]string `json:"headers"`
+	Raw     string            `json:"raw"`
 }
 
-func headersOf(sample fixtures.Sample) http.Header {
+func loadDeliveries(t *testing.T) (string, []recorded) {
+	t.Helper()
+	data, err := os.ReadFile("testdata/deliveries.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file struct {
+		Secret     string     `json:"secret"`
+		Deliveries []recorded `json:"deliveries"`
+	}
+	if err := json.Unmarshal(data, &file); err != nil {
+		t.Fatal(err)
+	}
+	if file.Secret == "" || len(file.Deliveries) == 0 {
+		t.Fatal("testdata/deliveries.json carries no secret or no deliveries")
+	}
+	return file.Secret, file.Deliveries
+}
+
+func headersOf(sample recorded) http.Header {
 	header := http.Header{}
 	for name, value := range sample.Headers {
 		header.Set(name, value)
@@ -43,11 +52,7 @@ func headersOf(sample fixtures.Sample) http.Header {
 }
 
 func TestVerifyRealDeliveries(t *testing.T) {
-	secret := endpointSecret(t)
-	samples := fixtures.LoadWebhookSamples(t)
-	if len(samples) == 0 {
-		t.Fatal("no recorded deliveries to verify")
-	}
+	secret, samples := loadDeliveries(t)
 	for i, sample := range samples {
 		eventName := sample.Headers[webhooks.HeaderEvent]
 		t.Run(strconv.Itoa(i)+" "+eventName, func(t *testing.T) {
@@ -69,33 +74,33 @@ func TestVerifyRealDeliveries(t *testing.T) {
 				t.Errorf("event type = %q, want %q", delivery.EventType, eventName)
 			}
 			var body struct {
-				UUID string              `json:"uuid"`
-				Type oblodai.WebhookKind `json:"type"`
-				Test bool                `json:"test"`
+				UUID string `json:"uuid"`
+				Type string `json:"type"`
+				Test bool   `json:"test"`
 			}
 			if err := json.Unmarshal(raw, &body); err != nil {
 				t.Fatal(err)
 			}
-			if delivery.Event.ID() != body.UUID || delivery.Event.Kind() != body.Type {
-				t.Errorf("event = %s/%s, want %s/%s", delivery.Event.Kind(), delivery.Event.ID(), body.Type, body.UUID)
+			if delivery.Event.ID() != body.UUID || delivery.Event.Type != body.Type || !delivery.Event.IsKnown() {
+				t.Errorf("event = %s/%s, want %s/%s", delivery.Event.Type, delivery.Event.ID(), body.Type, body.UUID)
 			}
 			// A rehearsal delivery (Webhooks.Test, sandbox) is signed like a live one, carries
 			// test: true in the signed body and the X-Webhook-Test header, and has no place in the
 			// live sequence — the live ones number from one upwards.
 			wantTest := body.Test
-			if delivery.IsTest != wantTest || webhooks.IsTestEvent(delivery.Event) != wantTest {
-				t.Errorf("IsTest = %v / %v, want %v", delivery.IsTest, webhooks.IsTestEvent(delivery.Event), wantTest)
+			if delivery.IsTest != wantTest || delivery.Event.IsTest() != wantTest {
+				t.Errorf("IsTest = %v / %v, want %v", delivery.IsTest, delivery.Event.IsTest(), wantTest)
 			}
 			if wantTest != (sample.Headers[webhooks.HeaderTest] == "true") {
 				t.Errorf("the body says test=%v but the %s header says %q", wantTest,
 					webhooks.HeaderTest, sample.Headers[webhooks.HeaderTest])
 			}
 			if wantTest {
-				if delivery.Event.Seq() != 0 {
-					t.Errorf("a rehearsal delivery carries sequence %d", delivery.Event.Seq())
+				if delivery.Event.Sequence() != 0 {
+					t.Errorf("a rehearsal delivery carries sequence %d", delivery.Event.Sequence())
 				}
-			} else if delivery.Event.Seq() <= 0 {
-				t.Errorf("sequence = %d", delivery.Event.Seq())
+			} else if delivery.Event.Sequence() <= 0 {
+				t.Errorf("sequence = %d", delivery.Event.Sequence())
 			}
 
 			// The same bytes under any other secret must fail.
@@ -142,12 +147,11 @@ func TestVerifyRules(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Verify: %v", err)
 		}
-		if event.Kind() != oblodai.WebhookKindPayment || !event.Final() {
+		if event.Type != webhooks.KindPayment || !event.IsFinal() {
 			t.Fatalf("unexpected event: %+v", event)
 		}
-		payment, ok := event.(*oblodai.PaymentEvent)
-		if !ok || payment.Status != oblodai.PaymentStatusPaid {
-			t.Fatalf("expected a payment event with status paid, got %#v", event)
+		if event.Payment == nil || event.Payment.Status != oblodai.PaymentStatusPaid || event.Payout != nil {
+			t.Fatalf("expected a payment event with status paid, got %+v", event)
 		}
 	})
 
@@ -210,6 +214,7 @@ func TestVerifyRules(t *testing.T) {
 	t.Run("verifies an http.Request end to end", func(t *testing.T) {
 		header := signed(t, "whsec", ts, sampleBody, map[string]string{
 			webhooks.HeaderID:        "d-1",
+			webhooks.HeaderEventID:   "e-1",
 			webhooks.HeaderEvent:     "invoice.paid",
 			webhooks.HeaderEventTime: strconv.FormatInt(ts, 10),
 		})
@@ -219,7 +224,7 @@ func TestVerifyRules(t *testing.T) {
 		if err != nil {
 			t.Fatalf("VerifyRequest: %v", err)
 		}
-		if delivery.ID != "d-1" || delivery.EventType != "invoice.paid" {
+		if delivery.ID != "d-1" || delivery.EventID != "e-1" || delivery.EventType != oblodai.WebhookEventNameInvoicePaid {
 			t.Fatalf("unexpected delivery: %+v", delivery)
 		}
 		if !delivery.EventTime.Equal(time.Unix(ts, 0).UTC()) || !delivery.SentAt.Equal(time.Unix(ts, 0).UTC()) {
@@ -254,24 +259,31 @@ func TestUnknownEventTypeIsReturnedNotRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an unknown event type must not be refused: %v", err)
 	}
-	unknown, ok := event.(*oblodai.UnknownEvent)
-	if !ok {
-		t.Fatalf("expected an *oblodai.UnknownEvent, got %T", event)
+	if event.Type != "alien" || event.ID() != "x" || event.Sequence() != 9 || !event.IsFinal() {
+		t.Fatalf("the raw event was not preserved: %+v", event)
 	}
-	if string(unknown.Kind()) != "alien" || unknown.ID() != "x" || unknown.Seq() != 9 || !unknown.Final() {
-		t.Fatalf("the raw event was not preserved: %+v", unknown)
+	if event.IsKnown() || event.Payment != nil {
+		t.Fatal("IsKnown must be false for an unmodelled type")
 	}
-	if webhooks.IsKnownEvent(event) {
-		t.Fatal("IsKnownEvent must be false for an unmodelled type")
-	}
-	if !webhooks.IsTestEvent(event) {
+	if !event.IsTest() {
 		t.Fatal("the test flag must work on an unmodelled type")
 	}
-	if webhooks.IsStale(event, 20) != true || webhooks.IsStale(event, 8) {
+	if !webhooks.IsStale(event, 20) || webhooks.IsStale(event, 8) {
 		t.Fatal("IsStale must work on an unmodelled type")
 	}
-	if len(unknown.Raw) == 0 {
+	if len(event.Raw) == 0 {
 		t.Fatal("the raw body must be kept")
+	}
+}
+
+// A conversion event names its object by id, not uuid.
+func TestConversionEventIsModelled(t *testing.T) {
+	event, err := webhooks.Parse([]byte(`{"type":"conversion","id":"c1","status":"completed","sent":"10","sequence":2}`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if event.Conversion == nil || event.ID() != "c1" || event.Conversion.Sent != "10" || !event.IsKnown() {
+		t.Fatalf("conversion = %+v", event)
 	}
 }
 
@@ -358,25 +370,22 @@ func TestEventWithoutASequenceIsNeverStale(t *testing.T) {
 }
 
 func TestEveryEventKindDecodesToItsOwnType(t *testing.T) {
-	seen := map[oblodai.WebhookKind]bool{}
-	for _, sample := range fixtures.LoadWebhookSamples(t) {
+	_, samples := loadDeliveries(t)
+	seen := map[string]bool{}
+	for _, sample := range samples {
 		event, err := webhooks.Parse([]byte(sample.Raw))
 		if err != nil {
 			t.Fatalf("Parse: %v", err)
 		}
-		seen[event.Kind()] = true
-		switch event.Kind() {
-		case oblodai.WebhookKindPayment:
-			if _, ok := event.(*oblodai.PaymentEvent); !ok {
-				t.Fatalf("a payment event decoded as %T", event)
-			}
-		case oblodai.WebhookKindPayout:
-			if _, ok := event.(*oblodai.PayoutEvent); !ok {
-				t.Fatalf("a payout event decoded as %T", event)
-			}
-		case oblodai.WebhookKindWallet:
-			if _, ok := event.(*oblodai.WalletEvent); !ok {
-				t.Fatalf("a wallet event decoded as %T", event)
+		seen[event.Type] = true
+		typed := map[string]bool{
+			webhooks.KindPayment: event.Payment != nil,
+			webhooks.KindPayout:  event.Payout != nil,
+			webhooks.KindWallet:  event.Wallet != nil,
+		}
+		for kind, set := range typed {
+			if set != (kind == event.Type) {
+				t.Fatalf("a %s event set the %s body: %v", event.Type, kind, set)
 			}
 		}
 	}

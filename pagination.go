@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"net/url"
 	"strconv"
 	"sync"
@@ -12,9 +13,10 @@ import (
 // Offset pagination over the core's {items, paginate} lists. paginate.has_pages is the server's
 // own "there is more" flag; iteration stops on it, or on a short page, whichever comes first.
 //
-// A list method returns a *List, which has requested nothing yet: Page fetches the first page,
-// Pager walks every page one request at a time, All collects them. Nothing here starts work on
-// its own, so an unused list costs nothing and a failing one cannot surprise the program.
+// A list method returns a *List, which has requested nothing yet: Items ranges over every item
+// and ByPage over every page, one request per page; Page fetches the first page, Pager walks the
+// items with an explicit cursor, Collect gathers them. Nothing here starts work on its own, so an
+// unused list costs nothing and a failing one cannot surprise the program.
 
 // DefaultPageLimit is the page size used when a list call does not set one.
 const DefaultPageLimit = 50
@@ -42,8 +44,52 @@ func (l *List[T]) Page() (*Page[T], error) {
 	return page, err
 }
 
-// All walks every page and collects the items. maxItems caps the result; 0 means no cap.
-func (l *List[T]) All(maxItems int) ([]T, error) {
+// Items ranges over every item across pages, fetching one page per request as it goes; the
+// iteration stops at the first error, which it yields with the zero item:
+//
+//	for payment, err := range client.Payments.ListHistory(ctx, nil).Items() {
+//		if err != nil {
+//			return err
+//		}
+//		fmt.Println(payment.UUID)
+//	}
+func (l *List[T]) Items() iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		p := l.Pager()
+		for p.Next() {
+			if !yield(p.Item(), nil) {
+				return
+			}
+		}
+		if err := p.Err(); err != nil {
+			var zero T
+			yield(zero, err)
+		}
+	}
+}
+
+// ByPage ranges over the pages themselves, one request per page — for a caller that works a page
+// at a time or wants each page's paginate block. It stops at the first error, which it yields
+// with a nil page.
+func (l *List[T]) ByPage() iter.Seq2[*Page[T], error] {
+	return func(yield func(*Page[T], error) bool) {
+		offset := l.offset
+		for {
+			page, err := l.pageAt(offset)
+			if err != nil {
+				yield(nil, err)
+				return
+			}
+			if !yield(page, nil) || len(page.Items) == 0 || !page.Paginate.HasPages {
+				return
+			}
+			offset += len(page.Items)
+		}
+	}
+}
+
+// Collect walks every page and gathers the items. maxItems caps the result; 0 means no cap.
+func (l *List[T]) Collect(maxItems int) ([]T, error) {
 	out := []T{}
 	p := l.Pager()
 	// The cap is checked before advancing, so a bounded walk never fetches a page it will not use.
@@ -58,7 +104,7 @@ func (l *List[T]) All(maxItems int) ([]T, error) {
 
 // Pager walks every item across pages, fetching at most one page per call to Next:
 //
-//	p := client.Payments.History(ctx, params).Pager()
+//	p := client.Payments.ListHistory(ctx, params).Pager()
 //	for p.Next() {
 //		invoice := p.Item()
 //	}
@@ -132,30 +178,41 @@ func (p *Pager[T]) Page() *Page[T] { return p.page }
 func (p *Pager[T]) Err() error { return p.err }
 
 // newList builds the lazy list handle for a paged route. Limit and offset are taken from the
-// caller's params (the core documents them on every list DTO) and then driven by the pager, so a
+// caller's params (the body of a POST, the query of a GET) and then driven by the pager, so a
 // caller-set limit survives while the offset advances page by page.
-func newList[T any](ctx context.Context, t *transport, key string, params any, opts []RequestOption) *List[T] {
-	fields, err := toFields(params)
+func newList[T any](ctx context.Context, r Requester, call Call, o callOptions) *List[T] {
+	route := call.Route
+	get := route.Method == "GET"
+	var fields map[string]any
+	var err *Error
 	limit, offset := DefaultPageLimit, 0
-	if v, ok := intField(fields, "limit"); ok && v > 0 {
-		limit = v
+	if get {
+		if v, e := strconv.Atoi(call.Query.Get("limit")); e == nil && v > 0 {
+			limit = v
+		}
+		if v, e := strconv.Atoi(call.Query.Get("offset")); e == nil && v > 0 {
+			offset = v
+		}
+	} else {
+		fields, err = toFields(call.Body)
+		if v, ok := intField(fields, "limit"); ok && v > 0 {
+			limit = v
+		}
+		if v, ok := intField(fields, "offset"); ok && v > 0 {
+			offset = v
+		}
+		delete(fields, "limit")
+		delete(fields, "offset")
 	}
-	if v, ok := intField(fields, "offset"); ok && v > 0 {
-		offset = v
-	}
-	delete(fields, "limit")
-	delete(fields, "offset")
 
-	o := applyRequestOptions(opts)
-	r := route(key)
 	// One idempotency key per page would be wrong on both sides: the core would replay page one
 	// for ever. A list is a read, and reads are safe to repeat without a key — so a caller who
 	// passed one is told, not quietly ignored: silently dropping it would leave them believing a
 	// re-send was deduplicated.
-	if o.idempotencyKey != "" && err == nil {
+	if o.idempotencyKey != "" && err == nil && !route.Idempotent {
 		err = newConfigError(CodeIdempotencyUnsupported, fmt.Sprintf(
 			"%s %s is a list route and does not deduplicate by Idempotency-Key; drop WithIdempotencyKey from this call",
-			r.Method, r.Path), "idempotencyKey")
+			route.Method, route.Path), "idempotencyKey")
 	}
 	o.idempotencyKey = ""
 
@@ -167,30 +224,40 @@ func newList[T any](ctx context.Context, t *transport, key string, params any, o
 			if err != nil {
 				return nil, err
 			}
-			pageOpts := o
-			body := map[string]any{}
-			for k, v := range fields {
-				body[k] = v
-			}
-			body["limit"] = limit
-			body["offset"] = offset
-			if r.Method == "GET" {
+			page := call
+			if get {
 				query := url.Values{}
-				for k, v := range body {
-					query.Set(k, queryValue(v))
+				for k, v := range call.Query {
+					query[k] = append([]string(nil), v...)
 				}
-				pageOpts.query = query
+				query.Set("limit", strconv.Itoa(limit))
+				query.Set("offset", strconv.Itoa(offset))
+				page.Query = query
 			} else {
-				pageOpts.body = body
+				body := map[string]any{}
+				for k, v := range fields {
+					body[k] = v
+				}
+				body["limit"] = limit
+				body["offset"] = offset
+				page.Body = body
 			}
-			return call[Page[T]](ctx, t, key, pageOpts)
+			raw, reqErr := r.request(ctx, page, o)
+			if reqErr != nil {
+				return nil, reqErr
+			}
+			result, decodeErr := decodeResult[Page[T]](route, raw)
+			if decodeErr != nil {
+				return nil, decodeErr
+			}
+			return result, nil
 		},
 	}
 }
 
 // toFields renders a params struct as a field map so pagination can override limit and offset
 // without every list method having to expose them separately.
-func toFields(params any) (map[string]any, error) {
+func toFields(params any) (map[string]any, *Error) {
 	fields := map[string]any{}
 	if params == nil {
 		return fields, nil
@@ -216,28 +283,5 @@ func intField(fields map[string]any, name string) (int, bool) {
 		return v, true
 	default:
 		return 0, false
-	}
-}
-
-// queryValue renders a decoded JSON value for a query string.
-func queryValue(v any) string {
-	switch t := v.(type) {
-	case string:
-		return t
-	case bool:
-		return strconv.FormatBool(t)
-	case float64:
-		if t == float64(int64(t)) {
-			return strconv.FormatInt(int64(t), 10)
-		}
-		return strconv.FormatFloat(t, 'f', -1, 64)
-	case nil:
-		return ""
-	default:
-		encoded, err := json.Marshal(t)
-		if err != nil {
-			return ""
-		}
-		return string(encoded)
 	}
 }

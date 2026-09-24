@@ -22,7 +22,7 @@ type credentials struct {
 // buildInput is everything one attempt needs.
 type buildInput struct {
 	baseURL        string
-	route          Route
+	route          RouteSpec
 	pathParams     map[string]string
 	query          url.Values
 	body           []byte
@@ -34,6 +34,8 @@ type buildInput struct {
 	// adminToken is set only on onboarding routes. It travels in its own field, never through
 	// extraHeaders, so a caller header named X-Admin-Token can be dropped without dropping this.
 	adminToken string
+	// requestID is sent as X-Request-ID on every attempt of the call.
+	requestID string
 }
 
 // builtRequest is the request as it will go on the wire.
@@ -121,6 +123,9 @@ func buildRequest(in buildInput) (*builtRequest, *Error) {
 		if !reservedHeaders[strings.ToLower(k)] {
 			headers[k] = v
 		}
+	}
+	if in.requestID != "" {
+		headers[HeaderRequestID] = in.requestID
 	}
 	headers["Accept"] = "application/json"
 	headers["User-Agent"] = in.userAgent

@@ -65,6 +65,7 @@ const (
 	CodeBadEnvelope            = "sdk.bad_envelope"
 	CodeBadPathParam           = "sdk.bad_path_param"
 	CodeBadAmount              = "sdk.bad_amount"
+	CodeFloatAmount            = "sdk.float_amount"
 	CodeBadHeader              = "sdk.bad_header"
 	CodeResponseTooLarge       = "sdk.response_too_large"
 
