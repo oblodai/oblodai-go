@@ -389,7 +389,7 @@ func (t *transport) send(ctx context.Context, req *builtRequest, o callOptions, 
 	if err != nil {
 		return nil, transportErrorFor(ctx, attemptCtx, timeout, err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	// A signed request must never be replayed against another origin. The client's own redirect
 	// policy refuses to follow one, but an injected http.Client may carry a transport that does:
 	// compare the URL the answer came from with the one that was signed.

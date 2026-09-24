@@ -23,10 +23,9 @@ jobs:
           fi
       - name: gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l .; echo 'run gofmt -w .'; exit 1)
-      - name: contract drift
-        run: go run ./internal/codegen -check
       - run: go vet ./...
       - run: go test -race ./...
+      - run: ./scripts/check-package.sh
       - name: Create GitHub Release
         run: |
           if [ -z "${GH_TOKEN}" ]; then

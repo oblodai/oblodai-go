@@ -30,7 +30,7 @@ func TestWithRawResponseExposesStatusHeadersAndRequestID(t *testing.T) {
 	raw = nil
 	_, err = failing.client().Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")},
 		WithRawResponse(&raw), WithRequestID("mine"))
-	requireCode(t, err, "payment.not_found")
+	_ = requireCode(t, err, "payment.not_found")
 	if raw == nil || raw.StatusCode != 404 || raw.RequestID != "mine" {
 		t.Fatalf("raw = %+v", raw)
 	}

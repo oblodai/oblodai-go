@@ -98,7 +98,7 @@ func TestWaitGivesUpAfterItsTimeout(t *testing.T) {
 	var pauses []time.Duration
 	client := api.client(recordSleeps(&pauses))
 	_, err := client.BatchJob("b1").Wait(context.Background(), WithPollInterval(time.Millisecond), WithWaitTimeout(0))
-	requireCode(t, err, CodeWaitTimeout)
+	_ = requireCode(t, err, CodeWaitTimeout)
 	if api.count() != 1 {
 		t.Fatalf("a zero timeout polls once, saw %d", api.count())
 	}

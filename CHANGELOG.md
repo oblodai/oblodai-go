@@ -4,6 +4,43 @@ Notable changes to this package. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this package follows
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] — 2026-09-25
+
+The API surface is generated from the gateway's OpenAPI contract by the backend's `tools/sdkgen`,
+the same generator every Oblodai SDK uses. Breaking: see [MIGRATION-2.0.md](MIGRATION-2.0.md).
+
+### Changed
+
+- Module path `github.com/oblodai/oblodai-go/v2`; Go ≥ 1.25.
+- Services, methods, request and response models, enumerations and `Routes` (keyed by
+  `operationId`, `RouteSpec`) are `zz_generated_*.go`: 16 services, 120 operations, named after the
+  contract's `operationId` and pinned in `names.lock`. Methods take the parameters as a pointer to
+  the generated request model; optional fields are pointers (`oblodai.Ptr`).
+- Amounts are `oblodai.Decimal`, a string type: a float does not fit, and a JSON number in an amount
+  is `sdk.float_amount`. The money helpers take a `Decimal` or a plain string.
+- `Error.Error()` reads `[code] message (request_id=…)`.
+- Models print their set fields with secrets redacted; `json.Marshal` of a model is faithful.
+- `webhooks` returns `*webhooks.Event` with the typed body of its kind (the generated webhook
+  models, conversion events included) and `Delivery.EventID` (`X-Webhook-Event-Id`).
+- `List.All` is `List.Collect`.
+
+### Added
+
+- Per-call `WithMaxRetries`, `WithExtraHeaders`, `WithRequestID` and `WithRawResponse`; an
+  `X-Request-ID` on every call, the same on every attempt.
+- `Client.WithOptions` and `WithHooks` (`OnRequest`/`OnResponse` per attempt).
+- `List.Items()` and `List.ByPage()` iterators.
+- Waiters for long-running operations: `BatchJob`, `DocumentJob`, `JobFor[T]` with `Wait` and
+  `Download`, driven by the `LRO` table.
+- The backend's shared conformance suite (signing and webhook vectors from `x-oblodai-signing`,
+  retry, money and forward-compatibility scenarios), a generated-code drift check, a sweep that
+  calls every generated method, and README and examples executed in the tests; `make ci`.
+
+### Removed
+
+- Hand-written resources and models, `internal/codegen`, the `contract/` snapshot and the
+  `Contract*` constants; `Merchants.Create` (not part of the merchant API contract).
+
 ## [1.3.0] — 2026-08-26
 
 A rewrite generated from the gateway's own contract snapshot. See MIGRATION-1.3.md.
