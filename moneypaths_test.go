@@ -173,7 +173,7 @@ func TestBaseURLPathPrefixIsKeptAndSigned(t *testing.T) {
 
 func TestCallerHeadersCannotOverrideSignedOnes(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{"balance": map[string]any{"merchant": []any{}}}))
-	client := api.client(WithHeader("X-Signature", "zz"), WithHeader("X-Trace", "t1"))
+	client := api.client(WithHeader(HeaderSignature, "zz"), WithHeader("X-Trace", "t1"))
 	if _, err := client.Account.GetBalance(context.Background()); err != nil {
 		t.Fatalf("Account.GetBalance: %v", err)
 	}

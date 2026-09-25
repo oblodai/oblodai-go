@@ -102,18 +102,46 @@ type Expect struct {
 	RequestBodyField   map[string]any `json:"request_body_field"`
 }
 
+// backendRoot is the backend checkout: $OBLODAI_BACKEND, else ../oblodai-backend next to this repository.
+func backendRoot() string {
+	if backend := os.Getenv("OBLODAI_BACKEND"); backend != "" {
+		return backend
+	}
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(file), "..", "..", "..", "oblodai-backend")
+}
+
+// Signing is x-oblodai-signing of the backend's openapi.json, decoded; the test is skipped when
+// there is no backend checkout to read it from.
+func Signing(t testing.TB) map[string]any {
+	t.Helper()
+	path := filepath.Join(backendRoot(), "services", "core", "api", "openapi.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.Getenv("OBLODAI_BACKEND") != "" {
+			t.Fatalf("backend spec: %v", err)
+		}
+		t.Skipf("backend spec not found at %s; set OBLODAI_BACKEND", path)
+	}
+	var spec struct {
+		Signing map[string]any `json:"x-oblodai-signing"`
+	}
+	if err := json.Unmarshal(data, &spec); err != nil {
+		t.Fatalf("%s: %v", path, err)
+	}
+	if spec.Signing == nil {
+		t.Fatalf("%s: no x-oblodai-signing", path)
+	}
+	return spec.Signing
+}
+
 // Dir is the suite directory; the test is skipped when there is none to find.
 func Dir(t testing.TB) string {
 	t.Helper()
 	explicit := os.Getenv("SDKGEN_CONFORMANCE")
 	dir := explicit
 	if dir == "" {
-		backend := os.Getenv("OBLODAI_BACKEND")
-		if backend == "" {
-			_, file, _, _ := runtime.Caller(0)
-			backend = filepath.Join(filepath.Dir(file), "..", "..", "..", "oblodai-backend")
-		}
-		dir = filepath.Join(backend, "tools", "sdkgen", "conformance")
+		dir = filepath.Join(backendRoot(), "tools", "sdkgen", "conformance")
 	}
 	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 		if explicit != "" || os.Getenv("OBLODAI_BACKEND") != "" {

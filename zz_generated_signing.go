@@ -19,12 +19,15 @@ const (
 	HeaderIdempotencyKey = "Idempotency-Key"
 )
 
-// SignatureSkewSeconds is how far the core lets a request timestamp drift from its own clock, and
-// how far a webhook delivery's timestamp may be from the receiver's.
-const SignatureSkewSeconds = 300
+// SignatureAlgorithm is the MAC every signature is.
+const SignatureAlgorithm = "HMAC-SHA256, lowercase hex"
 
-// MaxRequestBodyBytes is the largest request body the core reads, in bytes.
-const MaxRequestBodyBytes = 1048576
+// SkewSeconds is how far the core lets a request timestamp drift from its own clock, and how far a
+// webhook delivery's timestamp may be from the receiver's.
+const SkewSeconds = 300
+
+// MaxBody is the largest request body the core reads, in bytes.
+const MaxBody = 1048576
 
 // MaxIdempotencyKeyLength is the longest idempotency key the core accepts.
 const MaxIdempotencyKeyLength = 255
