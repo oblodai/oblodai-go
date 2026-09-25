@@ -4,6 +4,13 @@ Notable changes to this package. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this package follows
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `Client.Invoke` / `InvokeList` / `InvokeFile` — call an operation by operationId (used by the
+  oblodai CLI).
+
 ## [2.0.0] — 2026-09-25
 
 The API surface is generated from the gateway's OpenAPI contract by the backend's `tools/sdkgen`,
