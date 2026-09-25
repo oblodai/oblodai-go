@@ -41,7 +41,30 @@ func loadDeliveries(t *testing.T) (string, []recorded) {
 	if file.Secret == "" || len(file.Deliveries) == 0 {
 		t.Fatal("testdata/deliveries.json carries no secret or no deliveries")
 	}
+	for i, d := range file.Deliveries {
+		current := make(map[string]string, len(d.Headers))
+		for name, value := range d.Headers {
+			if renamed, ok := recordedHeaders[name]; ok {
+				name = renamed
+			}
+			current[name] = value
+		}
+		file.Deliveries[i].Headers = current
+	}
 	return file.Secret, file.Deliveries
+}
+
+// recordedHeaders maps the header names the deliveries were recorded under to their role's current
+// name from the contract, so a header the core renames reaches the samples by regeneration alone.
+var recordedHeaders = map[string]string{
+	"X-Webhook-Timestamp":      webhooks.HeaderTimestamp,
+	"X-Webhook-Signature":      webhooks.HeaderSignature,
+	"X-Webhook-Signature-Prev": webhooks.HeaderSignaturePrev,
+	"X-Webhook-Event":          webhooks.HeaderEvent,
+	"X-Webhook-Id":             webhooks.HeaderID,
+	"X-Webhook-Event-Id":       webhooks.HeaderEventID,
+	"X-Webhook-Event-Time":     webhooks.HeaderEventTime,
+	"X-Webhook-Test":           webhooks.HeaderTest,
 }
 
 func headersOf(sample recorded) http.Header {
@@ -174,7 +197,7 @@ func TestVerifyRules(t *testing.T) {
 
 	t.Run("rejects stale deliveries unless the check is disabled", func(t *testing.T) {
 		header := signed(t, "whsec", ts, sampleBody, nil)
-		late := func() time.Time { return time.Unix(ts+600, 0) }
+		late := func() time.Time { return time.Unix(ts+2*oblodai.SkewSeconds, 0) }
 		if _, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{Secret: "whsec", Now: late}); !oblodai.IsCode(err, oblodai.CodeWebhookStaleTimestamp) {
 			t.Fatalf("stale delivery: %v", err)
 		}
@@ -186,7 +209,7 @@ func TestVerifyRules(t *testing.T) {
 		}
 		// A wider tolerance accepts it too.
 		if _, err := webhooks.Verify([]byte(sampleBody), header, webhooks.Options{
-			Secret: "whsec", Now: late, Tolerance: 20 * time.Minute,
+			Secret: "whsec", Now: late, Tolerance: 4 * oblodai.SkewSeconds * time.Second,
 		}); err != nil {
 			t.Fatalf("with a wider tolerance: %v", err)
 		}
