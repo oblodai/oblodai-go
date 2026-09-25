@@ -87,11 +87,13 @@ type deliveryVector struct {
 
 // A real delivery of every event of the contract verifies (with the current secret and, as a
 // receiver that has not swapped yet, with the previous one), parses into its kind's typed body and
-// exposes every delivery header of the spec.
+// exposes every delivery header of the spec; with the spec's rehearsal header it is a test, without
+// it a live one.
 func TestConformanceWebhookDeliveries(t *testing.T) {
 	suite := conformance.Load(t, "webhook_delivery")
 	vectors, _ := conformance.Vectors[deliveryVector](t, suite)
 	names := conformance.Names(t, suite)
+	testHeader := conformance.TestHeader(t, suite)
 	if len(suite.Fields) != len(names) {
 		t.Fatalf("fields %v, header roles %v", suite.Fields, names)
 	}
@@ -121,6 +123,9 @@ func TestConformanceWebhookDeliveries(t *testing.T) {
 				for k, val := range v.Headers {
 					header.Set(k, val)
 				}
+				if check.Test {
+					header.Set(testHeader, "true")
+				}
 				delivery, err := webhooks.VerifyDelivery([]byte(v.Payload), header, webhooks.Options{
 					Secret: secret,
 					Now:    func() time.Time { return time.Unix(v.TS, 0) },
@@ -134,6 +139,9 @@ func TestConformanceWebhookDeliveries(t *testing.T) {
 				}
 				if delivery.Event.ID() == "" {
 					t.Fatal("no object id")
+				}
+				if delivery.IsTest != check.Test {
+					t.Fatalf("IsTest = %v, want %v (rehearsal header %s)", delivery.IsTest, check.Test, testHeader)
 				}
 				for role, field := range suite.Fields {
 					name, ok := names[role]

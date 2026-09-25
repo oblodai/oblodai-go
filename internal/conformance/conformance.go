@@ -45,9 +45,11 @@ type WebhookParse struct {
 }
 
 // HeaderNames points at a list of header names in the spec and gives the role of each position.
+// TestPointer (webhook_delivery) points at the name of the rehearsal header.
 type HeaderNames struct {
-	Pointer string   `json:"pointer"`
-	Roles   []string `json:"roles"`
+	Pointer     string   `json:"pointer"`
+	Roles       []string `json:"roles"`
+	TestPointer string   `json:"test_pointer"`
 }
 
 // Source points at the vectors: the spec (relative to the suite directory) and a JSON pointer.
@@ -67,6 +69,9 @@ type Check struct {
 	Key string `json:"key"`
 	// PublicID (request_headers): the public key id the request is signed with.
 	PublicID string `json:"public_id"`
+	// Test (webhook_delivery): a rehearsal — the delivery also carries the header at
+	// HeaderNames.TestPointer set to "true", and the SDK reports it as a test; without it, as live.
+	Test bool `json:"test"`
 }
 
 // Scenario is one call on scripted responses.
@@ -210,6 +215,20 @@ func Names(t testing.TB, suite Suite) map[string]string {
 		out[role] = names[i]
 	}
 	return out
+}
+
+// TestHeader is the rehearsal header name the spec gives (header_names.test_pointer) — again the
+// spec's name, not the SDK's constant.
+func TestHeader(t testing.TB, suite Suite) string {
+	t.Helper()
+	if suite.HeaderNames == nil || suite.HeaderNames.TestPointer == "" || suite.Source == nil {
+		t.Fatal("the suite names no header_names.test_pointer")
+	}
+	var name string
+	if err := json.Unmarshal(lookup(t, suite, suite.HeaderNames.TestPointer), &name); err != nil || name == "" {
+		t.Fatalf("rehearsal header name at %s: %q %v", suite.HeaderNames.TestPointer, name, err)
+	}
+	return name
 }
 
 // lookup resolves a JSON pointer in the suite's spec.
