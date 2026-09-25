@@ -10,7 +10,7 @@ import (
 //  1. Can it succeed? — the core's Retryable flag (authoritative when the core wrote the
 //     envelope), or a transient status for answers that carry no envelope.
 //  2. Is repeating safe? — only for read-only routes and for writes the core deduplicates by
-//     Idempotency-Key. A write the core does not deduplicate is never re-sent once it MAY have
+//     HeaderIdempotencyKey. A write the core does not deduplicate is never re-sent once it MAY have
 //     reached the core: a transport error or a proxy 503 after the request left the socket could
 //     mean the payout already happened.
 //

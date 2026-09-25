@@ -137,8 +137,8 @@ func (t *transport) execute(ctx context.Context, call Call, o callOptions, reque
 		// re-send is deduplicated when it is not — the one belief that turns a lost response
 		// into a double spend.
 		return nil, newConfigError(CodeIdempotencyUnsupported, fmt.Sprintf(
-			"%s %s does not deduplicate by Idempotency-Key; drop WithIdempotencyKey from this call",
-			r.Method, r.Path), "idempotencyKey")
+			"%s %s does not deduplicate by %s; drop WithIdempotencyKey from this call",
+			r.Method, r.Path, HeaderIdempotencyKey), "idempotencyKey")
 	case idempotencyKey == "" && r.Idempotent:
 		generated, keyErr := newIdempotencyKey()
 		if keyErr != nil {

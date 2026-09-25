@@ -24,6 +24,7 @@ type webhookVector struct {
 func TestConformanceWebhooks(t *testing.T) {
 	suite := conformance.Load(t, "webhook")
 	vectors, skew := conformance.Vectors[webhookVector](t, suite)
+	names := conformance.Names(t, suite)
 	for _, check := range suite.Checks {
 		for i, v := range vectors {
 			t.Run(check.Name+"#"+strconv.Itoa(i), func(t *testing.T) {
@@ -48,8 +49,10 @@ func TestConformanceWebhooks(t *testing.T) {
 					signature = first + signature[1:]
 				}
 				header := http.Header{}
-				header.Set(webhooks.HeaderTimestamp, strconv.FormatInt(v.TS, 10))
-				header.Set(webhooks.HeaderSignature, signature)
+				// The spec's names, not this package's constants: a renamed header the SDK does not
+				// know fails here.
+				header.Set(names["timestamp"], strconv.FormatInt(v.TS, 10))
+				header.Set(names["signature"], signature)
 				now := v.TS + conformance.Offset(t, check.NowFromTS, skew)
 				_, err := webhooks.Verify([]byte(payload), header, webhooks.Options{
 					Secret:    v.Secret,
@@ -88,6 +91,10 @@ type deliveryVector struct {
 func TestConformanceWebhookDeliveries(t *testing.T) {
 	suite := conformance.Load(t, "webhook_delivery")
 	vectors, _ := conformance.Vectors[deliveryVector](t, suite)
+	names := conformance.Names(t, suite)
+	if len(suite.Fields) != len(names) {
+		t.Fatalf("fields %v, header roles %v", suite.Fields, names)
+	}
 	events := map[string]bool{}
 	for _, v := range vectors {
 		events[v.Event] = true
@@ -128,7 +135,11 @@ func TestConformanceWebhookDeliveries(t *testing.T) {
 				if delivery.Event.ID() == "" {
 					t.Fatal("no object id")
 				}
-				for name, field := range suite.Headers {
+				for role, field := range suite.Fields {
+					name, ok := names[role]
+					if !ok {
+						t.Fatalf("field %q has unknown header role %q", field, role)
+					}
 					var got string
 					switch field {
 					case "":
@@ -145,6 +156,9 @@ func TestConformanceWebhookDeliveries(t *testing.T) {
 						got = strconv.FormatInt(delivery.SentAt.Unix(), 10)
 					default:
 						t.Fatalf("the delivery has no field %q for %s", field, name)
+					}
+					if v.Headers[name] == "" {
+						t.Fatalf("the delivery vector has no %s header (role %s)", name, role)
 					}
 					if got != v.Headers[name] {
 						t.Errorf("%s = %q, header %s = %q", field, got, name, v.Headers[name])

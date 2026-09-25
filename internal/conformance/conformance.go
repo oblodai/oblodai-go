@@ -23,9 +23,12 @@ type Suite struct {
 	Source      *Source    `json:"source"`
 	Checks      []Check    `json:"checks"`
 	Scenarios   []Scenario `json:"scenarios"`
-	// Headers (webhook_delivery): delivery header → the snake_case field of the delivery info that
-	// must carry its value; "" — the header is consumed by the signature check.
-	Headers map[string]string `json:"headers"`
+	// HeaderNames says where in the spec the header names are and the role of each by position;
+	// the suite itself names no header (see Names).
+	HeaderNames *HeaderNames `json:"header_names"`
+	// Fields (webhook_delivery): header role → the snake_case field of the delivery info that must
+	// carry the value of that role's header; "" — the header is consumed by the signature check.
+	Fields map[string]string `json:"fields"`
 	// Webhooks (forward_compat): delivery bodies the SDK's parse must read — with their raw type,
 	// known or not as expected.
 	Webhooks []WebhookParse `json:"webhooks"`
@@ -39,6 +42,12 @@ type WebhookParse struct {
 		Known bool   `json:"known"`
 		Type  string `json:"type"`
 	} `json:"expect"`
+}
+
+// HeaderNames points at a list of header names in the spec and gives the role of each position.
+type HeaderNames struct {
+	Pointer string   `json:"pointer"`
+	Roles   []string `json:"roles"`
 }
 
 // Source points at the vectors: the spec (relative to the suite directory) and a JSON pointer.
@@ -56,6 +65,8 @@ type Check struct {
 	Expect    string          `json:"expect"`
 	// Key (webhook_delivery): which secret verifies — "current" (secret) or "previous".
 	Key string `json:"key"`
+	// PublicID (request_headers): the public key id the request is signed with.
+	PublicID string `json:"public_id"`
 }
 
 // Scenario is one call on scripted responses.
@@ -133,40 +144,67 @@ func Vectors[V any](t testing.TB, suite Suite) (vectors []V, skewSeconds int64) 
 	if suite.Source == nil {
 		t.Fatal("the suite names no source of vectors")
 	}
-	data, err := os.ReadFile(filepath.Join(Dir(t), suite.Source.Spec))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var spec map[string]json.RawMessage
-	if err := json.Unmarshal(data, &spec); err != nil {
-		t.Fatal(err)
-	}
 	var signing struct {
 		SkewSeconds int64 `json:"skew_seconds"`
 	}
-	if err := json.Unmarshal(spec["x-oblodai-signing"], &signing); err != nil || signing.SkewSeconds <= 0 {
+	if err := json.Unmarshal(lookup(t, suite, "/x-oblodai-signing"), &signing); err != nil || signing.SkewSeconds <= 0 {
 		t.Fatalf("x-oblodai-signing.skew_seconds: %v", err)
 	}
-	var cur json.RawMessage = data
-	for _, part := range strings.Split(strings.TrimPrefix(suite.Source.Pointer, "/"), "/") {
-		part = strings.NewReplacer("~1", "/", "~0", "~").Replace(part)
-		var obj map[string]json.RawMessage
-		if err := json.Unmarshal(cur, &obj); err != nil {
-			t.Fatalf("pointer %s: %v", suite.Source.Pointer, err)
-		}
-		next, ok := obj[part]
-		if !ok {
-			t.Fatalf("pointer %s: no %q", suite.Source.Pointer, part)
-		}
-		cur = next
-	}
-	if err := json.Unmarshal(cur, &vectors); err != nil {
+	if err := json.Unmarshal(lookup(t, suite, suite.Source.Pointer), &vectors); err != nil {
 		t.Fatalf("vectors at %s: %v", suite.Source.Pointer, err)
 	}
 	if len(vectors) == 0 {
 		t.Fatalf("no vectors at %s", suite.Source.Pointer)
 	}
 	return vectors, signing.SkewSeconds
+}
+
+// Names maps each header role of the suite to the header name the spec gives it — the names a
+// check compares with, never the SDK's own constants: a rename in the contract that has not
+// reached the SDK then fails the suite.
+func Names(t testing.TB, suite Suite) map[string]string {
+	t.Helper()
+	if suite.HeaderNames == nil || suite.Source == nil {
+		t.Fatal("the suite names no header_names or no source spec")
+	}
+	var names []string
+	if err := json.Unmarshal(lookup(t, suite, suite.HeaderNames.Pointer), &names); err != nil {
+		t.Fatalf("header names at %s: %v", suite.HeaderNames.Pointer, err)
+	}
+	if len(names) != len(suite.HeaderNames.Roles) {
+		t.Fatalf("header names %v at %s, roles %v", names, suite.HeaderNames.Pointer, suite.HeaderNames.Roles)
+	}
+	out := map[string]string{}
+	for i, role := range suite.HeaderNames.Roles {
+		if names[i] == "" {
+			t.Fatalf("empty header name for role %s", role)
+		}
+		out[role] = names[i]
+	}
+	return out
+}
+
+// lookup resolves a JSON pointer in the suite's spec.
+func lookup(t testing.TB, suite Suite, pointer string) json.RawMessage {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(Dir(t), suite.Source.Spec))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cur json.RawMessage = data
+	for _, part := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+		part = strings.NewReplacer("~1", "/", "~0", "~").Replace(part)
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal(cur, &obj); err != nil {
+			t.Fatalf("pointer %s: %v", pointer, err)
+		}
+		next, ok := obj[part]
+		if !ok {
+			t.Fatalf("pointer %s: no %q", pointer, part)
+		}
+		cur = next
+	}
+	return cur
 }
 
 // Offset turns a check's now_from_ts (0, "skew", "skew+1") into seconds.

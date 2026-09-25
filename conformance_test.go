@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"io"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -42,6 +43,7 @@ type requestVector struct {
 func TestConformanceSigning(t *testing.T) {
 	suite := conformance.Load(t, "signing")
 	vectors, _ := conformance.Vectors[requestVector](t, suite)
+	names := conformance.Names(t, suite)
 	for _, check := range suite.Checks {
 		for _, v := range vectors {
 			t.Run(check.Name+"/"+v.Name, func(t *testing.T) {
@@ -55,10 +57,81 @@ func TestConformanceSigning(t *testing.T) {
 					if got := SignRequest(v.Secret, in); got != v.Signature {
 						t.Fatalf("signature\n got %s\nwant %s", got, v.Signature)
 					}
+				case "request_headers":
+					checkRequestHeaders(t, v, check.PublicID, names)
 				default:
 					t.Fatalf("unknown check kind %q", check.Kind)
 				}
 			})
+		}
+	}
+}
+
+// checkRequestHeaders sends the vector's request through the transport every generated method uses
+// — the vector's keys, the clock at its ts — and compares what went on the wire with the vector
+// under the header names of the spec (by role), not under this SDK's constants.
+func checkRequestHeaders(t *testing.T, v requestVector, publicID string, names map[string]string) {
+	if publicID == "" {
+		t.Fatal("request_headers names no public_id")
+	}
+	uri, err := url.Parse(v.RequestURI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query, err := url.ParseQuery(uri.RawQuery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &script{t: t, responses: []conformance.Response{{Status: 200, JSON: json.RawMessage(`{}`)}}}
+	client, err := New(
+		WithBaseURL("https://api.test"),
+		WithCredentials(publicID, v.Secret),
+		WithHTTPClient(&http.Client{Transport: s}),
+		withClock(func() time.Time { return time.Unix(v.TS, 0) }),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call := Call{
+		Route: RouteSpec{OperationID: "conformance", Method: v.Method, Path: uri.Path, Auth: AuthKey, Idempotent: v.IdempotencyKey != ""},
+		Query: query,
+	}
+	if v.Method != http.MethodGet {
+		call.Body = json.RawMessage(v.Body)
+	}
+	if _, callErr := client.transport.request(context.Background(), call, callOptions{idempotencyKey: v.IdempotencyKey}); callErr != nil {
+		t.Fatalf("request: %v", callErr)
+	}
+	if len(s.requests) != 1 {
+		t.Fatalf("%d requests, want 1", len(s.requests))
+	}
+	req, body := s.requests[0], string(s.bodies[0])
+	if got := req.URL.RequestURI(); req.Method != v.Method || got != v.RequestURI || body != v.Body {
+		t.Fatalf("sent %s %s %q, the vector is %s %s %q", req.Method, got, body, v.Method, v.RequestURI, v.Body)
+	}
+	want := map[string]string{
+		"public_id":       publicID,
+		"signature":       v.Signature,
+		"timestamp":       strconv.FormatInt(v.TS, 10),
+		"idempotency_key": v.IdempotencyKey,
+	}
+	if len(names) != len(want) {
+		t.Fatalf("header roles %v, want %v", names, want)
+	}
+	for role, name := range names {
+		value, ok := want[role]
+		if !ok {
+			t.Fatalf("unknown header role %q", role)
+		}
+		got := req.Header.Values(name) // http.Header: the name compares case-insensitively
+		if value == "" {
+			if len(got) != 0 {
+				t.Errorf("%s (%s) = %q, want no such header", name, role, got)
+			}
+			continue
+		}
+		if len(got) != 1 || got[0] != value {
+			t.Errorf("%s (%s) = %q, want %q", name, role, got, value)
 		}
 	}
 }
@@ -129,7 +202,10 @@ type script struct {
 }
 
 func (s *script) RoundTrip(req *http.Request) (*http.Response, error) {
-	body, _ := io.ReadAll(req.Body)
+	var body []byte
+	if req.Body != nil { // a GET carries none
+		body, _ = io.ReadAll(req.Body)
+	}
 	s.mu.Lock()
 	s.requests = append(s.requests, req)
 	s.bodies = append(s.bodies, body)

@@ -48,6 +48,13 @@ the same generator every Oblodai SDK uses. Breaking: see [MIGRATION-2.0.md](MIGR
 - `webhooks` returns `*webhooks.Event` with the typed body of its kind (the generated webhook
   models, conversion events included) and `Delivery.EventID` (`X-Webhook-Event-Id`).
 - `List.All` is `List.Collect`.
+- The request-signing protocol is generated from the contract's `x-oblodai-signing`
+  (`zz_generated_signing.go`, root and `webhooks`): the header names (`HeaderPublicID`,
+  `HeaderSignature`, `HeaderTimestamp`, `HeaderIdempotencyKey`, `webhooks.HeaderTimestamp` and the
+  other delivery headers), the canonical strings `SignRequest`/`SignWebhook` sign, and
+  `SignatureSkewSeconds`, `MaxIdempotencyKeyLength` and the new `MaxRequestBodyBytes`. Names and
+  values are unchanged; `webhooks.DefaultTolerance` is the contract's skew window (5 minutes today).
+  The conformance suite checks the headers a signed request carries against the contract's names.
 
 ### Removed
 

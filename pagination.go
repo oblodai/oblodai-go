@@ -211,8 +211,8 @@ func newList[T any](ctx context.Context, r Requester, call Call, o callOptions) 
 	// re-send was deduplicated.
 	if o.idempotencyKey != "" && err == nil && !route.Idempotent {
 		err = newConfigError(CodeIdempotencyUnsupported, fmt.Sprintf(
-			"%s %s is a list route and does not deduplicate by Idempotency-Key; drop WithIdempotencyKey from this call",
-			route.Method, route.Path), "idempotencyKey")
+			"%s %s is a list route and does not deduplicate by %s; drop WithIdempotencyKey from this call",
+			route.Method, route.Path, HeaderIdempotencyKey), "idempotencyKey")
 	}
 	o.idempotencyKey = ""
 

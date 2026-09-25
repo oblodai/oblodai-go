@@ -84,8 +84,8 @@ func WithHooks(hooks Hooks) Option {
 }
 
 // WithHeader adds a header to every request. Headers the client signs or owns are ignored,
-// compared case-insensitively: X-Public-Id, X-Signature, X-Timestamp, Idempotency-Key,
-// X-Admin-Token (sent by the client on onboarding routes only), Accept, User-Agent, Content-Type,
+// compared case-insensitively: HeaderPublicID, HeaderSignature, HeaderTimestamp,
+// HeaderIdempotencyKey, HeaderAdminToken (sent by the client on onboarding routes only), Accept, User-Agent, Content-Type,
 // Content-Length and Host — ReservedHeaders lists them. A name or value carrying a line break or
 // a non-ASCII byte is refused with sdk.bad_header on the first call that would send it.
 func WithHeader(name, value string) Option {

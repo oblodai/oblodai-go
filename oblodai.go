@@ -55,7 +55,7 @@ type RouteSpec struct {
 	Path string
 	// Auth is the credential the route's gate expects: AuthKey, AuthPublic or AuthOnboard.
 	Auth string
-	// Idempotent reports whether the core deduplicates the route by Idempotency-Key. The client
+	// Idempotent reports whether the core deduplicates the route by HeaderIdempotencyKey. The client
 	// generates a key for such routes and reuses it across retries.
 	Idempotent bool
 	// Safe reports a route without side effects: repeating it cannot duplicate anything.
