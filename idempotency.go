@@ -11,8 +11,8 @@ import (
 // idempotency.key_reused. The client generates a key once per logical call and reuses it on every
 // retry, so a timeout never turns into a double payout.
 
-// MaxIdempotencyKeyLength is the longest key the core accepts.
-const MaxIdempotencyKeyLength = 255
+// MaxIdempotencyKeyLength, the longest key the core accepts, is generated from the contract
+// (zz_generated_signing.go).
 
 // NewIdempotencyKey returns a random RFC 4122 v4 UUID from the platform CSPRNG. Generate one
 // yourself and pass it with WithIdempotencyKey when a retry has to survive a process restart.

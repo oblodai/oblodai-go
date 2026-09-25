@@ -34,7 +34,7 @@ const (
 	KindNotFound Kind = "not_found"
 	// KindConflict is HTTP 409: a state conflict.
 	KindConflict Kind = "conflict"
-	// KindIdempotencyConflict is HTTP 409 idempotency.key_reused: the same Idempotency-Key was used
+	// KindIdempotencyConflict is HTTP 409 idempotency.key_reused: the same idempotency key was used
 	// with a different request body.
 	KindIdempotencyConflict Kind = "idempotency_conflict"
 	// KindRateLimit is HTTP 429; RetryAfter is set.

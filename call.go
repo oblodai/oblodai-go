@@ -22,7 +22,7 @@ type Call struct {
 	// Body is the JSON body (POST routes); nil goes out as {}.
 	Body any
 	// IdempotencyKeyInBody: the route's body has its own idempotency_key field, so the
-	// WithIdempotencyKey option fills that field and no Idempotency-Key header is sent (the route
+	// WithIdempotencyKey option fills that field and no HeaderIdempotencyKey is sent (the route
 	// is not deduplicated by the header).
 	IdempotencyKeyInBody bool
 }
@@ -70,7 +70,7 @@ func decodeResult[T any](route RouteSpec, raw *rawResponse) (*T, *Error) {
 	if err != nil {
 		return nil, err
 	}
-	// The core replays a cached response by Idempotency-Key; when the original was too large to
+	// The core replays a cached response by HeaderIdempotencyKey; when the original was too large to
 	// cache it answers {ok, idempotent_replay: true, detail} instead of the object — surface that
 	// rather than handing back a half-empty struct.
 	var replay struct {

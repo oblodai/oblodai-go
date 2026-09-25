@@ -17,17 +17,17 @@
 //		w.WriteHeader(http.StatusOK)
 //	}
 //
-// Deliveries are signed as:
+// Deliveries are signed as (header names are generated from the contract, zz_generated_signing.go):
 //
-//	X-Webhook-Timestamp:       unix seconds
-//	X-Webhook-Signature:       hex(HMAC-SHA256(secret, "<ts>." + rawBody))
-//	X-Webhook-Signature-Prev:  the same with the previous secret — only during a rotation overlap
-//	X-Webhook-Event:           the event name, a key of EventKinds: invoice.paid, payout.sent, …
-//	X-Webhook-Id:              stable per delivery (identical across retries of THAT delivery)
-//	X-Webhook-Event-Id:        stable per STATE — the same for a resend of a state you handled,
-//	                           different as soon as the state differs: the key to deduplicate on
-//	X-Webhook-Event-Time:      unix seconds when the state change committed (order events by it)
-//	X-Webhook-Test:            "true" on a rehearsal delivery (Webhooks.Test, sandbox)
+//	HeaderTimestamp:      unix seconds
+//	HeaderSignature:      hex(HMAC-SHA256(secret, "<ts>." + rawBody))
+//	HeaderSignaturePrev:  the same with the previous secret — only during a rotation overlap
+//	HeaderEvent:          the event name, a key of EventKinds: invoice.paid, payout.sent, …
+//	HeaderID:             stable per delivery (identical across retries of THAT delivery)
+//	HeaderEventID:        stable per STATE — the same for a resend of a state you handled,
+//	                      different as soon as the state differs: the key to deduplicate on
+//	HeaderEventTime:      unix seconds when the state change committed (order events by it)
+//	HeaderTest:           "true" on a rehearsal delivery (Webhooks.Test, sandbox)
 //
 // Always verify over the RAW request bytes: a re-serialized parse will not match the signature.
 //
@@ -42,7 +42,7 @@
 // the contract (zz_generated_events.go), never listed by hand.
 //
 // Rehearsal deliveries are signed exactly like live ones and carry test: true in the body (and the
-// X-Webhook-Test header). Check Delivery.IsTest — or Event.IsTest — and never act on one as if
+// HeaderTest header). Check Delivery.IsTest — or Event.IsTest — and never act on one as if
 // money moved.
 package webhooks
 
@@ -59,20 +59,13 @@ import (
 	"github.com/oblodai/oblodai-go/v2"
 )
 
-// Delivery headers.
-const (
-	HeaderTimestamp     = "X-Webhook-Timestamp"
-	HeaderSignature     = "X-Webhook-Signature"
-	HeaderSignaturePrev = "X-Webhook-Signature-Prev"
-	HeaderEvent         = "X-Webhook-Event"
-	HeaderID            = "X-Webhook-Id"
-	HeaderEventID       = "X-Webhook-Event-Id"
-	HeaderEventTime     = "X-Webhook-Event-Time"
-	HeaderTest          = "X-Webhook-Test"
-)
+// HeaderTest marks a rehearsal delivery. The signed delivery headers (HeaderTimestamp and the rest)
+// are generated from the contract; this one is advisory and not part of it.
+const HeaderTest = "X-Webhook-Test"
 
-// DefaultTolerance is how far a delivery's timestamp may be from now before it is refused.
-const DefaultTolerance = 5 * time.Minute
+// DefaultTolerance is how far a delivery's timestamp may be from now before it is refused: the
+// contract's skew window.
+const DefaultTolerance = time.Duration(oblodai.SignatureSkewSeconds) * time.Second
 
 // MaxBodySize bounds what VerifyRequest reads from a request body: a webhook is a small JSON
 // document, and an unbounded read is a denial-of-service invitation.
@@ -102,20 +95,20 @@ type Options struct {
 type Delivery struct {
 	// Event is the parsed body.
 	Event *Event
-	// ID is X-Webhook-Id: stable across retries of the same DELIVERY. It is not enough to
+	// ID is HeaderID: stable across retries of the same DELIVERY. It is not enough to
 	// deduplicate on — a resend of a state you already handled is a new delivery with a new id.
 	ID string
-	// EventID is X-Webhook-Event-Id: the id of the STATE this delivery carries — the same for the
+	// EventID is HeaderEventID: the id of the STATE this delivery carries — the same for the
 	// original, its retries and every resend of that state, different as soon as the state differs.
 	// Keep the ids you have handled and skip repeats. Empty from a core that predates it.
 	EventID string
-	// EventType is X-Webhook-Event: the event name (invoice.paid, payout.sent, …; see EventKinds).
+	// EventType is HeaderEvent: the event name (invoice.paid, payout.sent, …; see EventKinds).
 	EventType oblodai.WebhookEventName
-	// EventTime is X-Webhook-Event-Time: when the state change committed. Zero when absent.
+	// EventTime is HeaderEventTime: when the state change committed. Zero when absent.
 	EventTime time.Time
-	// SentAt is X-Webhook-Timestamp: when this attempt was signed and sent.
+	// SentAt is HeaderTimestamp: when this attempt was signed and sent.
 	SentAt time.Time
-	// IsTest marks a rehearsal delivery (X-Webhook-Test or test: true in the body): signed like a
+	// IsTest marks a rehearsal delivery (HeaderTest or test: true in the body): signed like a
 	// live one, but no money moved.
 	IsTest bool
 	// Raw is the exact body that was verified.

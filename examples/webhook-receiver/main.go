@@ -81,7 +81,7 @@ func handler(options webhooks.Options, store *seen) http.HandlerFunc {
 	}
 }
 
-// alreadyHandled reports whether this delivery's state was handled before (by X-Webhook-Event-Id,
+// alreadyHandled reports whether this delivery's state was handled before (by webhooks.HeaderEventID,
 // else the delivery id), or carries an event older than the last one processed for its object.
 func (s *seen) alreadyHandled(delivery *webhooks.Delivery) bool {
 	s.mu.Lock()
