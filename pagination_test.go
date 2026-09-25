@@ -2,6 +2,8 @@ package oblodai
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -210,5 +212,41 @@ func TestAGETListPagesThroughTheQuery(t *testing.T) {
 	}
 	if api.at(1).body != "" {
 		t.Fatal("a GET list page carries no body")
+	}
+}
+
+// A POST list body is re-sent page after page; an integer in it wider than 2^53 must reach the
+// core exactly as the caller wrote it, not rounded through float64.
+func TestListBodyKeepsBigIntegers(t *testing.T) {
+	var paged string
+	for id, r := range Routes {
+		if r.ListKind == ListPaged && r.Method == "POST" {
+			paged = id
+			break
+		}
+	}
+	f := newFakeAPI(t, pageOf([]any{map[string]any{"uuid": "a"}}, 0, 1, 1))
+	body := json.RawMessage(`{"filter_id":9007199254740993,"limit":1}`)
+	if _, err := f.client().InvokeList(context.Background(), paged, InvokeInput{Body: body}).Page(); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.last().body; !strings.Contains(got, `"filter_id":9007199254740993`) {
+		t.Fatalf("the core saw %s", got)
+	}
+	if got := f.last().body; !strings.Contains(got, `"limit":1`) {
+		t.Fatalf("the caller's limit was lost: %s", got)
+	}
+}
+
+// setBodyField rewrites the body to add the idempotency key; the other fields go through
+// untouched, big integers included.
+func TestSetBodyFieldKeepsBigIntegers(t *testing.T) {
+	fields, err := setBodyField(json.RawMessage(`{"n":9007199254740993}`), "k", "v")
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, _ := json.Marshal(fields)
+	if !strings.Contains(string(out), `"n":9007199254740993`) {
+		t.Fatalf("got %s", out)
 	}
 }

@@ -1,6 +1,7 @@
 package oblodai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -280,7 +281,11 @@ func toFields(params any) (map[string]any, *Error) {
 	if string(encoded) == "null" {
 		return fields, nil
 	}
-	if err := json.Unmarshal(encoded, &fields); err != nil {
+	// UseNumber: an integer past 2^53 in the caller's body must be re-sent as written, not
+	// rounded through float64 on its way back out.
+	dec := json.NewDecoder(bytes.NewReader(encoded))
+	dec.UseNumber()
+	if err := dec.Decode(&fields); err != nil {
 		return fields, newConfigError(CodeBadConfig, "the list parameters must encode to a JSON object", "")
 	}
 	return fields, nil
@@ -288,6 +293,12 @@ func toFields(params any) (map[string]any, *Error) {
 
 func intField(fields map[string]any, name string) (int, bool) {
 	switch v := fields[name].(type) {
+	case json.Number:
+		n, err := v.Int64()
+		if err != nil {
+			return 0, false
+		}
+		return int(n), true
 	case float64:
 		return int(v), true
 	case int:
