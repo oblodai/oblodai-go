@@ -2870,8 +2870,8 @@ func (s *SandboxService) OnboardStore(ctx context.Context, id string, opts ...Re
 // request.too_deep, sandbox.amount_too_large, sandbox.bad_amount, sandbox.bad_asset,
 // sandbox.live_key.
 //
-// The idempotency-key call option fills the body field idempotency_key; no Idempotency-Key header
-// is sent.
+// WithIdempotencyKey fills the body field idempotency_key; no HeaderIdempotencyKey header is
+// sent.
 func (s *SandboxService) Faucet(ctx context.Context, params *FaucetRequest, opts ...RequestOption) (*FaucetResult, error) {
 	return doJSON[FaucetResult](ctx, s.r, Call{
 		Route:                Routes["sandboxFaucet"],
