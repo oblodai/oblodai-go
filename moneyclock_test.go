@@ -74,7 +74,7 @@ func TestSignedDocumentSendsItsLinkQuery(t *testing.T) {
 	}
 }
 
-// skewedAPI refuses every request whose X-Timestamp is more than 300 s from its own clock, the way
+// skewedAPI refuses every request whose HeaderTimestamp is more than SkewSeconds from its own clock, the way
 // the core does, and reports its time in the Date header.
 type skewedAPI struct {
 	serverTime time.Time
@@ -94,7 +94,7 @@ func (s *skewedAPI) handler(t *testing.T) http.HandlerFunc {
 		drift := seconds - s.serverTime.Unix()
 		w.Header().Set("Date", s.serverTime.UTC().Format(http.TimeFormat))
 		w.Header().Set("Content-Type", "application/json")
-		if drift > 300 || drift < -300 {
+		if drift > SkewSeconds || drift < -SkewSeconds {
 			s.mu.Lock()
 			s.rejections++
 			s.mu.Unlock()
