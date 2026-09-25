@@ -2,8 +2,11 @@ package oblodai_test
 
 import (
 	"io/fs"
+	"math/bits"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -72,16 +75,9 @@ func TestGeneratedSigningIsTheContracts(t *testing.T) {
 	}
 }
 
-// No header name of the signing protocol — request, webhook delivery or rehearsal — is spelled in a
-// hand-written source file: every one comes from the generated code.
-func TestNoSigningHeaderOutsideGenerated(t *testing.T) {
-	s := conformance.Signing(t)
-	hook := s["webhook"].(map[string]any)
-	var names []string
-	for _, n := range append(append(strs(t, s["headers"]), strs(t, hook["headers"])...), hook["test_header"].(string)) {
-		names = append(names, strings.ToLower(n))
-	}
-	var offenders []string
+// handWrittenGo calls fn with every hand-written, non-test Go source file of the module.
+func handWrittenGo(t *testing.T, fn func(path, text string)) {
+	t.Helper()
 	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -100,18 +96,60 @@ func TestNoSigningHeaderOutsideGenerated(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		text := strings.ToLower(string(data))
-		for _, n := range names {
-			if strings.Contains(text, n) {
-				offenders = append(offenders, path+": "+n)
-			}
-		}
+		fn(path, string(data))
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+// No header name of the signing protocol — request, webhook delivery or rehearsal — is spelled in a
+// hand-written source file: every one comes from the generated code.
+func TestNoSigningHeaderOutsideGenerated(t *testing.T) {
+	s := conformance.Signing(t)
+	hook := s["webhook"].(map[string]any)
+	var names []string
+	for _, n := range append(append(strs(t, s["headers"]), strs(t, hook["headers"])...), hook["test_header"].(string)) {
+		names = append(names, strings.ToLower(n))
+	}
+	var offenders []string
+	handWrittenGo(t, func(path, text string) {
+		text = strings.ToLower(text)
+		for _, n := range names {
+			if strings.Contains(text, n) {
+				offenders = append(offenders, path+": "+n)
+			}
+		}
+	})
 	if len(offenders) > 0 {
 		t.Errorf("signing header names spelled outside the generated code:\n%s", strings.Join(offenders, "\n"))
+	}
+}
+
+// No hand-written source file spells a literal of the body or idempotency-key limit — decimal, or
+// 1 << n for a power of two; digit separators (1_048_576) do not hide one. Both are read from the
+// generated code, so a changed limit reaches the SDK by regeneration alone. The skew is not scanned
+// for: its value is also an HTTP status class (< 300); TestGeneratedSigningIsTheContracts holds it.
+func TestNoSigningLimitOutsideGenerated(t *testing.T) {
+	var pats []*regexp.Regexp
+	for _, limit := range []int{oblodai.MaxBody, oblodai.MaxIdempotencyKeyLength} {
+		pats = append(pats, regexp.MustCompile(`(^|[^\w.])`+strconv.Itoa(limit)+`($|[^\w.])`))
+	}
+	if oblodai.MaxBody&(oblodai.MaxBody-1) == 0 {
+		pats = append(pats, regexp.MustCompile(`\b1\s*<<\s*`+strconv.Itoa(bits.TrailingZeros(uint(oblodai.MaxBody)))+`\b`))
+	}
+	separator := regexp.MustCompile(`(\d)_(\d)`)
+	var offenders []string
+	handWrittenGo(t, func(path, text string) {
+		text = separator.ReplaceAllString(text, "$1$2")
+		for _, p := range pats {
+			if p.MatchString(text) {
+				offenders = append(offenders, path+": "+p.String())
+			}
+		}
+	})
+	if len(offenders) > 0 {
+		t.Errorf("signing limits spelled outside the generated code:\n%s", strings.Join(offenders, "\n"))
 	}
 }
