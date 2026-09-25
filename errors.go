@@ -83,15 +83,19 @@ const (
 	// forged deliveries must not answer 401 to an authentic event it failed to parse.
 	CodeWebhookBadPayload = "webhook.bad_payload"
 
-	// CodeIdempotencyKeyReused is the core's 409 for a key replayed with a different body.
-	CodeIdempotencyKeyReused = "idempotency.key_reused"
+	// CodeIdempotencyKeyReused is the core's 409 for a key replayed with a different body. The
+	// value is the generated ErrorCodeIdempotencyKeyReused, so a code renamed in the contract
+	// fails the build instead of silently unmapping IdempotencyConflictError.
+	CodeIdempotencyKeyReused = string(ErrorCodeIdempotencyKeyReused)
 	// CodeWrongKeyKind is a legacy 403: it can only reach a merchant who still holds an old split
 	// key pair (oblodai_pk_… / oblodai_wk_…). One API key signs everything, so a current merchant
 	// never sees it — the constant is kept so an old integration can still branch on it.
 	CodeWrongKeyKind = "merchant.wrong_key_kind"
-	// CodeBadSignature and CodeBadTimestamp are the two 401s that can mean clock skew.
-	CodeBadSignature = "merchant.bad_signature"
-	CodeBadTimestamp = "auth.bad_timestamp"
+	// CodeBadSignature and CodeBadTimestamp are the two 401s that can mean clock skew. Both are
+	// the generated ErrorCode values, so a rename in the contract fails the build instead of
+	// silently switching the clock resync off.
+	CodeBadSignature = string(ErrorCodeMerchantBadSignature)
+	CodeBadTimestamp = string(ErrorCodeAuthBadTimestamp)
 )
 
 // MaxRetryAfterSeconds bounds what the client reports as RetryAfter, whether the hint came from
