@@ -255,6 +255,17 @@ func newList[T any](ctx context.Context, r Requester, call Call, o callOptions) 
 	}
 }
 
+// failedList builds a List whose every read returns err without ever calling fetch — for
+// InvokeList, when the operationId does not resolve to a route before there is one to fetch from.
+// It keeps the "nothing happens until read" contract: the error surfaces on Page/Items/Collect,
+// not on the call that built the List.
+func failedList[T any](ctx context.Context, err error) *List[T] {
+	return &List[T]{
+		ctx:   ctx,
+		fetch: func(context.Context, int, int) (*Page[T], error) { return nil, err },
+	}
+}
+
 // toFields renders a params struct as a field map so pagination can override limit and offset
 // without every list method having to expose them separately.
 func toFields(params any) (map[string]any, *Error) {
