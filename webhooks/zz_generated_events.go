@@ -18,7 +18,7 @@ const (
 // KnownKinds are the kinds this release models with a typed body, sorted.
 var KnownKinds = []string{KindConversion, KindPayment, KindPayout, KindWallet}
 
-// EventKinds maps each event name (X-Webhook-Event) to its kind.
+// EventKinds maps each event name (the value of HeaderEvent) to its kind.
 var EventKinds = map[string]string{
 	"conversion.completed":   KindConversion,
 	"conversion.refunded":    KindConversion,
