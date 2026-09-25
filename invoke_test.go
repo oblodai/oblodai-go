@@ -73,3 +73,22 @@ func TestInvokeListPages(t *testing.T) {
 		t.Fatalf("%v", got)
 	}
 }
+
+// A path parameter reaches the core as the caller wrote it, escaped exactly once — "?" and "#"
+// included: they must not start a query or a fragment of the URL that is sent and signed.
+func TestInvokePathParametersEscapedOnce(t *testing.T) {
+	for _, value := range []string{"a?b", "a#b", "a b", "%41", "a?b#c"} {
+		f := newFakeAPI(t, ok(map[string]any{"link_id": "l1"}))
+		if _, err := f.client().Invoke(context.Background(), "getPublicPaymentLink",
+			InvokeInput{PathParams: map[string]string{"id": value}}); err != nil {
+			t.Fatalf("%q: %v", value, err)
+		}
+		r := f.last()
+		if want := strings.Replace(Routes["getPublicPaymentLink"].Path, "{id}", value, 1); r.path != want {
+			t.Errorf("%q: the core saw path %q (raw %q), want %q", value, r.path, r.rawPath, want)
+		}
+		if r.rawQuery != "" {
+			t.Errorf("%q: a query leaked out of the path parameter: %q", value, r.rawQuery)
+		}
+	}
+}
