@@ -64,8 +64,14 @@ import (
 const DefaultTolerance = time.Duration(oblodai.SkewSeconds) * time.Second
 
 // MaxBodySize bounds what VerifyRequest reads from a request body: a webhook is a small JSON
-// document, and an unbounded read is a denial-of-service invitation. The bound is the contract's
-// own body limit (oblodai.MaxBody, x-oblodai-signing.max_body) rather than a number of this SDK's.
+// document, and an unbounded read is a denial-of-service invitation.
+//
+// The bound is x-oblodai-signing.max_body (oblodai.MaxBody) by a deliberate rule of the SDK family:
+// the contract states no webhook body limit of its own, and max_body — the core's limit on signed
+// merchant request bodies — is the only body bound it has. A delivery is far smaller than either
+// (1 MiB today), so the cap follows max_body if the core changes it rather than being a number of
+// this SDK's. Only SDKs that read a delivery from a stream themselves need such a cap; the others
+// verify the bytes the caller hands them and expose MaxBody only in their generated code.
 const MaxBodySize = oblodai.MaxBody
 
 // Options configures verification.

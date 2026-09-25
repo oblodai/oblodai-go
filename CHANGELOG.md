@@ -56,7 +56,9 @@ the same generator every Oblodai SDK uses. Breaking: see [MIGRATION-2.0.md](MIGR
   the new `SkewSeconds`, `MaxBody` and `SignatureAlgorithm`, and `MaxIdempotencyKeyLength`.
   `SignatureSkewSeconds` stays, as an alias of `SkewSeconds`; the other names and all values are
   unchanged. `webhooks.DefaultTolerance` is the contract's skew window (5 minutes today) and
-  `webhooks.MaxBodySize` its body limit (`MaxBody`). The conformance suite checks the request a
+  `webhooks.MaxBodySize` its body limit (`MaxBody`): the contract has no webhook body limit, so the
+  read cap of `VerifyRequest` follows `x-oblodai-signing.max_body`, the core's limit on signed
+  request bodies — the rule for every SDK that reads a delivery from a stream. The conformance suite checks the request a
   signed call sends — method, path and query, body and the headers under the contract's names.
 
 ### Removed
