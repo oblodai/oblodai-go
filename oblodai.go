@@ -64,6 +64,9 @@ type RouteSpec struct {
 	Bare bool
 	// ListKind is ListPaged for a paged list, else empty.
 	ListKind string
+	// BodyIdempotencyKey: the route's request body carries its own idempotency_key field, so
+	// WithIdempotencyKey fills that field and no HeaderIdempotencyKey is sent.
+	BodyIdempotencyKey bool
 }
 
 // Key is the route's request line, "POST /v1/payment".
