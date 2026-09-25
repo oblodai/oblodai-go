@@ -51,10 +51,13 @@ the same generator every Oblodai SDK uses. Breaking: see [MIGRATION-2.0.md](MIGR
 - The request-signing protocol is generated from the contract's `x-oblodai-signing`
   (`zz_generated_signing.go`, root and `webhooks`): the header names (`HeaderPublicID`,
   `HeaderSignature`, `HeaderTimestamp`, `HeaderIdempotencyKey`, `webhooks.HeaderTimestamp` and the
-  other delivery headers), the canonical strings `SignRequest`/`SignWebhook` sign, and
-  `SignatureSkewSeconds`, `MaxIdempotencyKeyLength` and the new `MaxRequestBodyBytes`. Names and
-  values are unchanged; `webhooks.DefaultTolerance` is the contract's skew window (5 minutes today).
-  The conformance suite checks the headers a signed request carries against the contract's names.
+  other delivery headers, and `webhooks.HeaderTest`, the rehearsal header, from
+  `webhook.test_header`), the canonical strings `SignRequest`/`SignWebhook` sign, and the limits:
+  the new `SkewSeconds`, `MaxBody` and `SignatureAlgorithm`, and `MaxIdempotencyKeyLength`.
+  `SignatureSkewSeconds` stays, as an alias of `SkewSeconds`; the other names and all values are
+  unchanged. `webhooks.DefaultTolerance` is the contract's skew window (5 minutes today) and
+  `webhooks.MaxBodySize` its body limit (`MaxBody`). The conformance suite checks the request a
+  signed call sends — method, path and query, body and the headers under the contract's names.
 
 ### Removed
 

@@ -93,7 +93,7 @@ func TestWithExtraHeadersAddsHeadersToOneCall(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{}), ok(map[string]any{}))
 	client := api.client()
 	ctx := context.Background()
-	if _, err := client.Account.GetBalance(ctx, WithExtraHeaders(map[string]string{"X-Trace": "t1", "X-Signature": "zz"})); err != nil {
+	if _, err := client.Account.GetBalance(ctx, WithExtraHeaders(map[string]string{"X-Trace": "t1", HeaderSignature: "zz"})); err != nil {
 		t.Fatal(err)
 	}
 	if got := api.at(0).header.Get("X-Trace"); got != "t1" {

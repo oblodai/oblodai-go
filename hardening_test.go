@@ -333,7 +333,7 @@ func TestAnInjectedLoggerNeverReceivesASecret(t *testing.T) {
 		t.Fatalf("Payments.GetInfo: %v", err)
 	}
 
-	raw := LogFields{"secret": "whsec_live", "x-signature": "deadbeef", "passcode": "1234", "route": "POST /v1/payment"}
+	raw := LogFields{"secret": "whsec_live", strings.ToLower(HeaderSignature): "deadbeef", "passcode": "1234", "route": "POST /v1/payment"}
 	client.transport.logger.Debug("probe", raw)
 	if raw["secret"] != "whsec_live" {
 		t.Fatal("redaction must not rewrite the caller's own map")

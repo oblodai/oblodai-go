@@ -125,8 +125,12 @@ const redactedPlaceholder = "[redacted]"
 // sensitive keys never reach a log line with their value intact.
 var sensitiveWords = []string{"secret", "signature", "passcode", "token", "authorization", "password"}
 
-// redact replaces the value of a sensitive-looking key.
+// redact replaces the value of a sensitive-looking key, and of the signed header by the contract's
+// name for it (HeaderSignature), whatever words that name holds.
 func redact(key string, value any) any {
+	if strings.EqualFold(key, HeaderSignature) {
+		return redactedPlaceholder
+	}
 	lower := strings.ToLower(key)
 	for _, word := range sensitiveWords {
 		if strings.Contains(lower, word) {

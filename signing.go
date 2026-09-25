@@ -10,12 +10,12 @@ import (
 // Request signing — the exact recipe the core verifies (crypto.SignRequest), generated from the
 // contract's x-oblodai-signing into zz_generated_signing.go: the header names (HeaderPublicID,
 // HeaderSignature, HeaderTimestamp, HeaderIdempotencyKey), the canonical string (canonicalRequest)
-// and the limits (SignatureSkewSeconds, MaxIdempotencyKeyLength). Today the canonical string is
+// and the limits (SkewSeconds, MaxBody, MaxIdempotencyKeyLength). Today the canonical string is
 //
 //	ts "\n" METHOD "\n" requestURI "\n" idempotencyKey "\n" body
 //	signature = hex(HMAC-SHA256(secret, canonical))
 //
-//   - ts is unix seconds; the core accepts +/-SignatureSkewSeconds of skew.
+//   - ts is unix seconds; the core accepts +/-SkewSeconds of skew.
 //   - requestURI is path plus raw query ("/v1/x?limit=1"), never the origin.
 //   - The idempotency slot is the EMPTY STRING when no idempotency key header is sent — empty,
 //     not absent: the separator is always there.
@@ -27,6 +27,10 @@ import (
 //
 // These functions are pure: no clock, no I/O. The core's vectors (x-oblodai-signing of the
 // contract) are checked by the shared conformance suite in conformance_test.go.
+
+// SignatureSkewSeconds is the 1.x name of SkewSeconds (x-oblodai-signing.skew_seconds): how far the
+// core lets a request timestamp drift from its own clock.
+const SignatureSkewSeconds = SkewSeconds
 
 // HeaderAdminToken gates merchant provisioning on a self-hosted gateway. It is not part of request
 // signing and not in the contract's x-oblodai-signing.

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Injectable clock for signing. The core rejects timestamps more than +/-SignatureSkewSeconds from its own time,
+// Injectable clock for signing. The core rejects timestamps more than +/-SkewSeconds from its own time,
 // so a host with a drifting clock would get merchant.bad_signature on every call. The transport
 // learns the server's time from the Date header of a signature-failure response, re-signs once,
 // and keeps the offset only if that re-signed attempt got past authentication.

@@ -59,17 +59,14 @@ import (
 	"github.com/oblodai/oblodai-go/v2"
 )
 
-// HeaderTest marks a rehearsal delivery. The signed delivery headers (HeaderTimestamp and the rest)
-// are generated from the contract; this one is advisory and not part of it.
-const HeaderTest = "X-Webhook-Test"
-
 // DefaultTolerance is how far a delivery's timestamp may be from now before it is refused: the
 // contract's skew window.
-const DefaultTolerance = time.Duration(oblodai.SignatureSkewSeconds) * time.Second
+const DefaultTolerance = time.Duration(oblodai.SkewSeconds) * time.Second
 
 // MaxBodySize bounds what VerifyRequest reads from a request body: a webhook is a small JSON
-// document, and an unbounded read is a denial-of-service invitation.
-const MaxBodySize = 1 << 20
+// document, and an unbounded read is a denial-of-service invitation. The bound is the contract's
+// own body limit (oblodai.MaxBody, x-oblodai-signing.max_body) rather than a number of this SDK's.
+const MaxBodySize = oblodai.MaxBody
 
 // Options configures verification.
 type Options struct {

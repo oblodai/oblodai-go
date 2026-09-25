@@ -50,7 +50,7 @@ const (
 
 // skewCorrectionThreshold is how far the measured server offset must be from the one a request was
 // signed with before re-signing is worth an extra round trip (half the core's acceptance window).
-const skewCorrectionThreshold = (SignatureSkewSeconds / 2) * time.Second
+const skewCorrectionThreshold = (SkewSeconds / 2) * time.Second
 
 // rawResponse is one HTTP answer, fully read.
 type rawResponse struct {

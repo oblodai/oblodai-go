@@ -179,7 +179,7 @@ func TestLoggerRedactsSecrets(t *testing.T) {
 	if got := redact("secret", "s3cr3t"); got != "[redacted]" {
 		t.Fatalf("a secret reached the log: %v", got)
 	}
-	if got := redact("x-signature", "abcd"); got != "[redacted]" {
+	if got := redact(HeaderSignature, "abcd"); got != "[redacted]" {
 		t.Fatalf("a signature reached the log: %v", got)
 	}
 	if got := redact("route", "POST /v1/payment"); got != "POST /v1/payment" {
