@@ -671,9 +671,12 @@ func (s *PaymentsService) GetAmlLinks(ctx context.Context, params *AMLLinksReque
 //
 // For a payment in status `wrong_amount` (underpaid, expired) the merchant explicitly decides what
 // happens to the money: `action:"accept"` — keep the partial payment as settlement (cancels the
-// auto-refund), `action:"refund"` — return what was received to the payer now (address/network
-// default to the recorded payer address). It moves money — it is signed with your API key like
-// everything else: a merchant has one key and it has full access.
+// auto-refund), `action:"refund"` — return it to the payer now (address/network default to the
+// recorded payer address). The refund is the payment's `refundable` amount, the same as POST
+// /v1/payment/refund without `amount`: what was received minus the payer's network surcharge, and
+// minus our commission when the store's refund fee setting puts it on the customer; it fails with
+// `refund.exceeds_refundable` if the payment was already partly refunded. It moves money — it is
+// signed with your API key like everything else: a merchant has one key and it has full access.
 //
 // With a CLI key: only the store owner's own key (role Owner); other team members use the
 // dashboard, where each such operation is confirmed with 2FA.
@@ -821,9 +824,14 @@ type RefundsService struct{ r Requester }
 // (`refund.no_address`): ask the buyer for an address and pass it explicitly. The payment's
 // `uuid`/`order_id` is required. By default the remaining refundable amount is refunded; you may
 // specify a partial `amount`. All refunds of a payment together cannot exceed its `refundable`
-// amount: what was paid minus the payer's network surcharge (minus our commission when the store's
-// refund fee setting puts it on the customer), never more than was credited to your balance for it
-// — POST /v1/payment/refund/calculate shows these numbers without refunding.
+// amount (`refund.exceeds_refundable`), and the store's refund fee setting (POST
+// /v1/payout/refund-fee-config/get) decides it. The payer's network surcharge is never refunded.
+// When the customer bears our commission, `refundable` is what was paid minus the surcharge and the
+// commission — what the payment credited to your balance. When you bear it, `refundable` is what
+// was paid minus the surcharge: the commission is paid from your balance, so the refunds debit more
+// than the payment credited, and a balance too small for that fails with
+// `payout.insufficient_funds`. POST /v1/payment/refund/calculate shows these numbers without
+// refunding.
 //
 // Idempotent on `(payment, address, amount)`. Refunds to any address are approved automatically.
 // The only exception is a card payment via an on-ramp: a refund TO THE RECORDED PAYER ADDRESS of
@@ -881,14 +889,18 @@ func (s *RefundsService) Payment(ctx context.Context, params *RefundRequest, opt
 // `amount`, `currency`, `network`, `address` (and whether it is the recorded payer's) — and the
 // numbers behind it: `amount_paid`, the payer's network `surcharge` (never refunded from your
 // balance), the `commission` withheld and who bears it (`commission_bearer`, the store's refund fee
-// setting), `credited`, the `refundable` ceiling for all refunds of the payment together, what is
-// already `refunded` and what `remaining` can still go. With `from_currency` it also estimates the
-// USDT the funding conversion would spend (`from_amount`).
+// setting: with `merchant` nothing is withheld and you pay the commission from your balance),
+// `credited`, the `refundable` ceiling for all refunds of the payment together, what is already
+// `refunded` and what `remaining` can still go. With `from_currency` it also estimates the USDT the
+// funding conversion would spend (`from_amount`).
 //
 // Runs the same checks as the refund itself and fails with the same error the refund would
-// (`refund.exceeds_refundable`, `refund.dust`, `refund.no_address`, `refund.nothing_to_refund`, …)
-// — except the destination address screening, which runs when the refund is made. Reserves and
-// sends nothing; safe to retry.
+// (`refund.exceeds_refundable`, `refund.dust`, `refund.no_address`, `refund.nothing_to_refund`, …),
+// including `payout.insufficient_funds` when your available balance does not cover the refund —
+// which, when you bear the commission, can be more than the payment credited. Not checked: the
+// destination address screening, which runs when the refund is made, and deposits that are not yet
+// final, which the refund holds back (`payout.funds_maturing`). Reserves and sends nothing; safe to
+// retry.
 //
 // Requires role: Viewer when called with a CLI key.
 //
@@ -897,14 +909,14 @@ func (s *RefundsService) Payment(ctx context.Context, params *RefundRequest, opt
 // merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
 // merchant.unknown_key, onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found,
 // payout.above_limit, payout.address_network_mismatch, payout.bad_address, payout.bad_memo,
-// payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_no_rate,
-// payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap, payout.freeze_unknown,
-// payout.frozen, payout.memo_conflict, payout.memo_required, payout.memo_too_long,
-// payout.merchant_frozen, rates.deviation, rates.no_source, rates.non_positive, rates.stale_rate,
-// refund.bad_amount, refund.chain_ambiguous, refund.destination_internal, refund.dust,
-// refund.exceeds_refundable, refund.fence_check, refund.from_currency_personal_account,
-// refund.from_currency_unsupported, refund.network_required, refund.no_address,
-// refund.nothing_to_refund, refund.omnibus_destination, refund.paid_internally,
+// payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_insufficient,
+// payout.convert_no_rate, payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap,
+// payout.freeze_unknown, payout.frozen, payout.insufficient_funds, payout.memo_conflict,
+// payout.memo_required, payout.memo_too_long, payout.merchant_frozen, rates.deviation,
+// rates.no_source, rates.non_positive, rates.stale_rate, refund.bad_amount, refund.chain_ambiguous,
+// refund.destination_internal, refund.dust, refund.exceeds_refundable, refund.fence_check,
+// refund.from_currency_personal_account, refund.from_currency_unsupported, refund.network_required,
+// refund.no_address, refund.nothing_to_refund, refund.omnibus_destination, refund.paid_internally,
 // refund.unsupported_network, request.bad_json, request.body_read, request.control_char,
 // request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
 // request.too_deep, sandbox.convert_not_available, treasury.no_ccy_map, wallet.static_not_found.
@@ -2379,8 +2391,14 @@ func (s *SettingsService) GetPayoutFeeConfig(ctx context.Context, opts ...Reques
 
 // SetRefundFeeConfig — Who pays our fee on a refund (POST /v1/payout/refund-fee-config/set).
 //
-// `fee_on_customer: true` — on a refund our fee is borne by the customer (refund minus the fee);
-// false — borne by the merchant.
+// Who bears our commission when a payment is refunded: POST /v1/payment/refund (and its dry run
+// /v1/payment/refund/calculate), the refund of POST /v1/payment/resolve and the automatic refunds
+// of underpayments and overpayments. The payer's network surcharge is never refunded.
+// `fee_on_customer: true` — the customer: the commission is deducted from the refund, so refunding
+// a whole payment returns what it credited to your balance. `false` — you: the commission is not
+// deducted and is paid from your balance, on top of what the payment credited. Without this setting
+// your refunds follow the gateway default (the get method shows it), while the automatic refunds
+// deduct the commission.
 //
 // Requires role: Finance when called with a CLI key.
 //
@@ -2397,6 +2415,9 @@ func (s *SettingsService) SetRefundFeeConfig(ctx context.Context, params *SetRef
 }
 
 // GetRefundFeeConfig — Read the refund fee setting (POST /v1/payout/refund-fee-config/get).
+//
+// The effective `fee_on_customer` for your refunds: your setting, or the gateway default when
+// `configured` is false (the automatic refunds then withhold the commission).
 //
 // Requires role: Viewer when called with a CLI key.
 //
