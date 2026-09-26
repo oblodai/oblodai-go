@@ -13,7 +13,7 @@ import (
 //
 //	success : {"state": 0, "result": <payload>}
 //	list    : result = {"items": [...], "paginate": {total, per_page, offset, has_pages}}
-//	error   : {"error": {code, message, field?, retryable, retry_after?, request_id?}}
+//	error   : {"error": {code, message, field?, details?, retryable, retry_after?, request_id?}}
 //
 // Every non-bare route uses these; bare routes (PDF and CSV documents) bypass this file.
 
@@ -70,7 +70,7 @@ func decodeEnvelope(httpStatus int, body []byte, ctx decodeContext) (json.RawMes
 		// synthetic error the HTTP status describes.
 		detail.Code = "internal"
 		detail.Message = noEnvelope(httpStatus, body)
-		detail.Retryable, detail.RetryAfter, detail.Field = nil, nil, ""
+		detail.Retryable, detail.RetryAfter, detail.Field, detail.Details = nil, nil, "", nil
 		return nil, apiErrorFrom(httpStatus, detail, body, true, retryAfterHeader)
 	}
 	if httpStatus >= 400 {
@@ -96,6 +96,7 @@ func decodeErrorDetail(raw json.RawMessage, httpStatus int) (errorDetail, bool) 
 		Message:   stringField(fields["message"]),
 		Field:     stringField(fields["field"]),
 		RequestID: stringField(fields["request_id"]),
+		Details:   detailsField(fields["details"]),
 	}
 	// Only a literal true/false is the core speaking; anything else leaves the decision to the
 	// status, where a wrong guess is at worst a missed retry rather than a repeated payout.
@@ -125,6 +126,27 @@ func stringField(raw json.RawMessage) string {
 		return ""
 	}
 	return value
+}
+
+// detailsField returns the string values of the details object; nil when it is absent, not an
+// object or has no string value. A value of another type is skipped, not fatal.
+func detailsField(raw json.RawMessage) map[string]string {
+	var fields map[string]json.RawMessage
+	if len(raw) == 0 || json.Unmarshal(raw, &fields) != nil {
+		return nil
+	}
+	var out map[string]string
+	for k, v := range fields {
+		var value string
+		if string(v) == "null" || json.Unmarshal(v, &value) != nil {
+			continue
+		}
+		if out == nil {
+			out = map[string]string{}
+		}
+		out[k] = value
+	}
+	return out
 }
 
 // retryAfterSeconds reads retry_after as an integer, a float or a numeric string, clamped to

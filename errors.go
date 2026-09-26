@@ -8,7 +8,7 @@ import (
 
 // Every failure this package reports is an *Error, mirroring the core's error envelope:
 //
-//	{"error": {"code", "message", "field"?, "retryable", "retry_after"?, "request_id"?}}
+//	{"error": {"code", "message", "field"?, "details"?, "retryable", "retry_after"?, "request_id"?}}
 //
 // Retryable is authoritative when the core wrote the envelope: it is the core's own classification
 // of the failure, and the client has already retried what it was safe to retry. A response without
@@ -137,6 +137,9 @@ type Error struct {
 	RequestID string
 	// Field is the request field a validation error refers to.
 	Field string
+	// Details are machine-readable facts about the refusal, with keys documented by its Code (for
+	// example cli.permission_denied carries required_role and role). Nil when the core sent none.
+	Details map[string]string
 	// Synthetic reports that no core envelope was present: the answer came from something in front
 	// of the core, so the core may or may not have performed the operation.
 	Synthetic bool
@@ -192,17 +195,18 @@ func (e *Error) Body() []byte {
 // MarshalJSON keeps the fields a structured logger wants and drops the raw body.
 func (e *Error) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Kind       Kind   `json:"kind"`
-		Code       string `json:"code"`
-		Message    string `json:"message"`
-		HTTPStatus int    `json:"httpStatus"`
-		Retryable  bool   `json:"retryable"`
-		RetryAfter *int   `json:"retryAfter,omitempty"`
-		RequestID  string `json:"requestId,omitempty"`
-		Field      string `json:"field,omitempty"`
-		Synthetic  bool   `json:"synthetic"`
-		LastCode   string `json:"lastCode,omitempty"`
-	}{e.Kind, e.Code, e.Message, e.HTTPStatus, e.Retryable, e.RetryAfter, e.RequestID, e.Field, e.Synthetic, e.LastCode})
+		Kind       Kind              `json:"kind"`
+		Code       string            `json:"code"`
+		Message    string            `json:"message"`
+		HTTPStatus int               `json:"httpStatus"`
+		Retryable  bool              `json:"retryable"`
+		RetryAfter *int              `json:"retryAfter,omitempty"`
+		RequestID  string            `json:"requestId,omitempty"`
+		Field      string            `json:"field,omitempty"`
+		Details    map[string]string `json:"details,omitempty"`
+		Synthetic  bool              `json:"synthetic"`
+		LastCode   string            `json:"lastCode,omitempty"`
+	}{e.Kind, e.Code, e.Message, e.HTTPStatus, e.Retryable, e.RetryAfter, e.RequestID, e.Field, e.Details, e.Synthetic, e.LastCode})
 }
 
 // newConfigError is raised before any request leaves the process.
@@ -240,6 +244,7 @@ func newDeadlineError(message string, last *Error) *Error {
 		e.RetryAfter = last.RetryAfter
 		e.RequestID = last.RequestID
 		e.Field = last.Field
+		e.Details = last.Details
 		e.Synthetic = last.Synthetic
 	}
 	return e
@@ -278,6 +283,7 @@ type errorDetail struct {
 	Code       string `json:"code"`
 	Message    string `json:"message"`
 	Field      string `json:"field"`
+	Details    map[string]string
 	Retryable  *bool  `json:"retryable"`
 	RetryAfter *int   `json:"retry_after"`
 	RequestID  string `json:"request_id"`
@@ -322,6 +328,7 @@ func apiErrorFrom(httpStatus int, detail errorDetail, raw []byte, synthetic bool
 		RetryAfter: retryAfter,
 		RequestID:  detail.RequestID,
 		Field:      detail.Field,
+		Details:    detail.Details,
 		Synthetic:  synthetic,
 		raw:        raw,
 	}
