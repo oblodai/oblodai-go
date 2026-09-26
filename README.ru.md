@@ -183,7 +183,7 @@ fmt.Println(deposit.Txid, deposit.Confirmations)
 `Pager()` идёт явным курсором, `Collect(max)` собирает элементы.
 
 ```go
-for payment, err := range client.Payments.ListHistory(ctx, &oblodai.HistoryRequest{Status: oblodai.Ptr("paid")}).Items() {
+for payment, err := range client.Payments.ListHistory(ctx, &oblodai.PaymentHistoryRequest{Status: oblodai.Ptr("paid")}).Items() {
 	if err != nil {
 		return err
 	}

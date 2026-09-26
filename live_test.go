@@ -107,7 +107,7 @@ func TestLiveSandboxJourney(t *testing.T) {
 			t.Fatalf("Payments.GetInfo by order_id: %v", err)
 		}
 		found := false
-		for payment, err := range client.Payments.ListHistory(ctx, &HistoryRequest{Limit: Ptr[int64](5)}).Items() {
+		for payment, err := range client.Payments.ListHistory(ctx, &PaymentHistoryRequest{Limit: Ptr[int64](5)}).Items() {
 			if err != nil {
 				t.Fatalf("Payments.ListHistory: %v", err)
 			}

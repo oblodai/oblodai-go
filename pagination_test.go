@@ -19,7 +19,7 @@ func TestPageReturnsTheFirstPageAndPagerWalksThemAll(t *testing.T) {
 	ctx := context.Background()
 	limit := int64(2)
 
-	first, err := client.Payments.ListHistory(ctx, &HistoryRequest{Limit: &limit}).Page()
+	first, err := client.Payments.ListHistory(ctx, &PaymentHistoryRequest{Limit: &limit}).Page()
 	if err != nil {
 		t.Fatalf("Payments.ListHistory: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestPageReturnsTheFirstPageAndPagerWalksThemAll(t *testing.T) {
 	}
 
 	var seen []string
-	pager := client.Payments.ListHistory(ctx, &HistoryRequest{Limit: &limit}).Pager()
+	pager := client.Payments.ListHistory(ctx, &PaymentHistoryRequest{Limit: &limit}).Pager()
 	for pager.Next() {
 		seen = append(seen, pager.Item().UUID)
 	}
@@ -179,7 +179,7 @@ func TestByPageRangesOverPagesOneRequestEach(t *testing.T) {
 		pageOf([]any{item("c")}, 2, 3, 2),
 	)
 	var sizes []int
-	for page, err := range api.client().Payments.ListHistory(context.Background(), &HistoryRequest{Limit: Ptr(int64(2))}).ByPage() {
+	for page, err := range api.client().Payments.ListHistory(context.Background(), &PaymentHistoryRequest{Limit: Ptr(int64(2))}).ByPage() {
 		if err != nil {
 			t.Fatalf("ByPage: %v", err)
 		}

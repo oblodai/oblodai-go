@@ -182,7 +182,7 @@ item, `ByPage()` over every page (one request each), `Page()` fetches the first 
 walks with an explicit cursor, `Collect(max)` gathers the items.
 
 ```go
-for payment, err := range client.Payments.ListHistory(ctx, &oblodai.HistoryRequest{Status: oblodai.Ptr("paid")}).Items() {
+for payment, err := range client.Payments.ListHistory(ctx, &oblodai.PaymentHistoryRequest{Status: oblodai.Ptr("paid")}).Items() {
 	if err != nil {
 		return err
 	}

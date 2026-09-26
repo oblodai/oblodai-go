@@ -98,7 +98,7 @@ func snippetSandbox(ctx context.Context, testPublicID, testSecret string) {
 
 func snippetLists(ctx context.Context, client *oblodai.Client) error {
 	// snippet:lists
-	for payment, err := range client.Payments.ListHistory(ctx, &oblodai.HistoryRequest{Status: oblodai.Ptr("paid")}).Items() {
+	for payment, err := range client.Payments.ListHistory(ctx, &oblodai.PaymentHistoryRequest{Status: oblodai.Ptr("paid")}).Items() {
 		if err != nil {
 			return err
 		}
