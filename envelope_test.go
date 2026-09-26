@@ -3,6 +3,7 @@ package oblodai
 import (
 	"context"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -105,6 +106,32 @@ func TestErrorEnvelopeIsDecodedFieldByField(t *testing.T) {
 				t.Errorf("retryAfter = %d, want %d", *err.RetryAfter, *tc.retryAfter)
 			}
 		})
+	}
+}
+
+// details carries the facts a code documents (cli.permission_denied: required_role, role). Only
+// string values are kept; a details of the wrong shape is dropped without costing the error.
+func TestErrorDetailsAreStringValuesOnly(t *testing.T) {
+	cases := map[string]map[string]string{
+		`{"required_role":"finance","role":"viewer"}`: {"required_role": "finance", "role": "viewer"},
+		`{"role":"viewer","n":3,"x":null}`:            {"role": "viewer"},
+		`["finance"]`:                                 nil,
+		`"finance"`:                                   nil,
+		`{}`:                                          nil,
+	}
+	for details, want := range cases {
+		body := `{"error":{"code":"cli.permission_denied","message":"no","retryable":false,"details":` + details + `}}`
+		_, err := decodeEnvelope(403, []byte(body), decodeContext{now: time.Now()})
+		if err == nil || err.Code != "cli.permission_denied" || err.Synthetic {
+			t.Fatalf("%s: want the core's error, got %+v", details, err)
+		}
+		if !reflect.DeepEqual(err.Details, want) {
+			t.Errorf("%s: details = %v, want %v", details, err.Details, want)
+		}
+	}
+	_, err := decodeEnvelope(403, []byte(`{"error":{"code":"cli.permission_denied","message":"no"}}`), decodeContext{now: time.Now()})
+	if err.Details != nil {
+		t.Errorf("details without the key = %v, want nil", err.Details)
 	}
 }
 
