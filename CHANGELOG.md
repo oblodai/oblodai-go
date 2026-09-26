@@ -8,11 +8,13 @@ Notable changes to this package. The format follows
 
 ### Added
 
-- `Client.CLILogin` — `Start`, `Poll`, `LogoutCLI`: the browser login of the `oblodai` CLI (OAuth
+- `Client.CLILogin` — `Start`, `Poll`, `Logout`: the browser login of the `oblodai` CLI (OAuth
   2.0 device authorization) and logout of its key.
 - `Error.Details`: the machine-readable facts of an error envelope's new `details` object (for
   example `cli.permission_denied` carries `required_role` and `role`); only string values are kept.
-- Every method's documentation names the minimum team role a CLI key needs to call it.
+- Every method's documentation names the minimum team role a CLI key needs to call it;
+  money-out operations (payouts, refunds, transfers, auto-withdrawal, split rules) take only the
+  store owner's own CLI key.
 - `Client.Invoke` / `InvokeList` / `InvokeFile` — call an operation by operationId (used by the
   oblodai CLI).
 

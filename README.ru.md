@@ -166,7 +166,7 @@ fmt.Println(deposit.Txid, deposit.Confirmations)
 | `Documents` | `GetSigned` · `GetBalance` · `GetFees` · `GetLedger` · `GetSplit` · `GetPayoutLinkCheque` · `GetStatement` · `GetBatch` · `GetPaymentLink` · `GetWalletStatement` · `GetReferrals` · `CreateJob` · `GetJob` · `DownloadJobFile` |
 | `Checkout` | `GetSourceOfFundsForm` · `SubmitSourceOfFunds` · `GetPublicPaymentLink` · `PaymentLink` · `ListCurrencies` · `Get` · `SelectMethod` · `StartOnramp` · `GetOnramp` · `GetQR` |
 | `Sandbox` | `OnboardStore` · `Faucet` · `SimulateDeposit` · `Reset` · `ListWebhooks` · `ReplayWebhook` |
-| `CLILogin` | `Start` · `Poll` · `LogoutCLI` |
+| `CLILogin` | `Start` · `Poll` · `Logout` |
 <!-- /sdkgen:methods -->
 
 Имя метода — `operationId` контракта без имени ресурса, в стиле Go; список имён зафиксирован в

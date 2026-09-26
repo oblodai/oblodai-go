@@ -2130,7 +2130,9 @@ type ErrorError struct {
 	// unknown code.
 	Code string `json:"code"`
 	// Machine-readable facts about this refusal, with keys documented by its code (e.g.
-	// `cli.permission_denied` carries `required_role` and `role`). Absent when the code has none.
+	// `cli.permission_denied` carries `required_role`, `role` and, for a money-out operation,
+	// `reason`; the keys and values are listed in `x-oblodai-permissions.denied`). Absent when the
+	// code has none.
 	Details map[string]string `json:"details,omitempty"`
 	// The name of the request field the error refers to, spelled as sent. Absent if the error is not
 	// about a specific field.

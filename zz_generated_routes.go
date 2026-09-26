@@ -1346,8 +1346,8 @@ var Routes = map[string]RouteSpec{
 		ListKind:           "",
 		BodyIdempotencyKey: false,
 	},
-	"logoutCli": {
-		OperationID:        "logoutCli",
+	"logoutCliLogin": {
+		OperationID:        "logoutCliLogin",
 		Method:             "POST",
 		Path:               "/v1/cli/logout",
 		Auth:               "key",

@@ -166,7 +166,7 @@ The whole merchant surface, `client.<Service>.<Method>` (the table is generated 
 | `Documents` | `GetSigned` · `GetBalance` · `GetFees` · `GetLedger` · `GetSplit` · `GetPayoutLinkCheque` · `GetStatement` · `GetBatch` · `GetPaymentLink` · `GetWalletStatement` · `GetReferrals` · `CreateJob` · `GetJob` · `DownloadJobFile` |
 | `Checkout` | `GetSourceOfFundsForm` · `SubmitSourceOfFunds` · `GetPublicPaymentLink` · `PaymentLink` · `ListCurrencies` · `Get` · `SelectMethod` · `StartOnramp` · `GetOnramp` · `GetQR` |
 | `Sandbox` | `OnboardStore` · `Faucet` · `SimulateDeposit` · `Reset` · `ListWebhooks` · `ReplayWebhook` |
-| `CLILogin` | `Start` · `Poll` · `LogoutCLI` |
+| `CLILogin` | `Start` · `Poll` · `Logout` |
 <!-- /sdkgen:methods -->
 
 Method names follow the contract's `operationId` without the resource name, in Go style; the
