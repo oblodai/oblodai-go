@@ -14,38 +14,43 @@ import (
 // Resources holds one service per API resource. The hand-written client embeds it, so a call reads
 // client.Payments.Create(ctx, params).
 type Resources struct {
-	// Payments — Приём оплаты: создать счёт, узнать статус, история, QR.
+	// Payments — Accepting payments: create an invoice, check its status, history, QR code.
 	Payments *PaymentsService
-	// PaymentLinks — Многоразовые ссылки на оплату: одна ссылка — много платежей.
+	// PaymentLinks — Reusable payment links: one link, many payments.
 	PaymentLinks *PaymentLinksService
-	// Refunds — Вернуть деньги плательщику (списание с вашего баланса).
+	// Refunds — Return money to the payer (debited from your balance).
 	Refunds *RefundsService
-	// Payouts — Отправить деньги на адрес (списание с вашего баланса).
+	// Payouts — Send money to an address (debited from your balance).
 	Payouts *PayoutsService
-	// PayoutLinks — Выплата без адреса: получатель сам вводит адрес по секретной ссылке.
+	// PayoutLinks — Payouts without an address: the recipient enters their own address via a secret
+	// link.
 	PayoutLinks *PayoutLinksService
-	// Batches — Асинхронные батчи: платежи, возвраты, выплаты, переводы пачками.
+	// Batches — Asynchronous batches of payments, refunds, payouts and transfers.
 	Batches *BatchesService
-	// Splits — Автоматическое разделение поступлений между получателями.
+	// Splits — Automatic splitting of incoming funds between recipients.
 	Splits *SplitsService
-	// Wallets — Постоянные (статические) адреса пополнения под клиента.
+	// Wallets — Permanent (static) deposit addresses assigned to a customer.
 	Wallets *WalletsService
-	// Account — Балансы мерчанта и курсы обмена.
+	// Account — Merchant balances and exchange rates.
 	Account *AccountService
-	// Webhooks — Регистрация endpoint'а для коллбэков, тест и переотправка.
+	// Webhooks — Registering the callback endpoint, test deliveries and resends.
 	Webhooks *WebhooksService
-	// Settings — Настройки магазина: допуск сумм, скидки, автовозвраты, валюты, авто-вывод.
+	// Settings — Store settings: amount tolerance, discounts, auto-refunds, currencies,
+	// auto-withdrawal.
 	Settings *SettingsService
-	// APIAllowlist — Ротация ключей и IP-allowlist API.
+	// APIAllowlist — Key rotation and the API IP allowlist.
 	APIAllowlist *APIAllowlistService
-	// Referrals — Реферальная программа.
+	// Referrals — Referral program.
 	Referrals *ReferralsService
-	// Documents — PDF-документы операций: чеки, счета, отчёты за период.
+	// Documents — PDF documents for operations: receipts, invoices, period reports.
 	Documents *DocumentsService
-	// Checkout — Эндпоинты для страницы оплаты — работают без секрета.
+	// Checkout — Endpoints for the payment page — they work without the secret.
 	Checkout *CheckoutService
-	// Sandbox — Dev-store: тестовые деньги, симуляция депозитов и повтор вебхуков.
+	// Sandbox — Dev store: test money, simulated deposits and webhook replay.
 	Sandbox *SandboxService
+	// CLILogin — Browser login of the `oblodai` CLI (OAuth 2.0 device authorization, RFC 8628) and
+	// logout of its key.
+	CLILogin *CLILoginService
 }
 
 // newResources builds the services over the runtime's requester.
@@ -67,6 +72,7 @@ func newResources(r Requester) Resources {
 		Documents:    &DocumentsService{r: r},
 		Checkout:     &CheckoutService{r: r},
 		Sandbox:      &SandboxService{r: r},
+		CLILogin:     &CLILoginService{r: r},
 	}
 }
 
@@ -80,11 +86,11 @@ func genBody[T any](params *T) any {
 
 // GetSignedDocumentParams holds the query parameters of DocumentsService.GetSigned; nil sends none.
 type GetSignedDocumentParams struct {
-	// Срок действия ссылки (unix-время) из document_url.
+	// The link expiry (Unix time) from document_url.
 	Exp int64
-	// Подпись ссылки из document_url.
+	// The link signature from document_url.
 	Sig string
-	// Язык документа (по умолчанию en); список — document.Languages.
+	// Document language (en by default); the list is document.Languages.
 	Lang *string
 }
 
@@ -103,7 +109,7 @@ func (p *GetSignedDocumentParams) urlValues() url.Values {
 
 // GetBalanceDocumentParams holds the query parameters of DocumentsService.GetBalance; nil sends none.
 type GetBalanceDocumentParams struct {
-	// Язык документа (по умолчанию en); список — document.Languages.
+	// Document language (en by default); the list is document.Languages.
 	Lang *string
 }
 
@@ -120,13 +126,13 @@ func (p *GetBalanceDocumentParams) urlValues() url.Values {
 
 // GetFeesDocumentParams holds the query parameters of DocumentsService.GetFees; nil sends none.
 type GetFeesDocumentParams struct {
-	// Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
+	// Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
 	From *string
-	// Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
+	// End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
 	To *string
-	// Язык документа (по умолчанию en); список — document.Languages.
+	// Document language (en by default); the list is document.Languages.
 	Lang *string
-	// Формат файла: pdf (по умолчанию) или csv.
+	// File format: pdf (default) or csv.
 	Format *string
 }
 
@@ -152,13 +158,13 @@ func (p *GetFeesDocumentParams) urlValues() url.Values {
 
 // GetLedgerDocumentParams holds the query parameters of DocumentsService.GetLedger; nil sends none.
 type GetLedgerDocumentParams struct {
-	// Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
+	// Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
 	From *string
-	// Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
+	// End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
 	To *string
-	// Язык документа (по умолчанию en); список — document.Languages.
+	// Document language (en by default); the list is document.Languages.
 	Lang *string
-	// Формат файла: pdf (по умолчанию) или csv.
+	// File format: pdf (default) or csv.
 	Format *string
 }
 
@@ -184,9 +190,9 @@ func (p *GetLedgerDocumentParams) urlValues() url.Values {
 
 // GetSplitDocumentParams holds the query parameters of DocumentsService.GetSplit; nil sends none.
 type GetSplitDocumentParams struct {
-	// UUID платежа.
+	// The payment UUID.
 	UUID string
-	// Язык документа (по умолчанию en); список — document.Languages.
+	// Document language (en by default); the list is document.Languages.
 	Lang *string
 }
 
@@ -204,13 +210,13 @@ func (p *GetSplitDocumentParams) urlValues() url.Values {
 
 // GetStatementDocumentParams holds the query parameters of DocumentsService.GetStatement; nil sends none.
 type GetStatementDocumentParams struct {
-	// Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
+	// Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
 	From *string
-	// Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
+	// End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
 	To *string
-	// Язык документа (по умолчанию en); список — document.Languages.
+	// Document language (en by default); the list is document.Languages.
 	Lang *string
-	// Формат файла: pdf (по умолчанию) или csv.
+	// File format: pdf (default) or csv.
 	Format *string
 }
 
@@ -236,11 +242,11 @@ func (p *GetStatementDocumentParams) urlValues() url.Values {
 
 // GetBatchDocumentParams holds the query parameters of DocumentsService.GetBatch; nil sends none.
 type GetBatchDocumentParams struct {
-	// UUID батча.
+	// The batch UUID.
 	UUID string
-	// Язык документа (по умолчанию en); список — document.Languages.
+	// Document language (en by default); the list is document.Languages.
 	Lang *string
-	// Формат файла: pdf (по умолчанию) или csv.
+	// File format: pdf (default) or csv.
 	Format *string
 }
 
@@ -261,15 +267,15 @@ func (p *GetBatchDocumentParams) urlValues() url.Values {
 
 // GetPaymentLinkDocumentParams holds the query parameters of DocumentsService.GetPaymentLink; nil sends none.
 type GetPaymentLinkDocumentParams struct {
-	// UUID платёжной ссылки.
+	// The payment link UUID.
 	UUID string
-	// Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
+	// Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
 	From *string
-	// Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
+	// End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
 	To *string
-	// Язык документа (по умолчанию en); список — document.Languages.
+	// Document language (en by default); the list is document.Languages.
 	Lang *string
-	// Формат файла: pdf (по умолчанию) или csv.
+	// File format: pdf (default) or csv.
 	Format *string
 }
 
@@ -296,15 +302,15 @@ func (p *GetPaymentLinkDocumentParams) urlValues() url.Values {
 
 // GetWalletStatementDocumentParams holds the query parameters of DocumentsService.GetWalletStatement; nil sends none.
 type GetWalletStatementDocumentParams struct {
-	// UUID статического кошелька.
+	// The static wallet UUID.
 	UUID string
-	// Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
+	// Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
 	From *string
-	// Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
+	// End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
 	To *string
-	// Язык документа (по умолчанию en); список — document.Languages.
+	// Document language (en by default); the list is document.Languages.
 	Lang *string
-	// Формат файла: pdf (по умолчанию) или csv.
+	// File format: pdf (default) or csv.
 	Format *string
 }
 
@@ -331,13 +337,13 @@ func (p *GetWalletStatementDocumentParams) urlValues() url.Values {
 
 // GetReferralsDocumentParams holds the query parameters of DocumentsService.GetReferrals; nil sends none.
 type GetReferralsDocumentParams struct {
-	// Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
+	// Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
 	From *string
-	// Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.
+	// End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.
 	To *string
-	// Язык документа (по умолчанию en); список — document.Languages.
+	// Document language (en by default); the list is document.Languages.
 	Lang *string
-	// Формат файла: pdf (по умолчанию) или csv.
+	// File format: pdf (default) or csv.
 	Format *string
 }
 
@@ -363,7 +369,7 @@ func (p *GetReferralsDocumentParams) urlValues() url.Values {
 
 // DownloadDocumentJobFileParams holds the query parameters of DocumentsService.DownloadJobFile; nil sends none.
 type DownloadDocumentJobFileParams struct {
-	// Идентификатор задачи из ответа POST /v1/documents/jobs.
+	// The job id from the POST /v1/documents/jobs response.
 	JobID string
 }
 
@@ -378,9 +384,9 @@ func (p *DownloadDocumentJobFileParams) urlValues() url.Values {
 
 // SandboxListWebhooksParams holds the query parameters of SandboxService.ListWebhooks; nil sends none.
 type SandboxListWebhooksParams struct {
-	// Размер страницы (1–100, по умолчанию 25).
+	// Page size (1–100, default 25).
 	Limit *int64
-	// Смещение страницы.
+	// Page offset.
 	Offset *int64
 }
 
@@ -398,49 +404,53 @@ func (p *SandboxListWebhooksParams) urlValues() url.Values {
 	return q
 }
 
-// PaymentsService — Приём оплаты: создать счёт, узнать статус, история, QR.
+// PaymentsService — Accepting payments: create an invoice, check its status, history, QR code.
 type PaymentsService struct{ r Requester }
 
-// Create — Создать платёж (счёт на оплату) (POST /v1/payment).
+// Create — Create a payment (invoice) (POST /v1/payment).
 //
-// Создаёт счёт и возвращает адрес + сумму к оплате и ссылку на страницу оплаты.
+// Creates an invoice and returns the address and amount to pay plus a link to the payment page.
 //
-// **Как проще всего:** передайте `amount` (сумма), `currency` (валюта цены, напр. `USD`),
-// `order_id` (ваш номер заказа). Если укажете `network` и `to_currency` — сразу зафиксируется
-// конкретная монета/сеть. Если НЕ укажете — получится валюто-агностичная ссылка: клиент сам выберет
-// валюту и сеть на странице оплаты.
+// **The simplest way:** pass `amount`, `currency` (the price currency, e.g. `USD`) and `order_id`
+// (your order number). If you set `network` and `to_currency`, a specific coin/network is locked in
+// immediately. If you DON'T, you get a currency-agnostic link: the customer picks the currency and
+// network on the payment page.
 //
-// **Цена и расчёт — разные вещи.** `currency` говорит, сколько счёт СТОИТ: это может быть фиат
-// (`USD`, `EUR`, `RUB`, `GBP`, `JPY` и ещё сорок фиатных валют — полный список в `/v1/currencies`)
-// или любая монета. `to_currency` говорит, чем ПЛАТЯТ: **только крипта**. Фиата мы не храним,
-// поэтому баланс, выплаты и возвраты всегда в монете — счёт на 5000 ₽ выставить можно, а получить
-// за него можно USDT, TRX и т. д.
+// **Price and settlement are different things.** `currency` says what the invoice COSTS: it can be
+// fiat (`USD`, `EUR`, `RUB`, `GBP`, `JPY` and forty more fiat currencies — the full list is in
+// `/v1/currencies`) or any coin. `to_currency` says what the customer PAYS WITH: **crypto only**.
+// We do not hold fiat, so balances, payouts and refunds are always in a coin — you can issue an
+// invoice for 5000 RUB, but it is paid in USDT, TRX, etc.
 //
-// Отсюда правило: если цена в фиате, то `to_currency` либо задаётся явно, либо не задаётся вовсе —
-// вместе с `network` (тогда монету выберет покупатель). Цена в фиате + одна лишь `network`, без
-// монеты, вернёт `payment.to_currency_required`: вывести монету из рублей неоткуда.
+// Hence the rule: if the price is in fiat, `to_currency` is either set explicitly or omitted
+// together with `network` (then the buyer picks the coin). A fiat price with only `network` and no
+// coin returns `payment.to_currency_required`: there is no way to derive a coin from rubles.
 //
-// У иены и воны (`JPY`, `KRW`) **нет копеек** — сумма пишется без дробной части (`"10000"`, не
-// `"10000.00"`). Полный список валют цены — в `pricing_currencies` у `GET /v1/currencies`.
+// The yen and the won (`JPY`, `KRW`) have **no minor units** — write the amount without a
+// fractional part (`"10000"`, not `"10000.00"`). The full list of price currencies is in
+// `pricing_currencies` of `GET /v1/currencies`.
 //
-// **Идемпотентность:** повтор с тем же `order_id` вернёт тот же счёт (двойного счёта не будет).
+// **Idempotency:** a retry with the same `order_id` returns the same invoice (no duplicate invoice
+// is created).
 //
-// Необязательные удобства: `lifetime` (сколько секунд живёт счёт, 300–43200),
-// `url_return`/`url_success` (куда вернуть клиента), `url_callback` (куда слать вебхук),
-// `additional_data` (ваши приватные данные), `payer_email`, `accuracy_payment_percent` (допуск
-// недо/переплаты 0–5%), `is_refresh` (оживить просроченный счёт по order_id).
+// Optional conveniences: `lifetime` (invoice lifetime in seconds, 300–43200),
+// `url_return`/`url_success` (where to send the customer back), `url_callback` (where to send the
+// webhook), `additional_data` (your private data), `payer_email`, `accuracy_payment_percent`
+// (underpayment/overpayment tolerance, 0–5%), `is_refresh` (revive an expired invoice by order_id).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, idempotency.bad_key,
-// idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
-// invoice.address_failed, invoice.address_taken, invoice.already_paid, invoice.bad_price,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
+// internal, invoice.address_failed, invoice.address_taken, invoice.already_paid, invoice.bad_price,
 // invoice.corrupt_pay_asset, invoice.daily_quota, invoice.deposit_pending, invoice.fiat_pay_asset,
 // invoice.no_pay_asset, invoice.quote_failed, invoice.refresh_lease, invoice.refresh_not_expired,
 // invoice.refresh_paid, invoice.refresh_select, invoice.surcharge_asset,
-// merchant.acceptance_blocked, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.not_found, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, onramp.suppresses, pay.method_not_accepted, pay.surcharge_unknown,
-// payment.bad_accuracy, payment.bad_amount, payment.bad_payer_email, payment.bad_redirect_url,
-// payment.bad_subtract, payment.bad_url_callback, payment.below_minimum,
+// merchant.acceptance_blocked, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, onramp.suppresses, pay.method_not_accepted,
+// pay.surcharge_unknown, payment.bad_accuracy, payment.bad_amount, payment.bad_payer_email,
+// payment.bad_redirect_url, payment.bad_subtract, payment.bad_url_callback, payment.below_minimum,
 // payment.discount_unavailable, payment.minimum_unavailable, payment.network_required,
 // payment.not_found, payment.subtract_impossible, payment.surcharge_unavailable,
 // payment.to_currency_required, payment.unknown_to_currency, payment.unsupported_network,
@@ -456,17 +466,20 @@ func (s *PaymentsService) Create(ctx context.Context, params *PaymentRequest, op
 	}, opts)
 }
 
-// GetInfo — Узнать статус платежа (POST /v1/payment/info).
+// GetInfo — Get payment status (POST /v1/payment/info).
 //
-// Передайте `uuid` (наш) ИЛИ `order_id` (ваш). Вернёт текущий статус и суммы. Если оба — приоритет
-// у `order_id`.
+// Pass `uuid` (ours) OR `order_id` (yours). Returns the current status and amounts. If both are
+// given, `order_id` takes precedence.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found, payout.not_found,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found,
+// payout.not_found, request.bad_json, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep.
 func (s *PaymentsService) GetInfo(ctx context.Context, params *LookupRequest, opts ...RequestOption) (*PaymentInfoResult, error) {
 	return doJSON[PaymentInfoResult](ctx, s.r, Call{
 		Route: Routes["getPaymentInfo"],
@@ -474,17 +487,19 @@ func (s *PaymentsService) GetInfo(ctx context.Context, params *LookupRequest, op
 	}, opts)
 }
 
-// GetQR — QR-код адреса счёта (POST /v1/payment/qr).
+// GetQR — Invoice address QR code (POST /v1/payment/qr).
 //
-// Возвращает QR адреса оплаты (по `uuid`/`order_id`) как PNG data:-URI — вставляется прямо в `<img
-// src>`.
+// Returns the QR code of the payment address (by `uuid`/`order_id`) as a PNG data: URI — drop it
+// straight into `<img src>`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// payment.bad_uuid, payment.no_lookup, payment.not_found, request.bad_json, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, payment.bad_uuid, payment.no_lookup, payment.not_found, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *PaymentsService) GetQR(ctx context.Context, params *LookupRequest, opts ...RequestOption) (*PaymentQRResult, error) {
 	return doJSON[PaymentQRResult](ctx, s.r, Call{
 		Route: Routes["getPaymentQr"],
@@ -492,19 +507,21 @@ func (s *PaymentsService) GetQR(ctx context.Context, params *LookupRequest, opts
 	}, opts)
 }
 
-// ListHistory — История платежей (POST /v1/payment/history).
+// ListHistory — Payment history (POST /v1/payment/history).
 //
-// Список ваших платежей, новые сверху: `items` + блок `paginate` (`total` — всего записей по
-// фильтру, `per_page`, `offset`, `has_pages`). Тело: `limit` (1–100, по умолчанию 25), `offset`,
-// необязательный `status` — то же значение, что в ответах и вебхуках (`created`, `confirm_check`,
-// `paid`, `paid_over`, `wrong_amount`, `expired`, `cancelled`, `select`).
+// Your payments, newest first: `items` plus a `paginate` block (`total` — number of records
+// matching the filter, `per_page`, `offset`, `has_pages`). Body: `limit` (1–100, default 25),
+// `offset`, optional `status` — the same value as in responses and webhooks (`created`,
+// `confirm_check`, `paid`, `paid_over`, `wrong_amount`, `expired`, `cancelled`, `select`).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// onramp.suppressed_in, payment.bad_status, payment.not_found, request.bad_json, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, onramp.suppressed_in, payment.bad_status, payment.not_found,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *PaymentsService) ListHistory(ctx context.Context, params *HistoryRequest, opts ...RequestOption) *List[PaymentView] {
 	return doPaged[PaymentView](ctx, s.r, Call{
 		Route: Routes["listPaymentHistory"],
@@ -512,16 +529,20 @@ func (s *PaymentsService) ListHistory(ctx context.Context, params *HistoryReques
 	}, opts)
 }
 
-// ListServices — Доступные валюты и сети для приёма (POST /v1/payment/services).
+// ListServices — Currencies and networks available for accepting payments (POST
+// /v1/payment/services).
 //
-// Список валют/сетей, которые можно принимать, с лимитами и комиссиями. Тело запроса — пустой `{}`.
+// The currencies/networks you can accept, with limits and fees. The request body is an empty `{}`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, rates.deviation,
-// rates.fiat_pay_asset, rates.no_pay_asset, rates.no_source, rates.non_positive, rates.unavailable,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// rates.deviation, rates.fiat_pay_asset, rates.no_pay_asset, rates.no_source, rates.non_positive,
+// rates.unavailable, request.bad_json, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep.
 func (s *PaymentsService) ListServices(ctx context.Context, params *PageRequest, opts ...RequestOption) *List[PayServiceEntry] {
 	return doPaged[PayServiceEntry](ctx, s.r, Call{
 		Route: Routes["listPaymentServices"],
@@ -529,19 +550,22 @@ func (s *PaymentsService) ListServices(ctx context.Context, params *PageRequest,
 	}, opts)
 }
 
-// Cancel — Отменить счёт (POST /v1/payment/cancel).
+// Cancel — Cancel an invoice (POST /v1/payment/cancel).
 //
-// Отменяет ваш неоплаченный счёт (например, созданный по ошибке) по `uuid`/`order_id`. Разрешено,
-// пока по счёту не увиден ни один платёж или депозит в сети; после этого — 409
-// (`invoice.already_paid` / `invoice.deposit_pending`): такой счёт надо не отменять, а провести или
-// вернуть.
+// Cancels your unpaid invoice (e.g. one created by mistake) by `uuid`/`order_id`. Allowed as long
+// as no payment or on-chain deposit has been seen for the invoice; after that — 409
+// (`invoice.already_paid` / `invoice.deposit_pending`): such an invoice must be settled or
+// refunded, not cancelled.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// invoice.already_paid, invoice.corrupt_pay_asset, invoice.deposit_pending, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, invoice.already_paid, invoice.corrupt_pay_asset, invoice.deposit_pending,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, onramp.suppresses,
+// payment.bad_uuid, payment.no_lookup, payment.not_found, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
 func (s *PaymentsService) Cancel(ctx context.Context, params *LookupRequest, opts ...RequestOption) (*PaymentView, error) {
 	return doJSON[PaymentView](ctx, s.r, Call{
 		Route: Routes["cancelPayment"],
@@ -549,21 +573,23 @@ func (s *PaymentsService) Cancel(ctx context.Context, params *LookupRequest, opt
 	}, opts)
 }
 
-// SendEmail — Отправить счёт на e-mail (POST /v1/payment/send-email).
+// SendEmail — Email the invoice (POST /v1/payment/send-email).
 //
-// Шлёт покупателю письмо с кнопкой «Оплатить» для существующего платежа (по `uuid`/`order_id`).
-// Адрес — поле `email` или `payer_email` платежа. Требует настроенный SMTP (иначе
-// `email.disabled`). Отправка ограничена ПО АДРЕСУ ПОЛУЧАТЕЛЯ: не больше 10 писем на один адрес за
-// час, считая по всем вашим платежам (иначе `email.rate_limited`, 429). Чек об оплате отправляется
-// автоматически на `payer_email`, когда платёж получен.
+// Sends the buyer an email with a "Pay" button for an existing payment (by `uuid`/`order_id`). The
+// address is the `email` field or the payment's `payer_email`. Requires SMTP to be configured
+// (otherwise `email.disabled`). Sending is limited PER RECIPIENT ADDRESS: no more than 10 emails to
+// one address per hour, counted across all your payments (otherwise `email.rate_limited`, 429). A
+// payment receipt is sent automatically to `payer_email` once the payment is received.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, email.bad_recipient,
-// email.disabled, email.no_recipient, email.rate_limited, internal, invoice.corrupt_pay_asset,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payment.bad_uuid,
-// payment.no_lookup, payment.not_found, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// email.bad_recipient, email.disabled, email.no_recipient, email.rate_limited, internal,
+// invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, payment.bad_uuid, payment.no_lookup, payment.not_found, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *PaymentsService) SendEmail(ctx context.Context, params *SendEmailRequest, opts ...RequestOption) (*SendEmailResult, error) {
 	return doJSON[SendEmailResult](ctx, s.r, Call{
 		Route: Routes["sendPaymentEmail"],
@@ -571,25 +597,28 @@ func (s *PaymentsService) SendEmail(ctx context.Context, params *SendEmailReques
 	}, opts)
 }
 
-// SetCheckoutConfig — Настройки страницы оплаты (POST /v1/checkout-config/set).
+// SetCheckoutConfig — Payment page settings (POST /v1/checkout-config/set).
 //
-// Куда возвращать покупателя после оплаты (`success_url`) и после отказа (`fail_url`), и слать ли
-// ему чек на почту (`email_receipts`).
+// Where to send the buyer after payment (`success_url`) and after a failure (`fail_url`), and
+// whether to email them a receipt (`email_receipts`).
 //
-// Редиректы — это ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ: они подставляются только в те счета, где вы не прислали
-// `url_success`/`url_return` сами. Присланное в `/v1/payment` всегда сильнее. Чек — не умолчание, а
-// решение: у него нет поля в счёте, и он уходит только если покупатель оставил почту.
+// The redirects are DEFAULTS: they apply only to invoices where you did not send
+// `url_success`/`url_return` yourself. Values sent in `/v1/payment` always win. The receipt is not
+// a default but a decision: the invoice has no field for it, and it is sent only if the buyer left
+// an email.
 //
-// Присылайте только те поля, которые меняете: пропущенное поле сохраняет прежнее значение, а пустая
-// строка в редиректе — это «никуда не отправлять». Адрес должен быть http(s); проверка на записи, а
-// не на показе.
+// Send only the fields you change: an omitted field keeps its previous value, and an empty string
+// in a redirect means "do not redirect". The URL must be http(s); it is validated on write, not on
+// display.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, checkoutcfg.bad_url,
-// checkoutcfg.disabled, checkoutcfg.url_too_long, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.missing_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// checkoutcfg.disabled, checkoutcfg.url_too_long, cli.permission_denied, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.missing_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *PaymentsService) SetCheckoutConfig(ctx context.Context, params *CheckoutConfigRequest, opts ...RequestOption) (*CheckoutConfigView, error) {
 	return doJSON[CheckoutConfigView](ctx, s.r, Call{
 		Route: Routes["setCheckoutConfig"],
@@ -597,35 +626,40 @@ func (s *PaymentsService) SetCheckoutConfig(ctx context.Context, params *Checkou
 	}, opts)
 }
 
-// GetCheckoutConfig — Текущие настройки страницы оплаты (POST /v1/checkout-config/get).
+// GetCheckoutConfig — Current payment page settings (POST /v1/checkout-config/get).
 //
-// Возвращает `success_url`, `fail_url`, `email_receipts` проекта. Ненастроенное поле отдаётся своим
-// ФАКТИЧЕСКИМ поведением: пустой редирект и `email_receipts: true`.
+// Returns the project's `success_url`, `fail_url`, `email_receipts`. An unconfigured field is
+// returned as its EFFECTIVE behavior: an empty redirect and `email_receipts: true`.
+//
+// Requires role: Viewer when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, checkoutcfg.disabled,
-// internal, merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *PaymentsService) GetCheckoutConfig(ctx context.Context, opts ...RequestOption) (*CheckoutConfigView, error) {
 	return doJSON[CheckoutConfigView](ctx, s.r, Call{
 		Route: Routes["getCheckoutConfig"],
 	}, opts)
 }
 
-// GetAmlLinks — Ссылки на анкету происхождения средств (POST /v1/payment/aml-links).
+// GetAmlLinks — Source-of-funds questionnaire links (POST /v1/payment/aml-links).
 //
-// По `uuid` или `order_id`. Если по платежу ничего не заблокировано — **пустой массив**; это
-// единственное, по чему различаются случаи, сама причина наружу не уходит. Каждый элемент: `link`
-// (передайте её плательщику), `expired_at`, `status` (`init|pending|completed|expired`). Содержимое
-// анкеты вам не показывается: это данные вашего клиента, а не ваши.
+// By `uuid` or `order_id`. If nothing is blocked for the payment — an **empty array**; that is the
+// only thing that distinguishes the cases, the reason itself is not disclosed. Each item: `link`
+// (hand it to the payer), `expired_at`, `status` (`init|pending|completed|expired`). The
+// questionnaire contents are not shown to you: they are your customer's data, not yours.
 //
-// Errors: aml.sof_race, auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// payment.bad_uuid, payment.no_reference, payment.not_found, request.bad_json, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: aml.sof_race, auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+// cli.permission_denied, internal, invoice.corrupt_pay_asset, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, payment.bad_uuid, payment.no_reference,
+// payment.not_found, request.bad_json, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep.
 func (s *PaymentsService) GetAmlLinks(ctx context.Context, params *AMLLinksRequest, opts ...RequestOption) (*AMLLinksResult, error) {
 	return doJSON[AMLLinksResult](ctx, s.r, Call{
 		Route: Routes["getPaymentAmlLinks"],
@@ -633,29 +667,31 @@ func (s *PaymentsService) GetAmlLinks(ctx context.Context, params *AMLLinksReque
 	}, opts)
 }
 
-// Resolve — Разрешить недоплату: принять или вернуть (POST /v1/payment/resolve).
+// Resolve — Resolve an underpayment: accept or refund (POST /v1/payment/resolve).
 //
-// Для платежа в статусе `wrong_amount` (недоплата, срок вышел) мерчант явно решает судьбу денег:
-// `action:"accept"` — оставить частичную оплату как расчёт (снимает автовозврат), `action:"refund"`
-// — вернуть полученное плательщику сейчас (адрес/сеть по умолчанию — записанный адрес плательщика).
-// Двигает деньги — подписывается вашим API-ключом, как и всё остальное: ключ у мерчанта один и он
-// полнодоступный.
+// For a payment in status `wrong_amount` (underpaid, expired) the merchant explicitly decides what
+// happens to the money: `action:"accept"` — keep the partial payment as settlement (cancels the
+// auto-refund), `action:"refund"` — return what was received to the payer now (address/network
+// default to the recorded payer address). It moves money — it is signed with your API key like
+// everything else: a merchant has one key and it has full access.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, compliance.blocked,
-// compliance.blocked_address, compliance.blocklist_unavailable, compliance.no_destination,
-// compliance.no_network, compliance.sanctioned_address, compliance.sanctions_unavailable,
-// idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
-// internal, invoice.corrupt_pay_asset, ledger.account_not_found, ledger.asset_mismatch,
-// ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
-// ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
-// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found, payout.above_limit,
-// payout.address_network_mismatch, payout.amount_below_fee, payout.approver_is_creator,
-// payout.asset_mismatch, payout.bad_address, payout.bad_amount, payout.bad_memo,
-// payout.bad_owner_kind, payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_frozen,
-// payout.convert_idempotency_conflict, payout.convert_insufficient, payout.convert_no_rate,
-// payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
+// compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
+// compliance.sanctions_unavailable, idempotency.bad_key, idempotency.in_progress,
+// idempotency.key_reused, idempotency.unavailable, internal, invoice.corrupt_pay_asset,
+// ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
+// ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
+// ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, onramp.suppresses, payment.bad_uuid, payment.no_lookup,
+// payment.not_found, payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee,
+// payout.approver_is_creator, payout.asset_mismatch, payout.bad_address, payout.bad_amount,
+// payout.bad_memo, payout.bad_owner_kind, payout.cap_unpriceable, payout.convert_bad_amount,
+// payout.convert_frozen, payout.convert_idempotency_conflict, payout.convert_insufficient,
+// payout.convert_no_rate, payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap,
 // payout.destination_not_activated, payout.duplicate_reference, payout.fee_asset_mismatch,
 // payout.freeze_unknown, payout.frozen, payout.funds_maturing, payout.funds_settling,
 // payout.illegal_transition, payout.insufficient_funds, payout.memo_conflict, payout.memo_required,
@@ -678,26 +714,29 @@ func (s *PaymentsService) Resolve(ctx context.Context, params *ResolveRequest, o
 	}, opts)
 }
 
-// PaymentLinksService — Многоразовые ссылки на оплату: одна ссылка — много платежей.
+// PaymentLinksService — Reusable payment links: one link, many payments.
 type PaymentLinksService struct{ r Requester }
 
-// Create — Создать платёжную ссылку (POST /v1/payment/link).
+// Create — Create a payment link (POST /v1/payment/link).
 //
-// Переиспользуемая ссылка (как страница доната): по ней платят много людей, каждый платёж — свой
-// инвойс со своим адресом. `amount_mode`: `fixed` (сумма задана в `amount_fixed`), `open` (клиент
-// вводит любую сумму, опц. `amount_min`), `range` (клиент вводит в диапазоне
-// `amount_min`…`amount_max`). `currency` — валюта цены (крипто-тикер, напр. `USDT`).
+// A reusable link (like a donation page): many people pay through it, each payment is its own
+// invoice with its own address. `amount_mode`: `fixed` (the amount is set in `amount_fixed`),
+// `open` (the customer enters any amount, optionally `amount_min`), `range` (the customer enters an
+// amount between `amount_min` and `amount_max`). `currency` — the price currency (a crypto ticker,
+// e.g. `USDT`).
 //
-// Валюту/сеть оплаты можно **закрепить** (`pinned_currency` + `pinned_network`) или оставить
-// пустыми — тогда клиент выбирает их на странице оплаты. `expires_in` — срок жизни ссылки в
-// секундах (0 = **бессрочно**; сами инвойсы при этом живут обычный короткий срок). В ответе —
-// `link_id` и `url` для клиента.
+// The payment currency/network can be **pinned** (`pinned_currency` + `pinned_network`) or left
+// empty — then the customer picks them on the payment page. `expires_in` — the link lifetime in
+// seconds (0 = **never expires**; the invoices themselves still have the usual short lifetime). The
+// response contains `link_id` and the `url` for the customer.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.acceptance_blocked, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// paylink.bad_amount, paylink.bad_max, paylink.bad_min, paylink.bad_mode, paylink.bad_range,
-// paylink.disabled, paylink.expires_in_negative, paylink.expires_in_too_large,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.acceptance_blocked, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, paylink.bad_amount, paylink.bad_max, paylink.bad_min, paylink.bad_mode,
+// paylink.bad_range, paylink.disabled, paylink.expires_in_negative, paylink.expires_in_too_large,
 // paylink.not_positive, request.bad_json, request.body_read, request.control_char,
 // request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
 // request.too_deep, request.unknown_currency.
@@ -708,15 +747,18 @@ func (s *PaymentLinksService) Create(ctx context.Context, params *PaymentLinkCre
 	}, opts)
 }
 
-// List — Список ссылок (POST /v1/payment/link/list).
+// List — List links (POST /v1/payment/link/list).
 //
-// Ваши платёжные ссылки, новые сверху.
+// Your payment links, newest first.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, paylink.disabled,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// paylink.disabled, request.bad_json, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep.
 func (s *PaymentLinksService) List(ctx context.Context, params *PageRequest, opts ...RequestOption) *List[PaymentLinkView] {
 	return doPaged[PaymentLinkView](ctx, s.r, Call{
 		Route: Routes["listPaymentLinks"],
@@ -724,16 +766,18 @@ func (s *PaymentLinksService) List(ctx context.Context, params *PageRequest, opt
 	}, opts)
 }
 
-// Get — Ссылка + её платежи (POST /v1/payment/link/info).
+// Get — Link and its payments (POST /v1/payment/link/info).
 //
-// По `link_id`: конфиг ссылки и собранные по ней платежи (`payments[]`).
+// By `link_id`: the link configuration and the payments collected through it (`payments[]`).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, paylink.bad_id,
-// paylink.disabled, paylink.not_found, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// paylink.bad_id, paylink.disabled, paylink.not_found, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
 func (s *PaymentLinksService) Get(ctx context.Context, params *PaymentLinkLookupRequest, opts ...RequestOption) (*PaymentLinkDetail, error) {
 	return doJSON[PaymentLinkDetail](ctx, s.r, Call{
 		Route: Routes["getPaymentLink"],
@@ -741,16 +785,18 @@ func (s *PaymentLinksService) Get(ctx context.Context, params *PaymentLinkLookup
 	}, opts)
 }
 
-// Toggle — Включить/выключить ссылку (POST /v1/payment/link/toggle).
+// Toggle — Enable/disable a link (POST /v1/payment/link/toggle).
 //
-// `{link_id, active}`. Выключенная ссылка не принимает новые платежи.
+// `{link_id, active}`. A disabled link does not accept new payments.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, paylink.bad_id,
-// paylink.disabled, paylink.not_found, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// paylink.bad_id, paylink.disabled, paylink.not_found, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
 func (s *PaymentLinksService) Toggle(ctx context.Context, params *PaymentLinkToggleRequest, opts ...RequestOption) (*PaymentLinkToggled, error) {
 	return doJSON[PaymentLinkToggled](ctx, s.r, Call{
 		Route: Routes["togglePaymentLink"],
@@ -758,48 +804,52 @@ func (s *PaymentLinksService) Toggle(ctx context.Context, params *PaymentLinkTog
 	}, opts)
 }
 
-// RefundsService — Вернуть деньги плательщику (списание с вашего баланса).
+// RefundsService — Return money to the payer (debited from your balance).
 type RefundsService struct{ r Requester }
 
-// Payment — Вернуть платёж (POST /v1/payment/refund).
+// Payment — Refund a payment (POST /v1/payment/refund).
 //
-// Возврат — это списание с вашего баланса.
+// A refund is debited from your balance.
 //
-// `address` (куда вернуть) можно опустить ТОЛЬКО если в платеже `payer_address_is_refundable` =
-// true: тогда вернём на записанный адрес плательщика (`payer_address`). Если там false — адрес
-// плательщика нам известен, но он не является адресом возврата (Bitcoin/UTXO: первый вход мог быть
-// биржей или сдачей; XRP: общий адрес биржи с тегом назначения; оплата КАРТОЙ через крипто-он-рамп:
-// отправитель — омнибусный горячий кошелёк провайдера, а не покупатель). Возврат туда уходит
-// безвозвратно тому, кто денег не платил, поэтому запрос без `address` будет отклонён
-// (`refund.no_address`): спросите адрес у покупателя и передайте его явно. Нужен `uuid`/`order_id`
-// платежа. По умолчанию вернём всю полученную сумму; можно указать частичную `amount`.
+// `address` (where to refund) may be omitted ONLY if the payment has `payer_address_is_refundable`
+// = true: then we refund to the recorded payer address (`payer_address`). If it is false, we know
+// the payer's address but it is not a refund address (Bitcoin/UTXO: the first input may belong to
+// an exchange or be change; XRP: a shared exchange address with a destination tag; CARD payment via
+// a crypto on-ramp: the sender is the provider's omnibus hot wallet, not the buyer). A refund sent
+// there is irrecoverably lost to someone who never paid, so a request without `address` is rejected
+// (`refund.no_address`): ask the buyer for an address and pass it explicitly. The payment's
+// `uuid`/`order_id` is required. By default the full received amount is refunded; you may specify a
+// partial `amount`.
 //
-// Идемпотентно по `(платёж, адрес, сумма)`; суммарно нельзя вернуть больше, чем оплачено. Возврат
-// подтверждается автоматически на любой адрес. Единственное исключение — платёж картой через
-// он-рамп: возврат НА ЗАПИСАННЫЙ АДРЕС ПЛАТЕЛЬЩИКА такого счёта отклоняется
-// (`refund.omnibus_destination`), потому что этот адрес принадлежит провайдеру, а не покупателю —
-// пришлите адрес покупателя явно.
+// Idempotent on `(payment, address, amount)`; in total you cannot refund more than was paid.
+// Refunds to any address are approved automatically. The only exception is a card payment via an
+// on-ramp: a refund TO THE RECORDED PAYER ADDRESS of such an invoice is rejected
+// (`refund.omnibus_destination`), because that address belongs to the provider, not the buyer —
+// send the buyer's address explicitly.
 //
-// Возврат платится ТОЙ ЖЕ монетой, которой заплатил покупатель. Если она уже сведена в стейбл
-// автообменом, передайте `from_currency: "USDT"` — возврат профинансируется конвертацией вашего
-// баланса USDT и останется ВОЗВРАТОМ: счёт пометится возвращённым, доли партнёрам отзовутся.
-// Отправить деньги обычной выплатой тоже можно, но в отчётах это будет выплата, а не возврат.
+// A refund is paid in THE SAME coin the buyer paid with. If it has already been converted into a
+// stablecoin by auto-conversion, pass `from_currency: "USDT"` — the refund is funded by converting
+// your USDT balance and remains a REFUND: the invoice is marked refunded and partner shares are
+// reversed. You can also send the money as a regular payout, but reports will show it as a payout,
+// not a refund.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, compliance.blocked,
-// compliance.blocked_address, compliance.blocklist_unavailable, compliance.no_destination,
-// compliance.no_network, compliance.sanctioned_address, compliance.sanctions_unavailable,
-// idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
-// internal, invoice.corrupt_pay_asset, ledger.account_not_found, ledger.asset_mismatch,
-// ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
-// ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
-// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found, payout.above_limit,
-// payout.address_network_mismatch, payout.amount_below_fee, payout.approver_is_creator,
-// payout.asset_mismatch, payout.bad_address, payout.bad_amount, payout.bad_memo,
-// payout.bad_owner_kind, payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_frozen,
-// payout.convert_idempotency_conflict, payout.convert_insufficient, payout.convert_no_rate,
-// payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
+// compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
+// compliance.sanctions_unavailable, idempotency.bad_key, idempotency.in_progress,
+// idempotency.key_reused, idempotency.unavailable, internal, invoice.corrupt_pay_asset,
+// ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
+// ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
+// ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, onramp.suppresses, payment.bad_uuid, payment.no_lookup,
+// payment.not_found, payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee,
+// payout.approver_is_creator, payout.asset_mismatch, payout.bad_address, payout.bad_amount,
+// payout.bad_memo, payout.bad_owner_kind, payout.cap_unpriceable, payout.convert_bad_amount,
+// payout.convert_frozen, payout.convert_idempotency_conflict, payout.convert_insufficient,
+// payout.convert_no_rate, payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap,
 // payout.destination_not_activated, payout.duplicate_reference, payout.fee_asset_mismatch,
 // payout.freeze_unknown, payout.frozen, payout.funds_maturing, payout.funds_settling,
 // payout.illegal_transition, payout.insufficient_funds, payout.memo_conflict, payout.memo_required,
@@ -821,24 +871,28 @@ func (s *RefundsService) Payment(ctx context.Context, params *RefundRequest, opt
 	}, opts)
 }
 
-// BlockedWallet — Вернуть средства со статик-кошелька (POST /v1/wallet/blocked-address-refund).
+// BlockedWallet — Refund funds from a static wallet (POST /v1/wallet/blocked-address-refund).
 //
-// Возвращает на `address` ЧИСТУЮ сумму, полученную на (заблокированном) статик-кошельке: из
-// полученного вычитается уже возвращённое. Пока возврат жив (создан, отправлен, подтверждён),
-// повторный вызов возвращает его же. Если возврат не состоялся (failed/cancelled), вызов можно
-// повторить — в том числе на другой адрес. Отменённые reorg'ом депозиты не считаются.
+// Refunds to `address` the NET amount received on a (blocked) static wallet: the amount already
+// refunded is subtracted from what was received. While a refund is alive (created, sent,
+// confirmed), a repeated call returns that same refund. If the refund did not go through
+// (failed/cancelled), the call can be repeated — including to a different address. Deposits
+// reverted by a reorg are not counted.
 //
-// Блокировка смотрит ВПЕРЁД: она останавливает следующий приход, а не пересматривает уже
-// зачисленные. Деньги, пришедшие ПОСЛЕ блокировки, на баланс не попадают — они уходят в карантин и
-// ждут решения оператора; вернуть их этой ручкой можно после того, как он их разобрал. Пока не
-// разобраны — они ещё не ваши, и ответ будет «возвращать нечего».
+// Blocking looks FORWARD: it stops the next incoming deposit, it does not revisit ones already
+// credited. Money that arrives AFTER the block does not reach the balance — it goes to quarantine
+// and waits for an operator's decision; you can refund it with this endpoint once the operator has
+// reviewed it. Until then it is not yours yet, and the response will be "nothing to refund".
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, compliance.blocked,
-// compliance.blocked_address, compliance.blocklist_unavailable, compliance.no_destination,
-// compliance.no_network, compliance.sanctioned_address, compliance.sanctions_unavailable, internal,
-// ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
-// ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
-// ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
+// compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
+// compliance.sanctions_unavailable, internal, ledger.account_not_found, ledger.asset_mismatch,
+// ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
+// ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
+// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_expired,
 // merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
 // merchant.unknown_key, payout.above_limit, payout.address_network_mismatch,
 // payout.amount_below_fee, payout.asset_mismatch, payout.bad_address, payout.bad_amount,
@@ -860,35 +914,37 @@ func (s *RefundsService) BlockedWallet(ctx context.Context, params *BlockedRefun
 	}, opts)
 }
 
-// PayoutsService — Отправить деньги на адрес (списание с вашего баланса).
+// PayoutsService — Send money to an address (debited from your balance).
 type PayoutsService struct{ r Requester }
 
-// Create — Создать выплату (POST /v1/payout).
+// Create — Create a payout (POST /v1/payout).
 //
-// Отправить деньги на адрес. Идемпотентно по `order_id`. Выплата уходит сразу: ключ мерчанта несёт
-// полную выплатную полномочность, белого списка адресов нет, ручного подтверждения тоже
-// (`approval_required` в ответе всегда `false`). Ограничивают её суточный лимит, заморозка аккаунта
-// и комплаенс-проверка адреса.
+// Send money to an address. Idempotent on `order_id`. The payout goes out immediately: the merchant
+// key carries full payout authority, there is no address whitelist and no manual approval
+// (`approval_required` in the response is always `false`). It is limited by the daily limit,
+// account freeze and the address compliance check.
 //
-// **Конвертация (`from_currency`):** укажите `from_currency: "USDT"`, чтобы оплатить выплату в
-// `currency`, списав ваш баланс USDT — мы сконвертируем USDT → `currency` (только те валюты, что
-// казначейство может добыть он-чейн). В ответе появится объект `convert` с `from_amount` (сколько
-// USDT списано) и `rate`.
+// **Conversion (`from_currency`):** set `from_currency: "USDT"` to fund a payout in `currency` by
+// debiting your USDT balance — we convert USDT → `currency` (only currencies the treasury can
+// source on-chain). The response then contains a `convert` object with `from_amount` (how much USDT
+// was debited) and `rate`.
 //
-// Ещё: `memo` (тег/мемо для TON), `url_callback` (свой адрес вебхука для этой выплаты).
+// Also: `memo` (tag/memo for TON), `url_callback` (your own webhook URL for this payout).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, compliance.blocked,
-// compliance.blocked_address, compliance.blocklist_unavailable, compliance.no_destination,
-// compliance.no_network, compliance.sanctioned_address, compliance.sanctions_unavailable,
-// idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
-// internal, ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
-// ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
-// ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
-// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee,
-// payout.asset_mismatch, payout.bad_address, payout.bad_amount, payout.bad_memo,
-// payout.bad_owner_kind, payout.bad_url_callback, payout.cap_unpriceable,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
+// compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
+// compliance.sanctions_unavailable, idempotency.bad_key, idempotency.in_progress,
+// idempotency.key_reused, idempotency.unavailable, internal, ledger.account_not_found,
+// ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset,
+// ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
+// ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, payout.above_limit, payout.address_network_mismatch,
+// payout.amount_below_fee, payout.asset_mismatch, payout.bad_address, payout.bad_amount,
+// payout.bad_memo, payout.bad_owner_kind, payout.bad_url_callback, payout.cap_unpriceable,
 // payout.convert_bad_amount, payout.convert_frozen, payout.convert_idempotency_conflict,
 // payout.convert_insufficient, payout.convert_no_rate, payout.convert_same_asset,
 // payout.convert_unsupported, payout.daily_cap, payout.destination_internal,
@@ -910,21 +966,23 @@ func (s *PayoutsService) Create(ctx context.Context, params *PayoutRequest, opts
 	}, opts)
 }
 
-// CreateMass — Массовая выплата (POST /v1/payout/mass).
+// CreateMass — Mass payout (POST /v1/payout/mass).
 //
-// Много выплат за один запрос (до 100). Каждая независима: ошибка по одной не останавливает
-// остальные, по каждой возвращается результат. Идемпотентно по `order_id`, как обычная выплата.
+// Many payouts in one request (up to 100). Each one is independent: an error in one does not stop
+// the rest, and a result is returned for each. Idempotent on `order_id`, like a regular payout.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.duplicate_order_id,
-// compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
-// compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
-// compliance.sanctions_unavailable, idempotency.bad_key, idempotency.in_progress,
-// idempotency.key_reused, idempotency.unavailable, internal, ledger.account_not_found,
-// ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset,
-// ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
+// cli.permission_denied, compliance.blocked, compliance.blocked_address,
+// compliance.blocklist_unavailable, compliance.no_destination, compliance.no_network,
+// compliance.sanctioned_address, compliance.sanctions_unavailable, idempotency.bad_key,
+// idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
+// ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
+// ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
 // ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, payout.above_limit, payout.address_network_mismatch,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, payout.above_limit, payout.address_network_mismatch,
 // payout.amount_below_fee, payout.asset_mismatch, payout.bad_address, payout.bad_amount,
 // payout.bad_memo, payout.bad_owner_kind, payout.bad_url_callback, payout.batch_too_large,
 // payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_frozen,
@@ -949,20 +1007,22 @@ func (s *PayoutsService) CreateMass(ctx context.Context, params *MassPayoutReque
 	}, opts)
 }
 
-// GetInfo — Узнать статус выплаты (POST /v1/payout/info).
+// GetInfo — Get payout status (POST /v1/payout/info).
 //
-// По `uuid`/`order_id`.
+// By `uuid`/`order_id`.
 //
-// Дополнительно к общему объекту выплаты этот ответ несёт `error` и `error_code`: последняя
-// записанная причина, почему выплата упала или застряла (текст и, когда он есть, машинный код вида
-// `payout.insufficient_funds`). Оба ключа присутствуют всегда; `null` — ошибок не записано.
+// In addition to the common payout object this response carries `error` and `error_code`: the last
+// recorded reason why the payout failed or got stuck (the text and, when present, a machine code
+// like `payout.insufficient_funds`). Both keys are always present; `null` — no errors recorded.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.bad_uuid,
-// payout.no_lookup, payout.not_found, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// payout.bad_uuid, payout.no_lookup, payout.not_found, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
 func (s *PayoutsService) GetInfo(ctx context.Context, params *LookupRequest, opts ...RequestOption) (*PayoutInfoResult, error) {
 	return doJSON[PayoutInfoResult](ctx, s.r, Call{
 		Route: Routes["getPayoutInfo"],
@@ -970,20 +1030,22 @@ func (s *PayoutsService) GetInfo(ctx context.Context, params *LookupRequest, opt
 	}, opts)
 }
 
-// ListHistory — История выплат (POST /v1/payout/history).
+// ListHistory — Payout history (POST /v1/payout/history).
 //
-// Список ваших выплат, новые сверху: `items` + блок `paginate` (`total`, `per_page`, `offset`,
-// `has_pages`). Тело: `limit`, `offset`, необязательные `status`, `kind` (`refund` | `payout` |
-// пусто — выплаты без возвратов) и `include_refunds`: по умолчанию возвраты в историю выплат не
-// входят, `true` без `kind` возвращает выплаты и возвраты одной лентой; только возвраты — `kind:
+// Your payouts, newest first: `items` plus a `paginate` block (`total`, `per_page`, `offset`,
+// `has_pages`). Body: `limit`, `offset`, optional `status`, `kind` (`refund` | `payout` | empty —
+// payouts without refunds) and `include_refunds`: by default refunds are not included in the payout
+// history; `true` without `kind` returns payouts and refunds as one feed; refunds only — `kind:
 // refund`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.bad_kind,
-// payout.bad_status, payout.not_found, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// payout.bad_kind, payout.bad_status, payout.not_found, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
 func (s *PayoutsService) ListHistory(ctx context.Context, params *HistoryRequest, opts ...RequestOption) *List[PayoutView] {
 	return doPaged[PayoutView](ctx, s.r, Call{
 		Route: Routes["listPayoutHistory"],
@@ -991,18 +1053,20 @@ func (s *PayoutsService) ListHistory(ctx context.Context, params *HistoryRequest
 	}, opts)
 }
 
-// Calculate — Рассчитать сумму и комиссию выплаты (POST /v1/payout/calculate).
+// Calculate — Calculate payout amount and fee (POST /v1/payout/calculate).
 //
-// Предварительный расчёт: сколько спишется, сколько комиссия, сколько получит адрес — без создания
-// выплаты.
+// A preliminary calculation: how much will be debited, the fee, and how much the address will
+// receive — without creating a payout.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.amount_below_fee,
-// payout.bad_amount, payout.network_required, payout.unsupported_network, rates.deviation,
-// rates.no_source, rates.non_positive, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep, request.unknown_currency.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// payout.amount_below_fee, payout.bad_amount, payout.network_required, payout.unsupported_network,
+// rates.deviation, rates.no_source, rates.non_positive, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep, request.unknown_currency.
 func (s *PayoutsService) Calculate(ctx context.Context, params *PayoutCalculateRequest, opts ...RequestOption) (*PayoutCalculation, error) {
 	return doJSON[PayoutCalculation](ctx, s.r, Call{
 		Route: Routes["calculatePayout"],
@@ -1010,25 +1074,28 @@ func (s *PayoutsService) Calculate(ctx context.Context, params *PayoutCalculateR
 	}, opts)
 }
 
-// Validate — Проверить выплату без создания (dry-run) (POST /v1/payout/validate).
+// Validate — Validate a payout without creating it (dry run) (POST /v1/payout/validate).
 //
-// Прогоняет все проверки создания выплаты — валюта, сумма, сеть, адрес, memo, скрининг адреса,
-// комиссия, заморозка/суточный лимит и достаточность баланса — но ничего не резервирует и не
-// отправляет. Ответ `valid: true` с суммами (`amount`, `commission`, `payer_amount`, `fee_bearer`),
-// либо та же ошибка, что вернуло бы создание. Тело — как у POST /v1/payout (order_id необязателен
-// для проверки).
+// Runs all payout-creation checks — currency, amount, network, address, memo, address screening,
+// fee, freeze/daily limit and balance sufficiency — but reserves and sends nothing. The response is
+// `valid: true` with the amounts (`amount`, `commission`, `payer_amount`, `fee_bearer`), or the
+// same error that creation would return. The body is the same as for POST /v1/payout (order_id is
+// optional for validation).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, compliance.blocked,
-// compliance.blocked_address, compliance.blocklist_unavailable, compliance.no_destination,
-// compliance.no_network, compliance.sanctioned_address, compliance.sanctions_unavailable, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.above_limit,
-// payout.address_network_mismatch, payout.amount_below_fee, payout.bad_address, payout.bad_amount,
-// payout.bad_memo, payout.bad_url_callback, payout.cap_unpriceable, payout.daily_cap,
-// payout.destination_internal, payout.from_currency_unsupported, payout.insufficient_funds,
-// payout.memo_conflict, payout.memo_required, payout.memo_too_long, payout.merchant_frozen,
-// payout.network_required, payout.reserved_reference, payout.unsupported_network, rates.deviation,
-// rates.no_source, rates.non_positive, request.bad_json, request.body_read, request.control_char,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
+// compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
+// compliance.sanctions_unavailable, internal, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, payout.above_limit, payout.address_network_mismatch,
+// payout.amount_below_fee, payout.bad_address, payout.bad_amount, payout.bad_memo,
+// payout.bad_url_callback, payout.cap_unpriceable, payout.daily_cap, payout.destination_internal,
+// payout.from_currency_unsupported, payout.insufficient_funds, payout.memo_conflict,
+// payout.memo_required, payout.memo_too_long, payout.merchant_frozen, payout.network_required,
+// payout.reserved_reference, payout.unsupported_network, rates.deviation, rates.no_source,
+// rates.non_positive, request.bad_json, request.body_read, request.control_char,
 // request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
 // request.reference_invalid, request.reference_too_long, request.too_deep,
 // request.unknown_currency, sandbox.convert_not_available, wallet.static_not_found,
@@ -1040,16 +1107,19 @@ func (s *PayoutsService) Validate(ctx context.Context, params *PayoutValidateReq
 	}, opts)
 }
 
-// Cancel — Отменить неотправленную выплату (POST /v1/payout/cancel).
+// Cancel — Cancel an unsent payout (POST /v1/payout/cancel).
 //
-// Отменяет выплату и освобождает зарезервированные средства, пока она не отправлена в сеть (статусы
-// pending / approved / awaiting_cosign); после отправки — 409. Возврат тоже является выплатой,
-// поэтому этим же методом отклоняется ещё не отправленный возврат. Только своя выплата.
+// Cancels a payout and releases the reserved funds as long as it has not been broadcast to the
+// network (statuses pending / approved / awaiting_cosign); after broadcast — 409. A refund is also
+// a payout, so this same method rejects a refund that has not been sent yet. Only your own payout.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
-// ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
-// ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
+// ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
+// ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
+// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_expired,
 // merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
 // merchant.unknown_key, payout.already_broadcast, payout.bad_state, payout.bad_uuid,
 // payout.illegal_transition, payout.not_found, request.bad_json, request.body_read,
@@ -1062,18 +1132,20 @@ func (s *PayoutsService) Cancel(ctx context.Context, params *CancelPayoutRequest
 	}, opts)
 }
 
-// Approve — Подтвердить выплату (POST /v1/payout/approve).
+// Approve — Approve a payout (POST /v1/payout/approve).
 //
-// Подтверждает выплату, ожидающую подтверждения. Выплаты по API-ключу подтверждаются автоматически
-// — этот метод нужен только внутренним/кабинетным сценариям.
+// Approves a payout awaiting approval. Payouts made with an API key are approved automatically —
+// this method is only needed for internal/dashboard scenarios.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.approver_is_creator,
-// payout.bad_uuid, payout.freeze_unknown, payout.frozen, payout.illegal_transition,
-// payout.not_found, payout.not_pending, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// payout.approver_is_creator, payout.bad_uuid, payout.freeze_unknown, payout.frozen,
+// payout.illegal_transition, payout.not_found, payout.not_pending, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *PayoutsService) Approve(ctx context.Context, params *ApproveRequest, opts ...RequestOption) (*PayoutView, error) {
 	return doJSON[PayoutView](ctx, s.r, Call{
 		Route: Routes["approvePayout"],
@@ -1081,16 +1153,18 @@ func (s *PayoutsService) Approve(ctx context.Context, params *ApproveRequest, op
 	}, opts)
 }
 
-// ListServices — Доступные валюты и сети для выплат (POST /v1/payout/services).
+// ListServices — Currencies and networks available for payouts (POST /v1/payout/services).
 //
-// Список с лимитами и комиссиями. Тело — пустой `{}`.
+// The list with limits and fees. The body is an empty `{}`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, rates.deviation,
-// rates.no_source, rates.non_positive, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// rates.deviation, rates.no_source, rates.non_positive, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
 func (s *PayoutsService) ListServices(ctx context.Context, params *PageRequest, opts ...RequestOption) *List[PayServiceEntry] {
 	return doPaged[PayServiceEntry](ctx, s.r, Call{
 		Route: Routes["listPayoutServices"],
@@ -1098,16 +1172,19 @@ func (s *PayoutsService) ListServices(ctx context.Context, params *PageRequest, 
 	}, opts)
 }
 
-// TransferToPersonal — Перевод на личный кошелёк (POST /v1/transfer/to-personal).
+// TransferToPersonal — Transfer to the personal wallet (POST /v1/transfer/to-personal).
 //
-// Перевести средства с бизнес-кошелька мерчанта на личный кошелёк владельца аккаунта. Требует
-// привязки мерчанта к пользователю.
+// Transfer funds from the merchant's business wallet to the account owner's personal wallet.
+// Requires the merchant to be linked to a user.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, idempotency.bad_key,
-// idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
-// ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
-// ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
-// ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
+// Not available to CLI keys: call it with the integration key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
+// internal, ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
+// ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
+// ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
+// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_expired,
 // merchant.key_mode_mismatch, merchant.no_personal_wallet, merchant.not_found,
 // merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
 // payout.above_limit, payout.cap_unpriceable, payout.daily_cap, payout.merchant_frozen,
@@ -1123,17 +1200,20 @@ func (s *PayoutsService) TransferToPersonal(ctx context.Context, params *Transfe
 	}, opts)
 }
 
-// TransferToUser — Внутренний перевод пользователю платформы (POST /v1/transfer/to-user).
+// TransferToUser — Internal transfer to a platform user (POST /v1/transfer/to-user).
 //
-// Перевести средства с бизнес-кошелька на личный кошелёк ДРУГОГО пользователя платформы (без
-// комиссии, мгновенно, без сети). Получатель адресуется по user id; юзернейм резолвится публичным
-// эндпоинтом кабинета /public/users/{username}.
+// Transfer funds from the business wallet to the personal wallet of ANOTHER platform user (no fee,
+// instant, off-chain). The recipient is addressed by user id; a username is resolved by the
+// dashboard's public endpoint /public/users/{username}.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, idempotency.bad_key,
-// idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
-// ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
-// ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
-// ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
+// internal, ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
+// ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
+// ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
+// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_expired,
 // merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
 // merchant.unknown_key, payout.above_limit, payout.cap_unpriceable, payout.daily_cap,
 // payout.merchant_frozen, personal.amount_invalid, personal.bad_source, personal.bad_source_id,
@@ -1150,20 +1230,22 @@ func (s *PayoutsService) TransferToUser(ctx context.Context, params *TransferToU
 	}, opts)
 }
 
-// CreateTransferBatch — Массовые внутренние переводы (ведомость) (POST /v1/transfer/batch).
+// CreateTransferBatch — Bulk internal transfers (payroll) (POST /v1/transfer/batch).
 //
-// Асинхронная пачка внутренних переводов: {"transfers":[<как /v1/transfer/to-user>...],
-// "on_error":"continue"}. Статус и результаты по строкам — POST /v1/batch/info.
+// An asynchronous batch of internal transfers: {"transfers":[<as in /v1/transfer/to-user>...],
+// "on_error":"continue"}. Status and per-row results — POST /v1/batch/info.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.bad_on_error,
 // batch.bad_recipient, batch.disabled, batch.duplicate_order_id, batch.duplicate_reference,
 // batch.empty, batch.invoice_required, batch.order_id_required, batch.reference_required,
-// batch.too_large, batch.unsupported_kind, idempotency.bad_key, idempotency.in_progress,
-// idempotency.key_reused, idempotency.unavailable, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// batch.too_large, batch.unsupported_kind, cli.permission_denied, idempotency.bad_key,
+// idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *PayoutsService) CreateTransferBatch(ctx context.Context, params *TransferBatchRequest, opts ...RequestOption) (*BatchSubmitResponse, error) {
 	return doJSON[BatchSubmitResponse](ctx, s.r, Call{
 		Route: Routes["createTransferBatch"],
@@ -1171,26 +1253,29 @@ func (s *PayoutsService) CreateTransferBatch(ctx context.Context, params *Transf
 	}, opts)
 }
 
-// PayoutLinksService — Выплата без адреса: получатель сам вводит адрес по секретной ссылке.
+// PayoutLinksService — Payouts without an address: the recipient enters their own address via a
+// secret link.
 type PayoutLinksService struct{ r Requester }
 
-// Create — Создать выплатную ссылку (POST /v1/payout/link).
+// Create — Create a payout link (POST /v1/payout/link).
 //
-// Резервирует сумму с баланса и выпускает ссылку, по которой получатель сам вводит адрес и забирает
-// деньги. Адрес получателя знать не нужно. `email` — отправим письмо со ссылкой;
-// `expires_in_seconds` — окно на получение, 3600–2592000 (час–30 суток). ⚠ Без поля или при `0`
-// ссылка живёт ОДИН ЧАС, а не максимум — задавайте срок явно. Идемпотентность: `reference` (или
-// заголовок `Idempotency-Key`).
+// Reserves the amount from the balance and issues a link through which the recipient enters their
+// own address and claims the money. You do not need to know the recipient's address. `email` — we
+// will send an email with the link; `expires_in_seconds` — the claim window, 3600–2592000 (an hour
+// to 30 days). ⚠ If the field is omitted or `0`, the link lives ONE HOUR, not the maximum — set the
+// lifetime explicitly. Idempotency: `reference` (or the `Idempotency-Key` header).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, email.bad_recipient,
-// idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
-// internal, ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
-// ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// email.bad_recipient, idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
+// idempotency.unavailable, internal, ledger.account_not_found, ledger.asset_mismatch,
+// ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
 // ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
-// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// payout.freeze_unknown, payout.frozen, payout.merchant_frozen, payoutlink.bad_amount,
-// payoutlink.bad_fee_bearer, payoutlink.bad_passcode, payoutlink.disabled,
+// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, payout.freeze_unknown, payout.frozen, payout.merchant_frozen,
+// payoutlink.bad_amount, payoutlink.bad_fee_bearer, payoutlink.bad_passcode, payoutlink.disabled,
 // payoutlink.duplicate_reference, payoutlink.funds_maturing, payoutlink.idempotency_required,
 // payoutlink.insufficient_funds, payoutlink.passcode, payoutlink.token,
 // payoutlink.unsupported_network, rates.deviation, rates.no_source, rates.non_positive,
@@ -1204,27 +1289,29 @@ func (s *PayoutLinksService) Create(ctx context.Context, params *PayoutLinkItem,
 	}, opts)
 }
 
-// CreateBatch — Создать выплатные ссылки пачкой (POST /v1/payout/link/batch).
+// CreateBatch — Create payout links in bulk (POST /v1/payout/link/batch).
 //
-// До 500 ссылок за вызов; каждая проходит или падает независимо, ответ выровнен по индексам
-// запроса. Повтор с теми же `reference` безопасен.
+// Up to 500 links per call; each succeeds or fails independently, the response is aligned with the
+// request indices. Retrying with the same `reference` values is safe.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, email.bad_recipient,
-// idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
-// internal, ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
-// ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// email.bad_recipient, idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
+// idempotency.unavailable, internal, ledger.account_not_found, ledger.asset_mismatch,
+// ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
 // ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
-// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// payout.freeze_unknown, payout.frozen, payout.merchant_frozen, payoutlink.bad_amount,
-// payoutlink.bad_fee_bearer, payoutlink.bad_passcode, payoutlink.batch_too_large,
-// payoutlink.disabled, payoutlink.duplicate_reference, payoutlink.empty_batch,
-// payoutlink.funds_maturing, payoutlink.insufficient_funds, payoutlink.passcode,
-// payoutlink.reference_required, payoutlink.token, payoutlink.unsupported_network, rates.deviation,
-// rates.no_source, rates.non_positive, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.reference_invalid, request.reference_too_long, request.too_deep,
-// request.unknown_currency.
+// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, payout.freeze_unknown, payout.frozen, payout.merchant_frozen,
+// payoutlink.bad_amount, payoutlink.bad_fee_bearer, payoutlink.bad_passcode,
+// payoutlink.batch_too_large, payoutlink.disabled, payoutlink.duplicate_reference,
+// payoutlink.empty_batch, payoutlink.funds_maturing, payoutlink.insufficient_funds,
+// payoutlink.passcode, payoutlink.reference_required, payoutlink.token,
+// payoutlink.unsupported_network, rates.deviation, rates.no_source, rates.non_positive,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.reference_invalid,
+// request.reference_too_long, request.too_deep, request.unknown_currency.
 func (s *PayoutLinksService) CreateBatch(ctx context.Context, params *PayoutLinkBatchRequest, opts ...RequestOption) (*PayoutLinkBatchResult, error) {
 	return doJSON[PayoutLinkBatchResult](ctx, s.r, Call{
 		Route: Routes["createPayoutLinkBatch"],
@@ -1232,14 +1319,16 @@ func (s *PayoutLinksService) CreateBatch(ctx context.Context, params *PayoutLink
 	}, opts)
 }
 
-// List — Список выплатных ссылок (POST /v1/payout/link/list).
+// List — List payout links (POST /v1/payout/link/list).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payoutlink.disabled,
-// rates.deviation, rates.no_source, rates.non_positive, request.bad_json, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// payoutlink.disabled, rates.deviation, rates.no_source, rates.non_positive, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *PayoutLinksService) List(ctx context.Context, params *PageRequest, opts ...RequestOption) *List[PayoutLinkView] {
 	return doPaged[PayoutLinkView](ctx, s.r, Call{
 		Route: Routes["listPayoutLinks"],
@@ -1247,14 +1336,16 @@ func (s *PayoutLinksService) List(ctx context.Context, params *PageRequest, opts
 	}, opts)
 }
 
-// Get — Статус выплатной ссылки (POST /v1/payout/link/info).
+// Get — Payout link status (POST /v1/payout/link/info).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payoutlink.bad_id,
-// payoutlink.disabled, payoutlink.not_found, rates.deviation, rates.no_source, rates.non_positive,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// payoutlink.bad_id, payoutlink.disabled, payoutlink.not_found, rates.deviation, rates.no_source,
+// rates.non_positive, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *PayoutLinksService) Get(ctx context.Context, params *PayoutLinkIDRequest, opts ...RequestOption) (*PayoutLinkView, error) {
 	return doJSON[PayoutLinkView](ctx, s.r, Call{
 		Route: Routes["getPayoutLink"],
@@ -1262,14 +1353,17 @@ func (s *PayoutLinksService) Get(ctx context.Context, params *PayoutLinkIDReques
 	}, opts)
 }
 
-// Cancel — Отменить выплатную ссылку (POST /v1/payout/link/cancel).
+// Cancel — Cancel a payout link (POST /v1/payout/link/cancel).
 //
-// Непогашенная ссылка отменяется, резерв возвращается на баланс.
+// An unclaimed link is cancelled and the reserve is returned to the balance.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
-// ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
-// ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
+// ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
+// ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
+// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_expired,
 // merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
 // merchant.unknown_key, payout.not_found, payoutlink.bad_id, payoutlink.disabled,
 // payoutlink.not_found, payoutlink.not_funded, rates.deviation, rates.no_source,
@@ -1282,12 +1376,13 @@ func (s *PayoutLinksService) Cancel(ctx context.Context, params *PayoutLinkIDReq
 	}, opts)
 }
 
-// GetPayoutClaim — Страница получения: что внутри ссылки (без ключа) (GET /v1/claim/{token}).
+// GetPayoutClaim — Claim page: what the link holds (no key) (GET /v1/claim/{token}).
 //
-// Публичный просмотр для получателя: валюта, сумма, заметка, срок. Токен — секрет из URL. У ссылки
-// с кодом получения код передаётся заголовком `X-Claim-Passcode` (не query — второй фактор не
-// должен оседать в логах); без кода отдаётся минимум (`passcode_required: true`, статус, срок) —
-// суммы видны только после верного кода; неверные коды считаются и после 10 запирают ссылку (429
+// A public view for the recipient: currency, amount, note, expiry. The token is the secret from the
+// URL. For a link with a claim passcode, the passcode is sent in the `X-Claim-Passcode` header (not
+// the query — a second factor must not end up in logs); without the passcode only a minimum is
+// returned (`passcode_required: true`, status, expiry) — amounts are visible only after a correct
+// passcode; wrong passcodes are counted and after 10 the link is locked (429
 // `payoutlink.passcode_locked`).
 //
 // Errors: internal, payoutlink.disabled, payoutlink.not_found, payoutlink.passcode_locked,
@@ -1300,12 +1395,12 @@ func (s *PayoutLinksService) GetPayoutClaim(ctx context.Context, token string, o
 	}, opts)
 }
 
-// ClaimPayout — Получить выплату по ссылке (без ключа) (POST /v1/claim/{token}).
+// ClaimPayout — Claim a payout via a link (no key) (POST /v1/claim/{token}).
 //
-// Получатель вводит свой `address` (и `memo`, если сеть требует) — из резерва рождается обычная
-// выплата. Ссылка с кодом получения требует `passcode`: без него — 403
-// `payoutlink.passcode_required`, неверный — 403 `payoutlink.passcode_wrong`, после 10 неверных —
-// 429 `payoutlink.passcode_locked` (мерчант отменяет ссылку и выпускает новую).
+// The recipient enters their `address` (and `memo`, if the network requires one) — a regular payout
+// is created from the reserve. A link with a claim passcode requires `passcode`: without it — 403
+// `payoutlink.passcode_required`, a wrong one — 403 `payoutlink.passcode_wrong`, after 10 wrong
+// ones — 429 `payoutlink.passcode_locked` (the merchant cancels the link and issues a new one).
 //
 // Errors: compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
 // compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
@@ -1334,30 +1429,32 @@ func (s *PayoutLinksService) ClaimPayout(ctx context.Context, token string, para
 	}, opts)
 }
 
-// BatchesService — Асинхронные батчи: платежи, возвраты, выплаты, переводы пачками.
+// BatchesService — Asynchronous batches of payments, refunds, payouts and transfers.
 type BatchesService struct{ r Requester }
 
-// CreatePayment — Массовое создание платежей (POST /v1/payment/batch).
+// CreatePayment — Create payments in bulk (POST /v1/payment/batch).
 //
-// До 5000 платежей за ОДИН запрос (одна отметка rate-limit). Каждый элемент — обычный объект
-// `/v1/payment` (разные валюты/сети допустимы). В ответ сразу приходит `batch_id`; обработка идёт в
-// фоне. Статус и результаты (включая `uuid` и ссылку оплаты каждого платежа) — через
-// `/v1/batch/info`.
+// Up to 5000 payments in ONE request (one rate-limit hit). Each item is a regular `/v1/payment`
+// object (different currencies/networks are allowed). The response immediately returns `batch_id`;
+// processing runs in the background. Status and results (including each payment's `uuid` and
+// payment link) — via `/v1/batch/info`.
 //
-// `on_error`: `continue` (по умолчанию — ошибка одного не мешает остальным) или `stop` (после
-// первой ошибки оставшиеся отменяются); регистр не важен, любое другое значение — отказ
-// `batch.bad_on_error`. Каждый элемент идемпотентен по своему `order_id`; вся пачка — по заголовку
-// `Idempotency-Key`.
+// `on_error`: `continue` (default — one item's error does not affect the rest) or `stop` (after the
+// first error the remaining items are cancelled); case-insensitive, any other value is rejected
+// with `batch.bad_on_error`. Each item is idempotent on its own `order_id`; the whole batch — on
+// the `Idempotency-Key` header.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.bad_on_error,
 // batch.bad_recipient, batch.disabled, batch.duplicate_order_id, batch.duplicate_reference,
 // batch.empty, batch.invoice_required, batch.order_id_required, batch.reference_required,
-// batch.too_large, batch.unsupported_kind, idempotency.bad_key, idempotency.in_progress,
-// idempotency.key_reused, idempotency.unavailable, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// batch.too_large, batch.unsupported_kind, cli.permission_denied, idempotency.bad_key,
+// idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *BatchesService) CreatePayment(ctx context.Context, params *PaymentBatchRequest, opts ...RequestOption) (*BatchSubmitResponse, error) {
 	return doJSON[BatchSubmitResponse](ctx, s.r, Call{
 		Route: Routes["createPaymentBatch"],
@@ -1365,23 +1462,26 @@ func (s *BatchesService) CreatePayment(ctx context.Context, params *PaymentBatch
 	}, opts)
 }
 
-// CreateRefund — Массовые возвраты (POST /v1/refund/batch).
+// CreateRefund — Bulk refunds (POST /v1/refund/batch).
 //
-// До 5000 возвратов за один запрос. Каждый элемент — обычный объект `/v1/payment/refund`, но
-// `reference` ОБЯЗАТЕЛЕН на каждом элементе и уникален внутри батча: это ключ идемпотентности
-// именно этого возврата (не путать с `order_id`, который указывает на счёт). Без него два разных
-// возврата одной суммы одному плательщику молча схлопнулись бы в один. Возвращает `batch_id`;
-// статус по каждому — через `/v1/batch/info`. `on_error`: `continue`/`stop`.
+// Up to 5000 refunds in one request. Each item is a regular `/v1/payment/refund` object, but
+// `reference` is REQUIRED on every item and must be unique within the batch: it is the idempotency
+// key of that particular refund (not to be confused with `order_id`, which points to the invoice).
+// Without it, two different refunds of the same amount to the same payer would silently collapse
+// into one. Returns `batch_id`; per-item status via `/v1/batch/info`. `on_error`:
+// `continue`/`stop`.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.bad_on_error,
 // batch.bad_recipient, batch.disabled, batch.duplicate_order_id, batch.duplicate_reference,
 // batch.empty, batch.invoice_required, batch.order_id_required, batch.reference_required,
-// batch.too_large, batch.unsupported_kind, idempotency.bad_key, idempotency.in_progress,
-// idempotency.key_reused, idempotency.unavailable, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// batch.too_large, batch.unsupported_kind, cli.permission_denied, idempotency.bad_key,
+// idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *BatchesService) CreateRefund(ctx context.Context, params *RefundBatchRequest, opts ...RequestOption) (*BatchSubmitResponse, error) {
 	return doJSON[BatchSubmitResponse](ctx, s.r, Call{
 		Route: Routes["createRefundBatch"],
@@ -1389,21 +1489,23 @@ func (s *BatchesService) CreateRefund(ctx context.Context, params *RefundBatchRe
 	}, opts)
 }
 
-// CreatePayout — Массовые выплаты (async, без лимита 100) (POST /v1/payout/batch).
+// CreatePayout — Bulk payouts (async, no 100 limit) (POST /v1/payout/batch).
 //
-// Асинхронный аналог `/v1/payout/mass` без ограничения в 100: до 5000 выплат, обработка в фоне,
-// статус через `/v1/batch/info`. Каждый элемент — обычный объект `/v1/payout`, идемпотентен по
-// `order_id`.
+// Asynchronous counterpart of `/v1/payout/mass` without the 100-item limit: up to 5000 payouts,
+// processed in the background, status via `/v1/batch/info`. Each item is a regular `/v1/payout`
+// object, idempotent on `order_id`.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.bad_on_error,
 // batch.bad_recipient, batch.disabled, batch.duplicate_order_id, batch.duplicate_reference,
 // batch.empty, batch.invoice_required, batch.order_id_required, batch.reference_required,
-// batch.too_large, batch.unsupported_kind, idempotency.bad_key, idempotency.in_progress,
-// idempotency.key_reused, idempotency.unavailable, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// batch.too_large, batch.unsupported_kind, cli.permission_denied, idempotency.bad_key,
+// idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *BatchesService) CreatePayout(ctx context.Context, params *PayoutBatchRequest, opts ...RequestOption) (*BatchSubmitResponse, error) {
 	return doJSON[BatchSubmitResponse](ctx, s.r, Call{
 		Route: Routes["createPayoutBatch"],
@@ -1411,16 +1513,19 @@ func (s *BatchesService) CreatePayout(ctx context.Context, params *PayoutBatchRe
 	}, opts)
 }
 
-// GetInfo — Статус пачки (POST /v1/batch/info).
+// GetInfo — Batch status (POST /v1/batch/info).
 //
-// Прогресс пачки (`total`/`succeeded`/`failed`/`status`) и постранично её элементы с результатом
-// или ошибкой по каждому. `status`: `pending` → `processing` → `completed`.
+// Batch progress (`total`/`succeeded`/`failed`/`status`) and its items, paginated, with the result
+// or error for each. `status`: `pending` → `processing` → `completed`.
+//
+// Requires role: Viewer when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.bad_id,
-// batch.disabled, batch.not_found, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
+// batch.disabled, batch.not_found, cli.permission_denied, internal, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
 func (s *BatchesService) GetInfo(ctx context.Context, params *BatchInfoRequest, opts ...RequestOption) (*BatchInfoResponse, error) {
 	return doJSON[BatchInfoResponse](ctx, s.r, Call{
 		Route: Routes["getBatchInfo"],
@@ -1428,32 +1533,34 @@ func (s *BatchesService) GetInfo(ctx context.Context, params *BatchInfoRequest, 
 	}, opts)
 }
 
-// SplitsService — Автоматическое разделение поступлений между получателями.
+// SplitsService — Automatic splitting of incoming funds between recipients.
 type SplitsService struct{ r Requester }
 
-// CreateRule — Правило сплита (отчисление партнёру) (POST /v1/split/rule).
+// CreateRule — Split rule (partner share) (POST /v1/split/rule).
 //
-// Автоматически отправлять долю КАЖДОГО входящего платежа партнёру. Укажите ровно одного
-// получателя:
+// Automatically send a share of EVERY incoming payment to a partner. Specify exactly one recipient:
 //
-// • `address` + `network` — внешний крипто-адрес. Уходит он-чейн выплатой, **необратимо**.
-// • `merchant_id` — аккаунт на Oblodai. Уходит проводкой по балансу: **обратимо** (возврат отзовёт
-// долю обратно).
+// • `address` + `network` — an external crypto address. Sent as an on-chain payout,
+// **irreversibly**.
+// • `merchant_id` — an Oblodai account. Sent as a balance posting: **reversible** (a refund claws
+// the share back).
 //
-// `percent` — доля от платежа (напр. `10` или `2.5`). Сумма всех активных правил проекта не может
-// превышать 100%.
+// `percent` — the share of the payment (e.g. `10` or `2.5`). The sum of all active rules of a
+// project cannot exceed 100%.
 //
-// ⚠️ **Возвраты.** Возврат списывается с ВАШЕГО баланса на всю сумму, что прислал плательщик.
-// Поэтому отправка партнёрам не происходит сразу: она откладывается на `refund_hold_seconds` (см.
-// `/v1/split/config/set`), и в момент отправки база пересчитывается как «оплачено − возвращено».
-// Возврат внутри окна автоматически уменьшает (или отменяет) отчисление, и вам всегда есть чем
-// вернуть деньги. Возврат ПОСЛЕ отправки: внешнюю долю вернуть нельзя (пополняйте баланс), долю
-// on-platform партнёра мы отзовём автоматически.
+// ⚠️ **Refunds.** A refund is debited from YOUR balance for the full amount the payer sent. That is
+// why partner shares are not sent immediately: sending is deferred by `refund_hold_seconds` (see
+// `/v1/split/config/set`), and at send time the base is recalculated as "paid − refunded". A refund
+// within the window automatically reduces (or cancels) the share, so you always have the funds to
+// refund. A refund AFTER sending: an external share cannot be recovered (top up your balance); an
+// on-platform partner's share is clawed back automatically.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, idempotency.bad_key,
-// idempotency.in_progress, idempotency.key_reused, idempotency.unavailable, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
 // payout.address_network_mismatch, payout.bad_address, payout.bad_memo, payout.memo_conflict,
 // payout.memo_required, payout.memo_too_long, request.bad_json, request.body_read,
 // request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
@@ -1468,16 +1575,18 @@ func (s *SplitsService) CreateRule(ctx context.Context, params *SplitRuleRequest
 	}, opts)
 }
 
-// ListRules — Список правил (POST /v1/split/rule/list).
+// ListRules — List rules (POST /v1/split/rule/list).
 //
-// Ваши правила сплита. `reversible: true` — партнёр на платформе (долю можно отозвать при
-// возврате).
+// Your split rules. `reversible: true` — an on-platform partner (the share can be clawed back on
+// refund).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, split.disabled.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, split.disabled.
 func (s *SplitsService) ListRules(ctx context.Context, params *PageRequest, opts ...RequestOption) *List[SplitRuleView] {
 	return doPaged[SplitRuleView](ctx, s.r, Call{
 		Route: Routes["listSplitRules"],
@@ -1485,16 +1594,18 @@ func (s *SplitsService) ListRules(ctx context.Context, params *PageRequest, opts
 	}, opts)
 }
 
-// DeleteRule — Удалить правило (POST /v1/split/rule/delete).
+// DeleteRule — Delete a rule (POST /v1/split/rule/delete).
 //
-// `{rule_id}`. На уже отправленные доли не влияет.
+// `{rule_id}`. Does not affect shares already sent.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, split.bad_id, split.disabled,
-// split.not_found.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, split.bad_id,
+// split.disabled, split.not_found.
 func (s *SplitsService) DeleteRule(ctx context.Context, params *SplitRuleDeleteRequest, opts ...RequestOption) (*SplitRuleDeleted, error) {
 	return doJSON[SplitRuleDeleted](ctx, s.r, Call{
 		Route: Routes["deleteSplitRule"],
@@ -1502,21 +1613,24 @@ func (s *SplitsService) DeleteRule(ctx context.Context, params *SplitRuleDeleteR
 	}, opts)
 }
 
-// SetConfig — Окно удержания под возвраты (POST /v1/split/config/set).
+// SetConfig — Refund hold window (POST /v1/split/config/set).
 //
-// `refund_hold_seconds` — на сколько СЕКУНД откладывается ВСЯ исходящая маршрутизация платежа
-// (сплиты партнёрам, авто-вывод, авто-конвертация в USDT) после его зачисления.
+// `refund_hold_seconds` — how many SECONDS ALL outgoing routing of a payment (partner splits,
+// auto-withdrawal, auto-conversion to USDT) is deferred after the payment is credited.
 //
-// Смысл: пока окно не истекло, деньги лежат на вашем балансе, и любой возврат проходит без проблем.
-// `0` = отправлять сразу, тогда риск возврата после отправки вы берёте на себя. Диапазон 0–7776000
-// (до 90 суток); поле обязательное — пришлите `0` явно, если доли нужно отправлять сразу.
+// The point: until the window expires the money stays on your balance, and any refund goes through
+// without trouble. `0` = send immediately, in which case you bear the risk of a refund after
+// sending. Range 0–7776000 (up to 90 days); the field is required — send `0` explicitly if shares
+// should be sent immediately.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.missing_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, split.bad_hold,
-// split.disabled.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.missing_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep, split.bad_hold, split.disabled.
 func (s *SplitsService) SetConfig(ctx context.Context, params *SplitConfigRequest, opts ...RequestOption) (*SplitConfigView, error) {
 	return doJSON[SplitConfigView](ctx, s.r, Call{
 		Route: Routes["setSplitConfig"],
@@ -1524,32 +1638,37 @@ func (s *SplitsService) SetConfig(ctx context.Context, params *SplitConfigReques
 	}, opts)
 }
 
-// GetConfig — Текущее окно удержания (POST /v1/split/config/get).
+// GetConfig — Current hold window (POST /v1/split/config/get).
 //
-// Возвращает `refund_hold_seconds` проекта.
+// Returns the project's `refund_hold_seconds`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep, split.disabled.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep, split.disabled.
 func (s *SplitsService) GetConfig(ctx context.Context, opts ...RequestOption) (*SplitConfigView, error) {
 	return doJSON[SplitConfigView](ctx, s.r, Call{
 		Route: Routes["getSplitConfig"],
 	}, opts)
 }
 
-// SetRecipientOptIn — Согласие принимать сплиты (POST /v1/split/recipient/optin).
+// SetRecipientOptIn — Consent to receive splits (POST /v1/split/recipient/optin).
 //
-// `{enabled}` — разрешить другим мерчантам направлять доли своих платежей на ВАШ баланс. Пока
-// выключено, никто не может создать внутреннее правило сплита с получателем-вами. Выключение не
-// отзывает уже созданные правила (деньги по ним продолжают поступать), но блокирует новые.
+// `{enabled}` — allow other merchants to route shares of their payments to YOUR balance. While
+// disabled, nobody can create an internal split rule with you as the recipient. Disabling does not
+// revoke rules already created (money keeps arriving under them), but blocks new ones.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.missing_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, split.disabled.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.missing_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep, split.disabled.
 func (s *SplitsService) SetRecipientOptIn(ctx context.Context, params *SplitRecipientOptInRequest, opts ...RequestOption) (*SplitRecipientOptInView, error) {
 	return doJSON[SplitRecipientOptInView](ctx, s.r, Call{
 		Route: Routes["setSplitRecipientOptIn"],
@@ -1557,39 +1676,43 @@ func (s *SplitsService) SetRecipientOptIn(ctx context.Context, params *SplitReci
 	}, opts)
 }
 
-// GetRecipientOptIn — Текущее согласие на приём сплитов (POST /v1/split/recipient/optin/get).
+// GetRecipientOptIn — Current consent to receive splits (POST /v1/split/recipient/optin/get).
 //
-// Возвращает `enabled` — включён ли приём внутренних сплитов на ваш баланс.
+// Returns `enabled` — whether receiving internal splits to your balance is enabled.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep, split.disabled.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep, split.disabled.
 func (s *SplitsService) GetRecipientOptIn(ctx context.Context, opts ...RequestOption) (*SplitRecipientOptInView, error) {
 	return doJSON[SplitRecipientOptInView](ctx, s.r, Call{
 		Route: Routes["getSplitRecipientOptIn"],
 	}, opts)
 }
 
-// WalletsService — Постоянные (статические) адреса пополнения под клиента.
+// WalletsService — Permanent (static) deposit addresses assigned to a customer.
 type WalletsService struct{ r Requester }
 
-// Create — Создать (или получить) статический кошелёк (POST /v1/wallet).
+// Create — Create (or get) a static wallet (POST /v1/wallet).
 //
-// Постоянный адрес пополнения, закреплённый за мерчантом (и, по желанию, за одним клиентом через
-// `order_id`). Любое пополнение на него сразу падает вам на баланс + шлёт вебхук.
+// A permanent deposit address assigned to the merchant (and, optionally, to one customer via
+// `order_id`). Any deposit to it is credited to your balance immediately and triggers a webhook.
 //
-// Идемпотентно по `(currency, network, order_id)`: тот же `order_id` вернёт тот же адрес — удобно
-// закрепить адрес за каждым клиентом.
+// Idempotent on `(currency, network, order_id)`: the same `order_id` returns the same address —
+// handy for assigning an address to each customer.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// invoice.daily_quota, merchant.acceptance_blocked, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited, merchant.secret_decrypt,
-// merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep, request.unknown_currency, wallet.abandoned,
-// wallet.deposits_unavailable, wallet.no_network, wallet.sandbox_unsupported,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, invoice.daily_quota, merchant.acceptance_blocked, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep, request.unknown_currency,
+// wallet.abandoned, wallet.deposits_unavailable, wallet.no_network, wallet.sandbox_unsupported,
 // wallet.static_disabled, wallet.static_exists, wallet.static_not_found,
 // wallet.unsupported_network.
 func (s *WalletsService) Create(ctx context.Context, params *CreateWalletRequest, opts ...RequestOption) (*StaticWalletView, error) {
@@ -1599,16 +1722,18 @@ func (s *WalletsService) Create(ctx context.Context, params *CreateWalletRequest
 	}, opts)
 }
 
-// Block — Заблокировать / разблокировать кошелёк (POST /v1/wallet/block).
+// Block — Block / unblock a wallet (POST /v1/wallet/block).
 //
-// Заблокированный кошелёк перестаёт зачислять новые пополнения. `is_force_block` по умолчанию true
-// (блокировать); передайте false, чтобы снять блокировку.
+// A blocked wallet stops crediting new deposits. `is_force_block` defaults to true (block); pass
+// false to lift the block.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, wallet.no_address,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, wallet.no_address,
 // wallet.static_disabled, wallet.static_not_found.
 func (s *WalletsService) Block(ctx context.Context, params *BlockWalletRequest, opts ...RequestOption) (*BlockWalletResult, error) {
 	return doJSON[BlockWalletResult](ctx, s.r, Call{
@@ -1617,15 +1742,18 @@ func (s *WalletsService) Block(ctx context.Context, params *BlockWalletRequest, 
 	}, opts)
 }
 
-// GetQR — QR-код адреса (POST /v1/wallet/qr).
+// GetQR — Address QR code (POST /v1/wallet/qr).
 //
-// Возвращает PNG data:-URI по полю `address` — для `<img src>`.
+// Returns a PNG data: URI for the `address` field — for `<img src>`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, qr.no_address,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// qr.no_address, request.bad_json, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep.
 func (s *WalletsService) GetQR(ctx context.Context, params *QrRequest, opts ...RequestOption) (*WalletQRResult, error) {
 	return doJSON[WalletQRResult](ctx, s.r, Call{
 		Route: Routes["getWalletQr"],
@@ -1633,35 +1761,40 @@ func (s *WalletsService) GetQR(ctx context.Context, params *QrRequest, opts ...R
 	}, opts)
 }
 
-// AccountService — Балансы мерчанта и курсы обмена.
+// AccountService — Merchant balances and exchange rates.
 type AccountService struct{ r Requester }
 
-// GetBalance — Баланс мерчанта (POST /v1/balance).
+// GetBalance — Merchant balance (POST /v1/balance).
 //
-// Ваши доступные балансы по каждой валюте. Тело — пустой `{}`.
+// Your available balances per currency. The body is an empty `{}`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep, request.unknown_currency.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep, request.unknown_currency.
 func (s *AccountService) GetBalance(ctx context.Context, opts ...RequestOption) (*BalanceResult, error) {
 	return doJSON[BalanceResult](ctx, s.r, Call{
 		Route: Routes["getBalance"],
 	}, opts)
 }
 
-// GetSummary — Итоги за период (POST /v1/summary).
+// GetSummary — Period totals (POST /v1/summary).
 //
-// Оборот окна `[from, to)` по монете оплаты (оплаченное по счетам в `paid`/`paid_over`, созданным в
-// окне) и число выплат в работе прямо сейчас (без возвратов). Считается по всем записям, а не по
-// странице истории.
+// Turnover for the `[from, to)` window per payment coin (amounts paid on invoices in
+// `paid`/`paid_over` created within the window) and the number of payouts in progress right now
+// (excluding refunds). Computed over all records, not over a history page.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, summary.bad_window.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep, summary.bad_window.
 func (s *AccountService) GetSummary(ctx context.Context, params *SummaryRequest, opts ...RequestOption) (*SummaryResult, error) {
 	return doJSON[SummaryResult](ctx, s.r, Call{
 		Route: Routes["getSummary"],
@@ -1669,9 +1802,9 @@ func (s *AccountService) GetSummary(ctx context.Context, params *SummaryRequest,
 	}, opts)
 }
 
-// ListExchangeRates — Курсы обмена к USDT (POST /v1/exchange-rate/list).
+// ListExchangeRates — Exchange rates to USDT (POST /v1/exchange-rate/list).
 //
-// Список курсов. Необязательный `currency_from` фильтрует по исходной валюте.
+// List of rates. The optional `currency_from` filters by source currency.
 //
 // Errors: convert.economy_unavailable, internal, personal.amount_invalid, personal.bad_amount,
 // rates.deviation, rates.no_source, rates.non_positive, rates.stale_rate, rates.unavailable,
@@ -1685,20 +1818,22 @@ func (s *AccountService) ListExchangeRates(ctx context.Context, params *Exchange
 	}, opts)
 }
 
-// WebhooksService — Регистрация endpoint'а для коллбэков, тест и переотправка.
+// WebhooksService — Registering the callback endpoint, test deliveries and resends.
 type WebhooksService struct{ r Requester }
 
-// ResendPayment — Переотправить вебхук по платежу (POST /v1/payment/resend).
+// ResendPayment — Resend the payment webhook (POST /v1/payment/resend).
 //
-// Заново поставит в очередь коллбэк по платежу (по `uuid`/`order_id`). Полезно, если ваш сервер был
-// недоступен.
+// Re-queues the payment callback (by `uuid`/`order_id`). Useful if your server was unavailable.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, webhook.no_endpoint.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+// webhook.no_endpoint.
 func (s *WebhooksService) ResendPayment(ctx context.Context, params *LookupRequest, opts ...RequestOption) (*WebhookResendResult, error) {
 	return doJSON[WebhookResendResult](ctx, s.r, Call{
 		Route: Routes["resendPaymentWebhook"],
@@ -1706,17 +1841,20 @@ func (s *WebhooksService) ResendPayment(ctx context.Context, params *LookupReque
 	}, opts)
 }
 
-// Register — Зарегистрировать endpoint для коллбэков (POST /v1/webhooks).
+// Register — Register the callback endpoint (POST /v1/webhooks).
 //
-// Задаёт URL проекта, куда слать вебхуки, и возвращает `secret` (показывается один раз) для
-// проверки подписи `X-Webhook-Signature`. Проверив подпись, обработчик ОБЯЗАН отбросить тело с
-// `test: true` — это репетиция с тестовой ручки, а не событие.
+// Sets the project URL to send webhooks to and returns the `secret` (shown once) for verifying the
+// `X-Webhook-Signature`. After verifying the signature, your handler MUST discard a body with
+// `test: true` — it is a rehearsal from the test endpoint, not an event.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, webhook.bad_url, webhook.no_url.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, webhook.bad_url,
+// webhook.no_url.
 func (s *WebhooksService) Register(ctx context.Context, params *RegisterWebhookRequest, opts ...RequestOption) (*RegisterWebhookResult, error) {
 	return doJSON[RegisterWebhookResult](ctx, s.r, Call{
 		Route: Routes["registerWebhook"],
@@ -1724,17 +1862,20 @@ func (s *WebhooksService) Register(ctx context.Context, params *RegisterWebhookR
 	}, opts)
 }
 
-// ListDeliveries — Журнал доставок вебхуков (POST /v1/webhooks/deliveries).
+// ListDeliveries — Webhook delivery log (POST /v1/webhooks/deliveries).
 //
-// Последние доставки: URL, статус, число попыток, последняя ошибка — для отладки. Статусы:
-// `pending` (в очереди или ждёт ретрая), `delivered`, `dead` (ретраи исчерпаны), `cancelled`
-// (эндпоинт выключили, пока доставка ждала в очереди; причина — в `cancel_reason`).
+// Recent deliveries: URL, status, attempt count, last error — for debugging. Statuses: `pending`
+// (queued or waiting for a retry), `delivered`, `dead` (retries exhausted), `cancelled` (the
+// endpoint was disabled while the delivery was waiting in the queue; the reason is in
+// `cancel_reason`).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *WebhooksService) ListDeliveries(ctx context.Context, params *PageRequest, opts ...RequestOption) *List[WebhookDeliveryLogItem] {
 	return doPaged[WebhookDeliveryLogItem](ctx, s.r, Call{
 		Route: Routes["listWebhookDeliveries"],
@@ -1742,21 +1883,23 @@ func (s *WebhooksService) ListDeliveries(ctx context.Context, params *PageReques
 	}, opts)
 }
 
-// RequeueDelivery — Переотправить доставку из журнала (POST /v1/webhooks/deliveries/requeue).
+// RequeueDelivery — Resend a delivery from the log (POST /v1/webhooks/deliveries/requeue).
 //
-// Возвращает в очередь вашу доставку в статусе `dead` (ретраи исчерпаны) или `cancelled` (эндпоинт
-// выключали): новая лестница ретраев, подпись текущим секретом. Тело доставки то же, что было в
-// журнале, — для отправки ТЕКУЩЕГО состояния платежа есть `POST /v1/payment/resend`. Повтор вызова
-// безопасен: доставка, уже стоящая в очереди или доставленная, возвращается как есть с `ok: false`.
-// Чужая доставка — 404 `webhook.delivery_not_found`; выключенный эндпоинт — 409
-// `webhook.endpoint_disabled` (сначала включите его).
+// Re-queues your delivery in status `dead` (retries exhausted) or `cancelled` (the endpoint was
+// disabled): a fresh retry schedule, signed with the current secret. The delivery body is the same
+// as in the log — to send the CURRENT state of a payment use `POST /v1/payment/resend`. Repeating
+// the call is safe: a delivery already queued or delivered is returned as is with `ok: false`.
+// Someone else's delivery — 404 `webhook.delivery_not_found`; a disabled endpoint — 409
+// `webhook.endpoint_disabled` (enable it first).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_id,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
-// webhook.delivery_not_found, webhook.endpoint_disabled.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_id, request.bad_json, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep, webhook.delivery_not_found, webhook.endpoint_disabled.
 func (s *WebhooksService) RequeueDelivery(ctx context.Context, params *RequeueWebhookDeliveryRequest, opts ...RequestOption) (*RequeueWebhookDeliveryResult, error) {
 	return doJSON[RequeueWebhookDeliveryResult](ctx, s.r, Call{
 		Route: Routes["requeueWebhookDelivery"],
@@ -1764,19 +1907,21 @@ func (s *WebhooksService) RequeueDelivery(ctx context.Context, params *RequeueWe
 	}, opts)
 }
 
-// SendLegacyTest — Тестовый вебхук на URL (старый вариант) (POST /v1/payment/testing-webhook).
+// SendLegacyTest — Test webhook to a URL (legacy) (POST /v1/payment/testing-webhook).
 //
-// Шлёт пробное тело на указанный `url` — проверить, что ваш обработчик работает. Тело репетиции
-// несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём
-// всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с
-// `test: true`, даже если подпись верна.
+// Sends a sample body to the given `url` — to check that your handler works. The rehearsal body
+// carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its
+// `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body
+// with `test: true` even if the signature is valid.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, webhook.bad_currency,
-// webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_endpoint.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+// webhook.bad_currency, webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_endpoint.
 func (s *WebhooksService) SendLegacyTest(ctx context.Context, params *TestWebhookRequest, opts ...RequestOption) (*TestWebhookResult, error) {
 	return doJSON[TestWebhookResult](ctx, s.r, Call{
 		Route: Routes["sendLegacyTestWebhook"],
@@ -1784,19 +1929,22 @@ func (s *WebhooksService) SendLegacyTest(ctx context.Context, params *TestWebhoo
 	}, opts)
 }
 
-// SendTestPayment — Тестовый вебхук ПЛАТЕЖА (POST /v1/test-webhook/payment).
+// SendTestPayment — Test PAYMENT webhook (POST /v1/test-webhook/payment).
 //
-// Доставит пробный вебхук типа payment на `url_callback`. Тело репетиции несёт `"test": true`
-// (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие
-// этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если
-// подпись верна.
+// Delivers a sample webhook of type payment to `url_callback`. The rehearsal body carries `"test":
+// true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always
+// 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true`
+// even if the signature is valid.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, webhook.bad_currency,
-// webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+// webhook.bad_currency, webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url,
+// webhook.test_failed.
 func (s *WebhooksService) SendTestPayment(ctx context.Context, params *TestWebhookKindRequest, opts ...RequestOption) (*TestWebhookKindResult, error) {
 	return doJSON[TestWebhookKindResult](ctx, s.r, Call{
 		Route: Routes["sendTestPaymentWebhook"],
@@ -1804,19 +1952,22 @@ func (s *WebhooksService) SendTestPayment(ctx context.Context, params *TestWebho
 	}, opts)
 }
 
-// SendTestWallet — Тестовый вебхук КОШЕЛЬКА (POST /v1/test-webhook/wallet).
+// SendTestWallet — Test WALLET webhook (POST /v1/test-webhook/wallet).
 //
-// Доставит пробный вебхук типа wallet (пополнение статик-кошелька). Тело репетиции несёт `"test":
-// true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое
-// событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже
-// если подпись верна.
+// Delivers a sample webhook of type wallet (a static wallet deposit). The rehearsal body carries
+// `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence`
+// is always 0. A live event NEVER carries these markers: your handler must ignore a body with
+// `test: true` even if the signature is valid.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, webhook.bad_currency,
-// webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+// webhook.bad_currency, webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url,
+// webhook.test_failed.
 func (s *WebhooksService) SendTestWallet(ctx context.Context, params *TestWebhookKindRequest, opts ...RequestOption) (*TestWebhookKindResult, error) {
 	return doJSON[TestWebhookKindResult](ctx, s.r, Call{
 		Route: Routes["sendTestWalletWebhook"],
@@ -1824,18 +1975,22 @@ func (s *WebhooksService) SendTestWallet(ctx context.Context, params *TestWebhoo
 	}, opts)
 }
 
-// SendTestPayout — Тестовый вебхук ВЫПЛАТЫ (POST /v1/test-webhook/payout).
+// SendTestPayout — Test PAYOUT webhook (POST /v1/test-webhook/payout).
 //
-// Доставит пробный вебхук типа payout. Тело репетиции несёт `"test": true` (внутри подписи) и
-// заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ
-// несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.
+// Delivers a sample webhook of type payout. The rehearsal body carries `"test": true` (inside the
+// signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event
+// NEVER carries these markers: your handler must ignore a body with `test: true` even if the
+// signature is valid.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, webhook.bad_currency,
-// webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+// webhook.bad_currency, webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url,
+// webhook.test_failed.
 func (s *WebhooksService) SendTestPayout(ctx context.Context, params *TestWebhookKindRequest, opts ...RequestOption) (*TestWebhookKindResult, error) {
 	return doJSON[TestWebhookKindResult](ctx, s.r, Call{
 		Route: Routes["sendTestPayoutWebhook"],
@@ -1843,20 +1998,23 @@ func (s *WebhooksService) SendTestPayout(ctx context.Context, params *TestWebhoo
 	}, opts)
 }
 
-// SendTestConversion — Тестовый вебхук КОНВЕРТАЦИИ (POST /v1/test-webhook/conversion).
+// SendTestConversion — Test CONVERSION webhook (POST /v1/test-webhook/conversion).
 //
-// Доставит пробный вебхук типа conversion (события `conversion.completed` / `conversion.refunded`
-// по заявкам режима economy; `status` — completed или refunded, по умолчанию completed). Тело
-// репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence`
-// в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать
-// тело с `test: true`, даже если подпись верна.
+// Delivers a sample webhook of type conversion (the `conversion.completed` / `conversion.refunded`
+// events for economy-mode orders; `status` — completed or refunded, default completed). The
+// rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true`
+// header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler
+// must ignore a body with `test: true` even if the signature is valid.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, webhook.bad_currency,
-// webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url, webhook.test_failed.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+// webhook.bad_currency, webhook.bad_status, webhook.bad_url, webhook.bad_uuid, webhook.no_url,
+// webhook.test_failed.
 func (s *WebhooksService) SendTestConversion(ctx context.Context, params *TestWebhookKindRequest, opts ...RequestOption) (*TestWebhookKindResult, error) {
 	return doJSON[TestWebhookKindResult](ctx, s.r, Call{
 		Route: Routes["sendTestConversionWebhook"],
@@ -1864,38 +2022,43 @@ func (s *WebhooksService) SendTestConversion(ctx context.Context, params *TestWe
 	}, opts)
 }
 
-// RotateSecret — Перевыпустить секрет подписи вебхуков (POST /v1/webhooks/rotate-secret).
+// RotateSecret — Rotate the webhook signing secret (POST /v1/webhooks/rotate-secret).
 //
-// Единственный момент, когда новый секрет показывается. До `previous_secret_valid_until` доставки
-// дополнительно несут `X-Webhook-Signature-Prev` со старым секретом — время докатить замену без
-// потери проверки.
+// The only time the new secret is shown. Until `previous_secret_valid_until`, deliveries
+// additionally carry `X-Webhook-Signature-Prev` signed with the old secret — time to roll out the
+// change without losing verification.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep, webhook.no_endpoint, webhook.rotation_in_overlap.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep, webhook.no_endpoint,
+// webhook.rotation_in_overlap.
 func (s *WebhooksService) RotateSecret(ctx context.Context, opts ...RequestOption) (*RotateWebhookSecretResult, error) {
 	return doJSON[RotateWebhookSecretResult](ctx, s.r, Call{
 		Route: Routes["rotateWebhookSecret"],
 	}, opts)
 }
 
-// SetActive — Включить или выключить доставку вебхуков (POST /v1/webhooks/active).
+// SetActive — Enable or disable webhook delivery (POST /v1/webhooks/active).
 //
-// Выключенный эндпоинт перестаёт получать доставки: новые события по этому проекту в очередь не
-// ставятся, а уже стоящие в очереди отменяются (статус `cancelled`) и после включения сами не
-// уходят. Нужен, когда приёмник выведен из эксплуатации, — иначе каждое событие ретраилось бы ~3
-// суток и уходило в dead-letter бессрочно. Секрет и URL сохраняются: включение возвращает всё как
-// было. Эндпоинт, у которого 3 суток подряд не прошла ни одна попытка, выключается автоматически —
-// очередь отменяется, владельцу магазина уходит письмо; после починки приёмника включите его этой
-// ручкой.
+// A disabled endpoint stops receiving deliveries: new events for this project are not queued, and
+// those already queued are cancelled (status `cancelled`) and are not sent automatically after
+// re-enabling. Needed when a receiver is decommissioned — otherwise every event would be retried
+// for ~3 days and end up in the dead-letter queue indefinitely. The secret and URL are kept:
+// enabling restores everything as it was. An endpoint for which not a single attempt has succeeded
+// for 3 days in a row is disabled automatically — its queue is cancelled and the store owner gets
+// an email; after fixing the receiver, enable it with this endpoint.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, webhook.no_active,
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, webhook.no_active,
 // webhook.no_endpoint.
 func (s *WebhooksService) SetActive(ctx context.Context, params *SetWebhookActiveRequest, opts ...RequestOption) (*SetWebhookActiveResult, error) {
 	return doJSON[SetWebhookActiveResult](ctx, s.r, Call{
@@ -1904,19 +2067,23 @@ func (s *WebhooksService) SetActive(ctx context.Context, params *SetWebhookActiv
 	}, opts)
 }
 
-// SettingsService — Настройки магазина: допуск сумм, скидки, автовозвраты, валюты, авто-вывод.
+// SettingsService — Store settings: amount tolerance, discounts, auto-refunds, currencies,
+// auto-withdrawal.
 type SettingsService struct{ r Requester }
 
-// SetAccuracy — Настроить допуск недо/переплаты (POST /v1/payment/accuracy/set).
+// SetAccuracy — Configure underpayment/overpayment tolerance (POST /v1/payment/accuracy/set).
 //
-// «Точность платежей»: `enabled` + `accuracy_percent` 1–5. В пределах допуска платёж считается
-// оплаченным. Выключено — нужна точная сумма.
+// "Payment accuracy": `enabled` + `accuracy_percent` 1–5. Within the tolerance a payment counts as
+// paid. Disabled — the exact amount is required.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: accuracy.out_of_range, auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-// internal, merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep.
 func (s *SettingsService) SetAccuracy(ctx context.Context, params *SetAccuracyRequest, opts ...RequestOption) (*AccuracyResult, error) {
 	return doJSON[AccuracyResult](ctx, s.r, Call{
 		Route: Routes["setAccuracy"],
@@ -1924,30 +2091,34 @@ func (s *SettingsService) SetAccuracy(ctx context.Context, params *SetAccuracyRe
 	}, opts)
 }
 
-// GetAccuracy — Прочитать допуск сумм (POST /v1/payment/accuracy/get).
+// GetAccuracy — Read the amount tolerance (POST /v1/payment/accuracy/get).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) GetAccuracy(ctx context.Context, opts ...RequestOption) (*AccuracyResult, error) {
 	return doJSON[AccuracyResult](ctx, s.r, Call{
 		Route: Routes["getAccuracy"],
 	}, opts)
 }
 
-// SetAutoRefund — Настроить автовозвраты (POST /v1/payment/autorefund/set).
+// SetAutoRefund — Configure auto-refunds (POST /v1/payment/autorefund/set).
 //
-// `overpay` — авто-возврат излишка переплаты; `underpay` — авто-возврат при истёкшей недоплате. Оба
-// по умолчанию ВКЛ. Возврат идёт на адрес плательщика (EVM/Tron/TON/Solana; на Bitcoin/UTXO —
-// вручную).
+// `overpay` — auto-refund of the overpaid excess; `underpay` — auto-refund of an expired
+// underpayment. Both are ON by default. The refund goes to the payer's address
+// (EVM/Tron/TON/Solana; on Bitcoin/UTXO — manually).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) SetAutoRefund(ctx context.Context, params *SetAutoRefundRequest, opts ...RequestOption) (*SetAutoRefundRequest, error) {
 	return doJSON[SetAutoRefundRequest](ctx, s.r, Call{
 		Route: Routes["setAutoRefund"],
@@ -1955,32 +2126,36 @@ func (s *SettingsService) SetAutoRefund(ctx context.Context, params *SetAutoRefu
 	}, opts)
 }
 
-// GetAutoRefund — Прочитать настройку автовозвратов (POST /v1/payment/autorefund/get).
+// GetAutoRefund — Read the auto-refund settings (POST /v1/payment/autorefund/get).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) GetAutoRefund(ctx context.Context, opts ...RequestOption) (*AutoRefundPolicyResult, error) {
 	return doJSON[AutoRefundPolicyResult](ctx, s.r, Call{
 		Route: Routes["getAutoRefund"],
 	}, opts)
 }
 
-// SetDiscount — Скидка/наценка на способ оплаты (POST /v1/payment/discount/set).
+// SetDiscount — Discount/surcharge for a payment method (POST /v1/payment/discount/set).
 //
-// Положительный `discount_percent` — скидка плательщику за оплату этой монетой; отрицательный —
-// наценка. Пустая `currency` задаёт правило по умолчанию для всех монет, пустая `network` — для
-// любой сети выбранной монеты. В ответе — сохранённое правило в КАНОНИЧЕСКОМ виде (символ монеты в
-// верхнем регистре, сеть в нижнем).
+// A positive `discount_percent` is a discount to the payer for paying with this coin; a negative
+// one is a surcharge. An empty `currency` sets the default rule for all coins, an empty `network` —
+// for any network of the chosen coin. The response contains the saved rule in CANONICAL form (coin
+// symbol uppercase, network lowercase).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, discount.network_required,
-// discount.out_of_range, discount.unsupported_network, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep, request.unknown_currency.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// discount.network_required, discount.out_of_range, discount.unsupported_network, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep, request.unknown_currency.
 func (s *SettingsService) SetDiscount(ctx context.Context, params *SetDiscountRequest, opts ...RequestOption) (*PaymentDiscountRule, error) {
 	return doJSON[PaymentDiscountRule](ctx, s.r, Call{
 		Route: Routes["setDiscount"],
@@ -1988,16 +2163,19 @@ func (s *SettingsService) SetDiscount(ctx context.Context, params *SetDiscountRe
 	}, opts)
 }
 
-// ListDiscounts — Список скидок/наценок (POST /v1/payment/discount/list).
+// ListDiscounts — List discounts/surcharges (POST /v1/payment/discount/list).
 //
-// Настроенные правила: `items` (по одному на пару «монета+сеть») + блок `paginate` (`total`,
-// `per_page`, `offset`, `has_pages`). Поля правила — те же, что отдаёт `/v1/payment/discount/set`.
+// Configured rules: `items` (one per coin+network pair) plus a `paginate` block (`total`,
+// `per_page`, `offset`, `has_pages`). Rule fields are the same as returned by
+// `/v1/payment/discount/set`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) ListDiscounts(ctx context.Context, params *PageRequest, opts ...RequestOption) *List[PaymentDiscountRule] {
 	return doPaged[PaymentDiscountRule](ctx, s.r, Call{
 		Route: Routes["listDiscounts"],
@@ -2005,19 +2183,21 @@ func (s *SettingsService) ListDiscounts(ctx context.Context, params *PageRequest
 	}, opts)
 }
 
-// ListAPILog — Лог запросов вашего ключа (POST /v1/payment/api-log).
+// ListAPILog — Request log for your key (POST /v1/payment/api-log).
 //
-// Дата, метод с путём, код ответа, длительность и IP — по вашему мерчанту и только по нему. Строки
-// живут 90 дней (`retention_days` в ответе). Строка запроса (query) НЕ хранится: в ней ездят
-// идентификаторы того, что фильтровали, а вторая копия чужих платёжных идентификаторов — это
-// обязательство, а не удобство. `to` включает день целиком.
+// Date, method with path, response code, duration and IP — for your merchant and only for it. Rows
+// are kept for 90 days (`retention_days` in the response). The query string is NOT stored: it
+// carries identifiers of what was filtered, and a second copy of someone else's payment identifiers
+// is a liability, not a convenience. `to` includes the whole day.
+//
+// Requires role: Viewer when called with a CLI key.
 //
 // Errors: apilog.bad_date, apilog.bad_status, apilog.count, apilog.disabled, apilog.list,
-// auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) ListAPILog(ctx context.Context, params *APILogRequest, opts ...RequestOption) (*APILogResult, error) {
 	return doJSON[APILogResult](ctx, s.r, Call{
 		Route: Routes["listApiLog"],
@@ -2025,40 +2205,44 @@ func (s *SettingsService) ListAPILog(ctx context.Context, params *APILogRequest,
 	}, opts)
 }
 
-// GetAutoConvert — Авто-конвертация выручки: текущий приказ (POST /v1/payment/autoconvert/get).
+// GetAutoConvert — Revenue auto-conversion: current order (POST /v1/payment/autoconvert/get).
 //
-// `configured:false` — приказа нет, остальные поля тогда пустые/умолчания. `min_usd_cents` — пол
-// одной конвертации: ниже него спред стоит дороже, чем сводить.
+// `configured:false` — there is no order; the other fields are then empty/defaults. `min_usd_cents`
+// — the floor for a single conversion: below it the spread costs more than the conversion is worth.
+//
+// Requires role: Viewer when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, autoconvert.disabled,
-// autoconvert.scan, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// autoconvert.scan, cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) GetAutoConvert(ctx context.Context, opts ...RequestOption) (*AutoConvertResult, error) {
 	return doJSON[AutoConvertResult](ctx, s.r, Call{
 		Route: Routes["getAutoConvert"],
 	}, opts)
 }
 
-// SetAutoConvert — Авто-конвертация выручки: задать приказ (POST /v1/payment/autoconvert/set).
+// SetAutoConvert — Revenue auto-conversion: set the order (POST /v1/payment/autoconvert/set).
 //
-// Сводит перечисленные монеты в `target` фоновым сводом, не в момент зачисления депозита. ⚠
-// ИСТОЧНИКИ — ПО МОНЕТЕ, А НЕ ПО ПАРЕ «МОНЕТА+СЕТЬ»: обязательства мерчанта ведутся по активу, и у
-// принимающего USDT в Tron и в BSC баланс USDT ОДИН — включить свод для одной пары и не включить
-// для второй нечего. Целевая монета проверяется на возможность ликвидации ЗДЕСЬ, при сохранении:
-// отказ в момент выбора можно исправить, отказ через неделю в фоне — это выручка, которая молча не
-// сводилась. В ответе — СОХРАНЁННЫЙ приказ: монеты, которые свод не примет (сама цель, дубли), из
-// него убраны.
+// Converts the listed coins into `target` in a background sweep, not at the moment a deposit is
+// credited. ⚠ SOURCES ARE PER COIN, NOT PER COIN+NETWORK PAIR: merchant liabilities are tracked per
+// asset, and a merchant accepting USDT on Tron and on BSC has ONE USDT balance — there is nothing
+// to enable the sweep for one pair and not the other. The target coin is checked for liquidity
+// HERE, on save: a rejection at selection time can be fixed, a rejection a week later in the
+// background is revenue that silently was not converted. The response contains the SAVED order:
+// coins the sweep will not accept (the target itself, duplicates) are removed from it.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, autoconvert.bad_floor,
 // autoconvert.disabled, autoconvert.no_target, autoconvert.scan, autoconvert.source_unsupported,
-// autoconvert.target_unsupported, autoconvert.upsert, autoconvert.vanished, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.invalid_mode,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
-// request.unknown_currency, treasury.no_ccy_map.
+// autoconvert.target_unsupported, autoconvert.upsert, autoconvert.vanished, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.invalid_mode, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep, request.unknown_currency, treasury.no_ccy_map.
 func (s *SettingsService) SetAutoConvert(ctx context.Context, params *SetAutoConvertRequest, opts ...RequestOption) (*AutoConvertResult, error) {
 	return doJSON[AutoConvertResult](ctx, s.r, Call{
 		Route: Routes["setAutoConvert"],
@@ -2066,16 +2250,19 @@ func (s *SettingsService) SetAutoConvert(ctx context.Context, params *SetAutoCon
 	}, opts)
 }
 
-// SetAcceptedCurrencies — Настроить принимаемые валюты магазина (POST /v1/payment/accepted/set).
+// SetAcceptedCurrencies — Configure the store's accepted currencies (POST
+// /v1/payment/accepted/set).
 //
-// Задаёт, какие валюты/сети магазин принимает.
+// Sets which currencies/networks the store accepts.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: accepted.no_network, accepted.unknown_method, auth.bad_timestamp, auth.body_too_large,
-// auth.ip_not_allowed, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
-// request.unknown_currency.
+// auth.ip_not_allowed, cli.permission_denied, internal, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep, request.unknown_currency.
 func (s *SettingsService) SetAcceptedCurrencies(ctx context.Context, params *AcceptedSetRequest, opts ...RequestOption) (*AcceptedSetResult, error) {
 	return doJSON[AcceptedSetResult](ctx, s.r, Call{
 		Route: Routes["setAcceptedCurrencies"],
@@ -2083,13 +2270,15 @@ func (s *SettingsService) SetAcceptedCurrencies(ctx context.Context, params *Acc
 	}, opts)
 }
 
-// ListAcceptedCurrencies — Список принимаемых валют (POST /v1/payment/accepted/list).
+// ListAcceptedCurrencies — List accepted currencies (POST /v1/payment/accepted/list).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) ListAcceptedCurrencies(ctx context.Context, params *PageRequest, opts ...RequestOption) *List[AcceptedConfiguredMethod] {
 	return doPaged[AcceptedConfiguredMethod](ctx, s.r, Call{
 		Route: Routes["listAcceptedCurrencies"],
@@ -2097,15 +2286,18 @@ func (s *SettingsService) ListAcceptedCurrencies(ctx context.Context, params *Pa
 	}, opts)
 }
 
-// SetPayoutFeeConfig — Кто платит сетевую комиссию выплаты (POST /v1/payout/fee-config/set).
+// SetPayoutFeeConfig — Who pays the payout network fee (POST /v1/payout/fee-config/set).
 //
-// `fee_on_recipient: true` — комиссию сети платит получатель (ему приходит сумма минус комиссия).
+// `fee_on_recipient: true` — the network fee is paid by the recipient (they receive the amount
+// minus the fee).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) SetPayoutFeeConfig(ctx context.Context, params *SetPayoutFeeRequest, opts ...RequestOption) (*SetPayoutFeeRequest, error) {
 	return doJSON[SetPayoutFeeRequest](ctx, s.r, Call{
 		Route: Routes["setPayoutFeeConfig"],
@@ -2113,30 +2305,33 @@ func (s *SettingsService) SetPayoutFeeConfig(ctx context.Context, params *SetPay
 	}, opts)
 }
 
-// GetPayoutFeeConfig — Прочитать настройку комиссии выплат (POST /v1/payout/fee-config/get).
+// GetPayoutFeeConfig — Read the payout fee setting (POST /v1/payout/fee-config/get).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) GetPayoutFeeConfig(ctx context.Context, opts ...RequestOption) (*PayoutFeeResult, error) {
 	return doJSON[PayoutFeeResult](ctx, s.r, Call{
 		Route: Routes["getPayoutFeeConfig"],
 	}, opts)
 }
 
-// SetRefundFeeConfig — Кто платит нашу комиссию при возврате (POST
-// /v1/payout/refund-fee-config/set).
+// SetRefundFeeConfig — Who pays our fee on a refund (POST /v1/payout/refund-fee-config/set).
 //
-// `fee_on_customer: true` — при возврате нашу комиссию несёт клиент (возврат за вычетом комиссии);
-// false — несёт мерчант.
+// `fee_on_customer: true` — on a refund our fee is borne by the customer (refund minus the fee);
+// false — borne by the merchant.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) SetRefundFeeConfig(ctx context.Context, params *SetRefundFeeRequest, opts ...RequestOption) (*SetRefundFeeRequest, error) {
 	return doJSON[SetRefundFeeRequest](ctx, s.r, Call{
 		Route: Routes["setRefundFeeConfig"],
@@ -2144,33 +2339,37 @@ func (s *SettingsService) SetRefundFeeConfig(ctx context.Context, params *SetRef
 	}, opts)
 }
 
-// GetRefundFeeConfig — Прочитать настройку комиссии возврата (POST
-// /v1/payout/refund-fee-config/get).
+// GetRefundFeeConfig — Read the refund fee setting (POST /v1/payout/refund-fee-config/get).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) GetRefundFeeConfig(ctx context.Context, opts ...RequestOption) (*RefundFeeResult, error) {
 	return doJSON[RefundFeeResult](ctx, s.r, Call{
 		Route: Routes["getRefundFeeConfig"],
 	}, opts)
 }
 
-// SetPaymentFeeConfig — Кто платит нашу комиссию при приёме платежа (POST
+// SetPaymentFeeConfig — Who pays our fee when accepting a payment (POST
 // /v1/payment/fee-config/set).
 //
-// `payer_pays_percent: 0` — комиссию платит мерчант (по умолчанию); `100` — платит покупатель: счёт
-// выставляется с наценкой, и мерчант получает ровно ту сумму, которую назвал. Промежуточные
-// значения делят комиссию. Действует на счета, созданные ПОСЛЕ изменения; параметр `subtract` в
-// самом счёте перекрывает эту настройку.
+// `payer_pays_percent: 0` — the fee is paid by the merchant (default); `100` — paid by the buyer:
+// the invoice is issued with a markup, and the merchant receives exactly the amount they specified.
+// Intermediate values split the fee. Applies to invoices created AFTER the change; the `subtract`
+// parameter of an invoice overrides this setting.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_fee_bearer, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_fee_bearer, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep.
 func (s *SettingsService) SetPaymentFeeConfig(ctx context.Context, params *SetPaymentFeeRequest, opts ...RequestOption) (*SetPaymentFeeRequest, error) {
 	return doJSON[SetPaymentFeeRequest](ctx, s.r, Call{
 		Route: Routes["setPaymentFeeConfig"],
@@ -2178,36 +2377,40 @@ func (s *SettingsService) SetPaymentFeeConfig(ctx context.Context, params *SetPa
 	}, opts)
 }
 
-// GetPaymentFeeConfig — Прочитать, кто платит комиссию за приём (POST /v1/payment/fee-config/get).
+// GetPaymentFeeConfig — Read who pays the acceptance fee (POST /v1/payment/fee-config/get).
 //
-// Также возвращает ваш тариф: `fee_percent` — ставка, которую зафиксирует СЛЕДУЮЩИЙ созданный счёт;
-// `fee_fixed_usd` — фиксированный сбор с платежа, USD строкой ("0.30"; прежнее
-// `fee_fixed_usd_cents` — то же в центах числом, устарело); `fee_individual: true` — тариф назначен
-// вам индивидуально, false — действует тариф платформы.
+// Also returns your pricing: `fee_percent` — the rate the NEXT created invoice will lock in;
+// `fee_fixed_usd` — the fixed per-payment fee, USD as a string ("0.30"; the former
+// `fee_fixed_usd_cents` is the same in cents as a number, deprecated); `fee_individual: true` — the
+// pricing is assigned to you individually, false — the platform pricing applies.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.not_found, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) GetPaymentFeeConfig(ctx context.Context, opts ...RequestOption) (*PaymentFeeResult, error) {
 	return doJSON[PaymentFeeResult](ctx, s.r, Call{
 		Route: Routes["getPaymentFeeConfig"],
 	}, opts)
 }
 
-// SetAutoWithdrawRule — Настроить авто-вывод (POST /v1/auto-withdraw/set).
+// SetAutoWithdrawRule — Configure auto-withdrawal (POST /v1/auto-withdraw/set).
 //
-// Автоматически выводить поступления на заданный адрес.
+// Automatically withdraw incoming funds to a given address.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, autowithdraw.bad_min,
-// autowithdraw.missing, autowithdraw.network_required, autowithdraw.unsupported_network, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// payout.address_network_mismatch, payout.bad_address, payout.bad_memo, payout.memo_conflict,
-// payout.memo_required, payout.memo_too_long, request.bad_json, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep, request.unknown_currency.
+// autowithdraw.missing, autowithdraw.network_required, autowithdraw.unsupported_network,
+// cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, payout.address_network_mismatch, payout.bad_address, payout.bad_memo,
+// payout.memo_conflict, payout.memo_required, payout.memo_too_long, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep, request.unknown_currency.
 func (s *SettingsService) SetAutoWithdrawRule(ctx context.Context, params *AutoWithdrawSetRequest, opts ...RequestOption) (*AutoWithdrawListResult, error) {
 	return doJSON[AutoWithdrawListResult](ctx, s.r, Call{
 		Route: Routes["setAutoWithdrawRule"],
@@ -2215,26 +2418,30 @@ func (s *SettingsService) SetAutoWithdrawRule(ctx context.Context, params *AutoW
 	}, opts)
 }
 
-// ListAutoWithdrawRules — Список правил авто-вывода (POST /v1/auto-withdraw/list).
+// ListAutoWithdrawRules — List auto-withdrawal rules (POST /v1/auto-withdraw/list).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) ListAutoWithdrawRules(ctx context.Context, opts ...RequestOption) (*AutoWithdrawListResult, error) {
 	return doJSON[AutoWithdrawListResult](ctx, s.r, Call{
 		Route: Routes["listAutoWithdrawRules"],
 	}, opts)
 }
 
-// DeleteAutoWithdrawRule — Удалить правило авто-вывода (POST /v1/auto-withdraw/delete).
+// DeleteAutoWithdrawRule — Delete an auto-withdrawal rule (POST /v1/auto-withdraw/delete).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *SettingsService) DeleteAutoWithdrawRule(ctx context.Context, params *AutoWithdrawDeleteRequest, opts ...RequestOption) (*AutoWithdrawListResult, error) {
 	return doJSON[AutoWithdrawListResult](ctx, s.r, Call{
 		Route: Routes["deleteAutoWithdrawRule"],
@@ -2242,15 +2449,17 @@ func (s *SettingsService) DeleteAutoWithdrawRule(ctx context.Context, params *Au
 	}, opts)
 }
 
-// ConfigureVrcs — Авто-конверт волатильных монет в USDT (VRCS) (POST /v1/vrcs).
+// ConfigureVrcs — Auto-convert volatile coins to USDT (VRCS) (POST /v1/vrcs).
 //
-// Включает автоматическую конвертацию поступающих волатильных монет в стейбл USDT.
+// Enables automatic conversion of incoming volatile coins into the USDT stablecoin.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, vrcs.read.
+// Requires role: Finance when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, vrcs.read.
 func (s *SettingsService) ConfigureVrcs(ctx context.Context, params *VRCSRequest, opts ...RequestOption) (*VRCSResult, error) {
 	return doJSON[VRCSResult](ctx, s.r, Call{
 		Route: Routes["configureVrcs"],
@@ -2258,29 +2467,34 @@ func (s *SettingsService) ConfigureVrcs(ctx context.Context, params *VRCSRequest
 	}, opts)
 }
 
-// APIAllowlistService — Ротация ключей и IP-allowlist API.
+// APIAllowlistService — Key rotation and the API IP allowlist.
 type APIAllowlistService struct{ r Requester }
 
-// List — Список разрешённых IP (POST /v1/api-allowlist/list).
+// List — List allowed IPs (POST /v1/api-allowlist/list).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *APIAllowlistService) List(ctx context.Context, opts ...RequestOption) (*APIAllowListResult, error) {
 	return doJSON[APIAllowListResult](ctx, s.r, Call{
 		Route: Routes["listApiAllowlist"],
 	}, opts)
 }
 
-// AddEntry — Добавить IP в allowlist (POST /v1/api-allowlist/add).
+// AddEntry — Add an IP to the allowlist (POST /v1/api-allowlist/add).
+//
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: apiallow.bad_cidr, apiallow.too_many, auth.bad_timestamp, auth.body_too_large,
-// auth.ip_not_allowed, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
+// auth.ip_not_allowed, cli.permission_denied, internal, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
 func (s *APIAllowlistService) AddEntry(ctx context.Context, params *APIAllowEntryRequest, opts ...RequestOption) (*APIAllowListResult, error) {
 	return doJSON[APIAllowListResult](ctx, s.r, Call{
 		Route: Routes["addApiAllowlistEntry"],
@@ -2288,13 +2502,16 @@ func (s *APIAllowlistService) AddEntry(ctx context.Context, params *APIAllowEntr
 	}, opts)
 }
 
-// RemoveEntry — Удалить IP из allowlist (POST /v1/api-allowlist/remove).
+// RemoveEntry — Remove an IP from the allowlist (POST /v1/api-allowlist/remove).
+//
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: apiallow.last_entry, auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
-// internal, merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, postgres.lock_pool_busy,
-// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
+// cli.permission_denied, internal, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
+// merchant.unknown_key, postgres.lock_pool_busy, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
 func (s *APIAllowlistService) RemoveEntry(ctx context.Context, params *APIAllowEntryRequest, opts ...RequestOption) (*APIAllowListResult, error) {
 	return doJSON[APIAllowListResult](ctx, s.r, Call{
 		Route: Routes["removeApiAllowlistEntry"],
@@ -2302,16 +2519,18 @@ func (s *APIAllowlistService) RemoveEntry(ctx context.Context, params *APIAllowE
 	}, opts)
 }
 
-// SetEnabled — Вкл/выкл IP-allowlist (POST /v1/api-allowlist/enable).
+// SetEnabled — Enable/disable the IP allowlist (POST /v1/api-allowlist/enable).
 //
-// Когда включён — запросы с IP не из списка отклоняются.
+// When enabled, requests from IPs not on the list are rejected.
+//
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: apiallow.empty, apiallow.platform_unidentifiable, auth.bad_timestamp,
-// auth.body_too_large, auth.ip_not_allowed, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, postgres.lock_pool_busy, request.bad_json, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// auth.body_too_large, auth.ip_not_allowed, cli.permission_denied, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, postgres.lock_pool_busy,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *APIAllowlistService) SetEnabled(ctx context.Context, params *APIAllowEnableRequest, opts ...RequestOption) (*APIAllowListResult, error) {
 	return doJSON[APIAllowListResult](ctx, s.r, Call{
 		Route: Routes["setApiAllowlistEnabled"],
@@ -2319,39 +2538,43 @@ func (s *APIAllowlistService) SetEnabled(ctx context.Context, params *APIAllowEn
 	}, opts)
 }
 
-// ReferralsService — Реферальная программа.
+// ReferralsService — Referral program.
 type ReferralsService struct{ r Requester }
 
-// GetInfo — Реферальная информация (POST /v1/referral/info).
+// GetInfo — Referral information (POST /v1/referral/info).
 //
-// Ваш реферальный код, приглашённые и начисления.
+// Your referral code, invitees and earnings.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *ReferralsService) GetInfo(ctx context.Context, opts ...RequestOption) (*ReferralInfoResult, error) {
 	return doJSON[ReferralInfoResult](ctx, s.r, Call{
 		Route: Routes["getReferralInfo"],
 	}, opts)
 }
 
-// DocumentsService — PDF-документы операций: чеки, счета, отчёты за период.
+// DocumentsService — PDF documents for operations: receipts, invoices, period reports.
 type DocumentsService struct{ r Requester }
 
-// GetSigned — PDF-документ операции (по подписанной ссылке) (GET /v1/documents/{kind}/{id}).
+// GetSigned — Operation PDF document (via a signed link) (GET /v1/documents/{kind}/{id}).
 //
-// Отдаёт фирменный PDF: чек платежа (`kind=payment`), чек выплаты или возврата (`kind=payout`),
-// счёт (`kind=invoice`), плакат ссылки (`kind=paylink`), справку о реквизитах (`kind=wallet`),
-// сплит-расчёт (`kind=split`), чек перевода (`kind=transfer`), чек конвертации (`kind=conversion`).
-// Ссылку НЕ нужно строить самим: готовая приходит в `document_url` соответствующих ответов —
-// подпись в `sig` и есть доступ, API-ключ не нужен. ⚠ Ссылка ЖИВЁТ ОГРАНИЧЕННО (`exp` в query, по
-// умолчанию 30 суток): скачанный PDF-файл — документ навсегда, а просроченная ссылка отвечает 403
-// `document.link_expired` — возьмите свежую из любого свежего ответа info/history той же операции.
-// `?lang=` — один из 41 языка (en по умолчанию; полный список — в ошибке `document.unknown_lang`).
-// Ответ — `application/pdf`; документ отражает текущий статус операции. На самом PDF ссылок нет —
-// документы не раскрывают путь к себе при пересылке.
+// Returns a branded PDF: payment receipt (`kind=payment`), payout or refund receipt
+// (`kind=payout`), invoice (`kind=invoice`), link poster (`kind=paylink`), payment details
+// certificate (`kind=wallet`), split settlement (`kind=split`), transfer receipt (`kind=transfer`),
+// conversion receipt (`kind=conversion`). You do NOT need to build the link yourself: a ready one
+// comes in `document_url` of the corresponding responses — the signature in `sig` is the access
+// grant, no API key needed. ⚠ The link has A LIMITED LIFETIME (`exp` in the query, 30 days by
+// default): a downloaded PDF file is a document forever, while an expired link responds 403
+// `document.link_expired` — take a fresh one from any fresh info/history response for the same
+// operation. `?lang=` — one of 41 languages (en by default; the full list is in the
+// `document.unknown_lang` error). The response is `application/pdf`; the document reflects the
+// current status of the operation. The PDF itself contains no links — documents do not reveal their
+// own URL when forwarded.
 //
 // Errors: document.bad_id, document.bad_signature, document.disabled, document.encode_failed,
 // document.link_expired, document.not_found, document.render_failed, document.render_rejected,
@@ -2367,18 +2590,21 @@ func (s *DocumentsService) GetSigned(ctx context.Context, kind string, id string
 	}, opts)
 }
 
-// GetBalance — Справка о балансе (PDF) (GET /v1/documents/balance).
+// GetBalance — Balance certificate (PDF) (GET /v1/documents/balance).
 //
-// Фирменная PDF-справка: available-балансы мерчанта по валютам на момент формирования, со штампом.
-// Для контрагентов и бухгалтерии. `?lang=` — 41 язык (en по умолчанию). Ответ — `application/pdf`.
+// A branded PDF certificate: the merchant's available balances per currency at the time of
+// generation, with a stamp. For counterparties and accounting. `?lang=` — 41 languages (en by
+// default). The response is `application/pdf`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // document.balance_unavailable, document.disabled, document.encode_failed, document.render_failed,
 // document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, report.too_large,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// report.too_large, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
 func (s *DocumentsService) GetBalance(ctx context.Context, params *GetBalanceDocumentParams, opts ...RequestOption) (*FileResult, error) {
 	return doFile(ctx, s.r, Call{
 		Route: Routes["getBalanceDocument"],
@@ -2386,22 +2612,24 @@ func (s *DocumentsService) GetBalance(ctx context.Context, params *GetBalanceDoc
 	}, opts)
 }
 
-// GetFees — Отчёт о комиссиях за период (PDF) (GET /v1/documents/fees).
+// GetFees — Fee report for a period (PDF) (GET /v1/documents/fees).
 //
-// Сколько удержано за период: комиссия сервиса с каждого зачтённого платежа и сетевые комиссии
-// выплат/возвратов, с итогами по валютам. `?from=YYYY-MM-DD&to=YYYY-MM-DD` (включительно, максимум
-// год; по умолчанию — текущий месяц), `?lang=` — 41 язык (en по умолчанию). Ответ —
-// `application/pdf`.
+// How much was withheld over the period: the service fee on each credited payment and the network
+// fees of payouts/refunds, with totals per currency. `?from=YYYY-MM-DD&to=YYYY-MM-DD` (inclusive,
+// at most one year; defaults to the current month), `?lang=` — 41 languages (en by default). The
+// response is `application/pdf`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.disabled,
-// document.encode_failed, document.fees_unavailable, document.render_failed,
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// document.disabled, document.encode_failed, document.fees_unavailable, document.render_failed,
 // document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
-// invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.not_found, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, payment.not_found, payout.not_found, report.too_large, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep, statement.bad_from, statement.bad_range,
-// statement.bad_to, statement.range_too_long.
+// invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, payment.not_found, payout.not_found, report.too_large,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep, statement.bad_from,
+// statement.bad_range, statement.bad_to, statement.range_too_long.
 func (s *DocumentsService) GetFees(ctx context.Context, params *GetFeesDocumentParams, opts ...RequestOption) (*FileResult, error) {
 	return doFile(ctx, s.r, Call{
 		Route: Routes["getFeesDocument"],
@@ -2409,22 +2637,25 @@ func (s *DocumentsService) GetFees(ctx context.Context, params *GetFeesDocumentP
 	}, opts)
 }
 
-// GetLedger — Выписка по счёту (PDF) (GET /v1/documents/ledger).
+// GetLedger — Account statement (PDF) (GET /v1/documents/ledger).
 //
-// ВСЕ движения available-баланса за период — включая комиссии, доли сплитов и внутренние переводы,
-// которых нет в отчёте по операциям. Приход/расход помечены, итоги по валютам. Нужен АКТ СВЕРКИ (с
-// сальдо на начало и конец периода)? Закажите тот же отчёт фоном — `POST /v1/documents/jobs` с
-// `kind=ledger`: сальдо требует агрегата по всей истории и потому считается только в фоновой
-// задаче, не в синхронной ручке. `?from&to` как у отчёта, `?lang=` — 41 язык (en по умолчанию).
-// Ответ — `application/pdf`.
+// ALL movements of the available balance over the period — including fees, split shares and
+// internal transfers that are not in the operations report. Credits/debits are marked, with totals
+// per currency. Need a RECONCILIATION STATEMENT (with opening and closing balances for the period)?
+// Order the same report in the background — `POST /v1/documents/jobs` with `kind=ledger`: the
+// balances require an aggregate over the whole history and are therefore computed only in a
+// background job, not in a synchronous endpoint. `?from&to` as in the report, `?lang=` — 41
+// languages (en by default). The response is `application/pdf`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.disabled,
-// document.encode_failed, document.ledger_unavailable, document.render_failed,
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// document.disabled, document.encode_failed, document.ledger_unavailable, document.render_failed,
 // document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, report.too_large,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, statement.bad_from,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// report.too_large, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, statement.bad_from,
 // statement.bad_range, statement.bad_to, statement.range_too_long.
 func (s *DocumentsService) GetLedger(ctx context.Context, params *GetLedgerDocumentParams, opts ...RequestOption) (*FileResult, error) {
 	return doFile(ctx, s.r, Call{
@@ -2433,21 +2664,24 @@ func (s *DocumentsService) GetLedger(ctx context.Context, params *GetLedgerDocum
 	}, opts)
 }
 
-// GetSplit — Справка о сплит-расчёте платежа (PDF) (GET /v1/documents/split).
+// GetSplit — Payment split settlement certificate (PDF) (GET /v1/documents/split).
 //
-// Как распределился конкретный платёж между получателями: доли, суммы, статусы. `?uuid=<UUID
-// платежа>`, `?lang=` — 41 язык (en по умолчанию). На самом документе напечатана подписанная
-// публичная ссылка — её можно переслать партнёру. 404 `document.no_split`, если платёж ничего не
-// разводил.
+// How a specific payment was distributed between recipients: shares, amounts, statuses.
+// `?uuid=<payment UUID>`, `?lang=` — 41 languages (en by default). A signed public link is printed
+// on the document itself — it can be forwarded to a partner. 404 `document.no_split` if the payment
+// was not split.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.bad_id,
-// document.disabled, document.encode_failed, document.no_split, document.render_failed,
-// document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
-// invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.not_found, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, payment.not_found, payout.not_found, report.too_large, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// document.bad_id, document.disabled, document.encode_failed, document.no_split,
+// document.render_failed, document.render_rejected, document.render_unavailable,
+// document.unknown_lang, internal, invoice.corrupt_pay_asset, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payment.not_found,
+// payout.not_found, report.too_large, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep.
 func (s *DocumentsService) GetSplit(ctx context.Context, params *GetSplitDocumentParams, opts ...RequestOption) (*FileResult, error) {
 	return doFile(ctx, s.r, Call{
 		Route: Routes["getSplitDocument"],
@@ -2455,21 +2689,23 @@ func (s *DocumentsService) GetSplit(ctx context.Context, params *GetSplitDocumen
 	}, opts)
 }
 
-// GetPayoutLinkCheque — Крипточек (PDF, на предъявителя) (POST /v1/payout/link/cheque).
+// GetPayoutLinkCheque — Crypto cheque (PDF, bearer) (POST /v1/payout/link/cheque).
 //
-// Печатный чек выплатной ссылки: сумма, срок и QR получения. Передайте `claim_token` из ответа
-// создания ссылки — он хранится только хешем и повторно НЕ выдаётся, поэтому чек можно напечатать
-// только пока токен у вас. ⚠ Документ — деньги: любой, у кого он есть, может получить средства.
-// Ответ — `application/pdf`.
+// A printable cheque for a payout link: the amount, the expiry and the claim QR code. Pass the
+// `claim_token` from the link creation response — it is stored only as a hash and is NOT issued
+// again, so the cheque can only be printed while you still have the token. ⚠ The document is money:
+// anyone who has it can claim the funds. The response is `application/pdf`.
+//
+// Requires role: Finance when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cheque.token_required,
-// document.disabled, document.encode_failed, document.render_failed, document.render_rejected,
-// document.render_unavailable, document.unknown_lang, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited, merchant.secret_decrypt,
-// merchant.suspended, merchant.unknown_key, payoutlink.disabled, payoutlink.not_found,
-// report.too_large, request.bad_json, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep.
+// cli.permission_denied, document.disabled, document.encode_failed, document.render_failed,
+// document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// payoutlink.disabled, payoutlink.not_found, report.too_large, request.bad_json, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
 func (s *DocumentsService) GetPayoutLinkCheque(ctx context.Context, params *PayoutLinkChequeRequest, opts ...RequestOption) (*FileResult, error) {
 	return doFile(ctx, s.r, Call{
 		Route: Routes["getPayoutLinkCheque"],
@@ -2477,18 +2713,20 @@ func (s *DocumentsService) GetPayoutLinkCheque(ctx context.Context, params *Payo
 	}, opts)
 }
 
-// GetStatement — Отчёт по операциям за период (PDF) (GET /v1/documents/statement).
+// GetStatement — Operations report for a period (PDF) (GET /v1/documents/statement).
 //
-// Фирменный PDF-отчёт: платежи, выплаты и возвраты мерчанта за период, с итогами по валютам.
-// `?from=YYYY-MM-DD&to=YYYY-MM-DD` (включительно, максимум год; по умолчанию — текущий месяц),
-// `?lang=` — 41 язык (en по умолчанию). Ответ — `application/pdf`.
+// A branded PDF report: the merchant's payments, payouts and refunds for the period, with totals
+// per currency. `?from=YYYY-MM-DD&to=YYYY-MM-DD` (inclusive, at most one year; defaults to the
+// current month), `?lang=` — 41 languages (en by default). The response is `application/pdf`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.disabled,
-// document.encode_failed, document.render_failed, document.render_rejected,
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// document.disabled, document.encode_failed, document.render_failed, document.render_rejected,
 // document.render_unavailable, document.unknown_lang, internal, invoice.corrupt_pay_asset,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payment.not_found,
-// payout.not_found, report.too_large, request.body_read, request.control_char,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// payment.not_found, payout.not_found, report.too_large, request.body_read, request.control_char,
 // request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
 // request.too_deep, statement.bad_from, statement.bad_range, statement.bad_to,
 // statement.range_too_long, statement.unavailable.
@@ -2499,20 +2737,23 @@ func (s *DocumentsService) GetStatement(ctx context.Context, params *GetStatemen
 	}, opts)
 }
 
-// GetBatch — Ведомость массовой операции (PDF) (GET /v1/documents/batch).
+// GetBatch — Batch operation register (PDF) (GET /v1/documents/batch).
 //
-// Итоги батча (`/v1/*/batch`) одним документом: сколько строк, сколько прошло и упало, каждая
-// строка с получателем, суммой, статусом и машинным кодом причины отказа — тем же, что вернул бы
-// одиночный вызов. `?uuid=<UUID батча>`, `?lang=` — 41 язык. Ответ — `application/pdf`.
+// The results of a batch (`/v1/*/batch`) in one document: how many rows, how many succeeded and
+// failed, each row with the recipient, amount, status and the machine code of the rejection reason
+// — the same one a single call would return. `?uuid=<batch UUID>`, `?lang=` — 41 languages. The
+// response is `application/pdf`.
+//
+// Requires role: Viewer when called with a CLI key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.disabled,
-// batch.not_found, document.bad_id, document.batch_unavailable, document.disabled,
-// document.encode_failed, document.render_failed, document.render_rejected,
+// batch.not_found, cli.permission_denied, document.bad_id, document.batch_unavailable,
+// document.disabled, document.encode_failed, document.render_failed, document.render_rejected,
 // document.render_unavailable, document.unknown_lang, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited, merchant.secret_decrypt,
-// merchant.suspended, merchant.unknown_key, report.too_large, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep.
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, report.too_large,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
 func (s *DocumentsService) GetBatch(ctx context.Context, params *GetBatchDocumentParams, opts ...RequestOption) (*FileResult, error) {
 	return doFile(ctx, s.r, Call{
 		Route: Routes["getBatchDocument"],
@@ -2520,20 +2761,24 @@ func (s *DocumentsService) GetBatch(ctx context.Context, params *GetBatchDocumen
 	}, opts)
 }
 
-// GetPaymentLink — Отчёт о сборах платёжной ссылки (PDF) (GET /v1/documents/link).
+// GetPaymentLink — Payment link collections report (PDF) (GET /v1/documents/link).
 //
-// Сколько собрала конкретная платёжная ссылка: каждый порождённый платёж строкой, итог по валютам
-// (только зачтённые). Для донатов и сборов. `?uuid=<UUID ссылки>`, `?from&to` (включительно,
-// максимум год; по умолчанию — текущий месяц), `?lang=`. Ответ — `application/pdf`.
+// How much a specific payment link has collected: each resulting payment as a row, totals per
+// currency (credited only). For donations and fundraising. `?uuid=<link UUID>`, `?from&to`
+// (inclusive, at most one year; defaults to the current month), `?lang=`. The response is
+// `application/pdf`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.bad_id,
-// document.disabled, document.encode_failed, document.render_failed, document.render_rejected,
-// document.render_unavailable, document.unknown_lang, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited, merchant.secret_decrypt,
-// merchant.suspended, merchant.unknown_key, paylink.disabled, paylink.not_found, report.too_large,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, statement.bad_from,
-// statement.bad_range, statement.bad_to, statement.range_too_long.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// document.bad_id, document.disabled, document.encode_failed, document.render_failed,
+// document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// paylink.disabled, paylink.not_found, report.too_large, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep, statement.bad_from, statement.bad_range, statement.bad_to,
+// statement.range_too_long.
 func (s *DocumentsService) GetPaymentLink(ctx context.Context, params *GetPaymentLinkDocumentParams, opts ...RequestOption) (*FileResult, error) {
 	return doFile(ctx, s.r, Call{
 		Route: Routes["getPaymentLinkDocument"],
@@ -2541,21 +2786,23 @@ func (s *DocumentsService) GetPaymentLink(ctx context.Context, params *GetPaymen
 	}, opts)
 }
 
-// GetWalletStatement — Выписка по статическому кошельку (PDF) (GET /v1/documents/wallet/statement).
+// GetWalletStatement — Static wallet statement (PDF) (GET /v1/documents/wallet/statement).
 //
-// Движения, порождённые конкретным статик-кошельком (депозиты клиента на постоянный адрес), с
-// реквизитами кошелька в шапке и итогами по валютам. `?uuid=<UUID кошелька>`, `?from&to`, `?lang=`.
-// Ответ — `application/pdf`.
+// Movements produced by a specific static wallet (customer deposits to a permanent address), with
+// the wallet details in the header and totals per currency. `?uuid=<wallet UUID>`, `?from&to`,
+// `?lang=`. The response is `application/pdf`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.bad_id,
-// document.disabled, document.encode_failed, document.ledger_unavailable, document.render_failed,
-// document.render_rejected, document.render_unavailable, document.unknown_lang, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, report.too_large,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, statement.bad_from,
-// statement.bad_range, statement.bad_to, statement.range_too_long, wallet.static_disabled,
-// wallet.static_not_found.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// document.bad_id, document.disabled, document.encode_failed, document.ledger_unavailable,
+// document.render_failed, document.render_rejected, document.render_unavailable,
+// document.unknown_lang, internal, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, report.too_large, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep, statement.bad_from, statement.bad_range,
+// statement.bad_to, statement.range_too_long, wallet.static_disabled, wallet.static_not_found.
 func (s *DocumentsService) GetWalletStatement(ctx context.Context, params *GetWalletStatementDocumentParams, opts ...RequestOption) (*FileResult, error) {
 	return doFile(ctx, s.r, Call{
 		Route: Routes["getWalletStatementDocument"],
@@ -2563,19 +2810,21 @@ func (s *DocumentsService) GetWalletStatement(ctx context.Context, params *GetWa
 	}, opts)
 }
 
-// GetReferrals — Отчёт о реферальных начислениях (PDF) (GET /v1/documents/referrals).
+// GetReferrals — Referral earnings report (PDF) (GET /v1/documents/referrals).
 //
-// Начисления реферальной программы за период: каждая награда строкой (когда, за кого, сколько),
-// итог по валютам. `?from&to`, `?lang=`. Ответ — `application/pdf`.
+// Referral program earnings for the period: each reward as a row (when, for whom, how much), totals
+// per currency. `?from&to`, `?lang=`. The response is `application/pdf`.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.disabled,
-// document.encode_failed, document.render_failed, document.render_rejected,
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// document.disabled, document.encode_failed, document.render_failed, document.render_rejected,
 // document.render_unavailable, document.unknown_lang, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited, merchant.secret_decrypt,
-// merchant.suspended, merchant.unknown_key, referral.disabled, report.too_large, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep, statement.bad_from, statement.bad_range,
-// statement.bad_to, statement.range_too_long.
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, referral.disabled,
+// report.too_large, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, statement.bad_from,
+// statement.bad_range, statement.bad_to, statement.range_too_long.
 func (s *DocumentsService) GetReferrals(ctx context.Context, params *GetReferralsDocumentParams, opts ...RequestOption) (*FileResult, error) {
 	return doFile(ctx, s.r, Call{
 		Route: Routes["getReferralsDocument"],
@@ -2583,25 +2832,27 @@ func (s *DocumentsService) GetReferrals(ctx context.Context, params *GetReferral
 	}, opts)
 }
 
-// CreateJob — Заказать тяжёлый отчёт (фоновая генерация) (POST /v1/documents/jobs).
+// CreateJob — Order a heavy report (background generation) (POST /v1/documents/jobs).
 //
-// Синхронные отчётные ручки ограничены по объёму; отчёт за большой период закажите фоном: `kind` —
-// `statement`/`fees`/`ledger`, период — до двух лет. Задача попадает в очередь и собирается в
-// течение суток (обычно — минуты); статус — `POST /v1/documents/jobs/info`, готовый файл — `GET
-// /v1/documents/jobs/file`. Повторный заказ с теми же параметрами при живой задаче возвращает её
-// же. `format` — `pdf` (по умолчанию) или `csv`: CSV собирается БЕЗ вёрстки (для тяжёлой
-// квартальной выписки — ноль нагрузки на рендер, грузится в Excel/1С). Квоты: не больше 3 задач в
-// работе и 20 за сутки. Готовый отчёт хранится 7 суток, затем удаляется — скачайте и храните файл у
-// себя.
+// Synchronous report endpoints are limited in volume; order a report for a long period in the
+// background: `kind` — `statement`/`fees`/`ledger`, period — up to two years. The job is queued and
+// built within a day (usually minutes); status — `POST /v1/documents/jobs/info`, the finished file
+// — `GET /v1/documents/jobs/file`. Ordering again with the same parameters while a job is alive
+// returns that job. `format` — `pdf` (default) or `csv`: CSV is built WITHOUT layout (for a heavy
+// quarterly statement — zero rendering load, imports into Excel/1C). Quotas: at most 3 jobs in
+// progress and 20 per day. A finished report is kept for 7 days and then deleted — download it and
+// keep the file yourself.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.bad_format,
-// document.bad_kind, document.daily_quota, document.jobs_disabled, document.too_many_jobs,
-// document.unknown_lang, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// report.crashed, report.expired, report.too_large, request.bad_json, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep, statement.bad_from, statement.bad_range,
-// statement.bad_to, statement.range_too_long.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// document.bad_format, document.bad_kind, document.daily_quota, document.jobs_disabled,
+// document.too_many_jobs, document.unknown_lang, internal, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, report.crashed, report.expired, report.too_large,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, statement.bad_from,
+// statement.bad_range, statement.bad_to, statement.range_too_long.
 func (s *DocumentsService) CreateJob(ctx context.Context, params *DocumentJobRequest, opts ...RequestOption) (*DocumentJobAccepted, error) {
 	return doJSON[DocumentJobAccepted](ctx, s.r, Call{
 		Route: Routes["createDocumentJob"],
@@ -2609,19 +2860,22 @@ func (s *DocumentsService) CreateJob(ctx context.Context, params *DocumentJobReq
 	}, opts)
 }
 
-// GetJob — Статус фонового отчёта (POST /v1/documents/jobs/info).
+// GetJob — Background report status (POST /v1/documents/jobs/info).
 //
-// Статусы: `queued` → `processing` → `done` (в `file` — ссылка скачивания, размер, число строк и
-// срок хранения) или `failed` (в `error` — машинный `code` и человекочитаемый `message`; например
-// `report.too_large` — период надо разбить). `expired` — срок хранения вышел, закажите отчёт
-// заново.
+// Statuses: `queued` → `processing` → `done` (`file` contains the download link, size, row count
+// and retention period) or `failed` (`error` contains a machine `code` and a human-readable
+// `message`; e.g. `report.too_large` — the period must be split). `expired` — the retention period
+// is over, order the report again.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.bad_job_id,
-// document.job_not_found, document.jobs_disabled, internal, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, report.crashed, report.expired, report.too_large, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// document.bad_job_id, document.job_not_found, document.jobs_disabled, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, report.crashed,
+// report.expired, report.too_large, request.bad_json, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep.
 func (s *DocumentsService) GetJob(ctx context.Context, params *DocumentJobInfoRequest, opts ...RequestOption) (*DocumentJobView, error) {
 	return doJSON[DocumentJobView](ctx, s.r, Call{
 		Route: Routes["getDocumentJob"],
@@ -2629,19 +2883,22 @@ func (s *DocumentsService) GetJob(ctx context.Context, params *DocumentJobInfoRe
 	}, opts)
 }
 
-// DownloadJobFile — Скачать готовый фоновый отчёт (PDF) (GET /v1/documents/jobs/file).
+// DownloadJobFile — Download a finished background report (PDF) (GET /v1/documents/jobs/file).
 //
-// `?job_id=<UUID задачи>`. Отдаёт `application/pdf` под тем же ключом мерчанта — публичных ссылок
-// на файл не существует. 409 `document.job_not_ready`, пока задача в работе; 404
-// `document.job_expired`, когда срок хранения вышел.
+// `?job_id=<job UUID>`. Returns `application/pdf` under the same merchant key — public links to the
+// file do not exist. 409 `document.job_not_ready` while the job is in progress; 404
+// `document.job_expired` once the retention period is over.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, document.bad_job_id,
-// document.job_expired, document.job_failed, document.job_not_found, document.job_not_ready,
-// document.jobs_disabled, internal, merchant.bad_signature, merchant.key_mode_mismatch,
-// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
-// report.crashed, report.too_large, request.body_read, request.control_char,
-// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
-// request.too_deep, s3.bad_endpoint, s3.not_found, s3.request, s3.unavailable.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// document.bad_job_id, document.job_expired, document.job_failed, document.job_not_found,
+// document.job_not_ready, document.jobs_disabled, internal, merchant.bad_signature,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, report.crashed, report.too_large, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep, s3.bad_endpoint, s3.not_found, s3.request,
+// s3.unavailable.
 func (s *DocumentsService) DownloadJobFile(ctx context.Context, params *DownloadDocumentJobFileParams, opts ...RequestOption) (*FileResult, error) {
 	return doFile(ctx, s.r, Call{
 		Route: Routes["downloadDocumentJobFile"],
@@ -2649,12 +2906,13 @@ func (s *DocumentsService) DownloadJobFile(ctx context.Context, params *Download
 	}, opts)
 }
 
-// CheckoutService — Эндпоинты для страницы оплаты — работают без секрета.
+// CheckoutService — Endpoints for the payment page — they work without the secret.
 type CheckoutService struct{ r Requester }
 
-// GetSourceOfFundsForm — Состояние анкеты (для плательщика) (GET /v1/aml/{token}).
+// GetSourceOfFundsForm — Questionnaire status (for the payer) (GET /v1/aml/{token}).
 //
-// Публично, по токену из ссылки. Возвращает только статус — ни причины, ни классификации.
+// Public, by the token from the link. Returns only the status — neither the reason nor the
+// classification.
 //
 // Errors: aml.sof_not_found, internal, request.overloaded, request.rate_limited.
 func (s *CheckoutService) GetSourceOfFundsForm(ctx context.Context, token string, opts ...RequestOption) (*SoFView, error) {
@@ -2664,10 +2922,10 @@ func (s *CheckoutService) GetSourceOfFundsForm(ctx context.Context, token string
 	}, opts)
 }
 
-// SubmitSourceOfFunds — Плательщик присылает происхождение средств (POST /v1/aml/{token}).
+// SubmitSourceOfFunds — The payer submits the source of funds (POST /v1/aml/{token}).
 //
-// Публично, по токену из ссылки. Приём анкеты **не гарантирует** разблокировку средств: она даёт
-// основание пересмотреть решение, и только.
+// Public, by the token from the link. Accepting the questionnaire **does not guarantee** that the
+// funds are unblocked: it provides grounds to reconsider the decision, nothing more.
 //
 // Errors: aml.sof_closed, aml.sof_empty, aml.sof_not_found, aml.sof_too_large, aml.sof_unavailable,
 // internal, request.bad_json, request.body_read, request.control_char, request.duplicate_field,
@@ -2680,9 +2938,9 @@ func (s *CheckoutService) SubmitSourceOfFunds(ctx context.Context, token string,
 	}, opts)
 }
 
-// GetPublicPaymentLink — Конфиг платёжной ссылки (для страницы) (GET /v1/link/{id}).
+// GetPublicPaymentLink — Payment link configuration (for the page) (GET /v1/link/{id}).
 //
-// Публично: заголовок/описание/режим суммы/валюта — чтобы отрисовать страницу доната.
+// Public: title/description/amount mode/currency — to render the donation page.
 //
 // Errors: internal, paylink.bad_id, paylink.disabled, paylink.not_found, request.overloaded,
 // request.rate_limited.
@@ -2693,11 +2951,11 @@ func (s *CheckoutService) GetPublicPaymentLink(ctx context.Context, id string, o
 	}, opts)
 }
 
-// PaymentLink — Оплатить по ссылке (создать платёж) (POST /v1/link/{id}/checkout).
+// PaymentLink — Pay via a link (create a payment) (POST /v1/link/{id}/checkout).
 //
-// Публично: клиент вводит сумму (для open/range) и, если валюта не закреплена, выбирает
-// валюту/сеть. Создаётся свежий инвойс — в ответе обычный объект платежа с `uuid` и `url` страницы
-// оплаты.
+// Public: the customer enters an amount (for open/range) and, if the currency is not pinned, picks
+// the currency/network. A fresh invoice is created — the response is a regular payment object with
+// `uuid` and the payment page `url`.
 //
 // Errors: internal, merchant.not_found, paylink.above_max, paylink.amount_required,
 // paylink.bad_bounds, paylink.bad_id, paylink.bad_mode, paylink.below_min, paylink.disabled,
@@ -2713,22 +2971,22 @@ func (s *CheckoutService) PaymentLink(ctx context.Context, id string, params *Li
 	}, opts)
 }
 
-// ListCurrencies — Список валют и сетей (GET /v1/currencies).
+// ListCurrencies — List currencies and networks (GET /v1/currencies).
 //
-// Публичный справочник. Возвращает два списка, и путать их не надо:
+// A public reference. It returns two lists, and they must not be confused:
 //
-// - `currencies` — в чём можно **получать**: монеты и их сети (плюс флаги доступности приёма и
-// выплаты).
-// - `pricing_currencies` — в чём можно **назначать цену** (`currency` при создании платежа): те же
-// монеты **плюс 45 фиатных валют** (`{"symbol":"EUR","decimals":2,"fiat":true}`) — USD, EUR, GBP,
-// RUB, UAH, PLN, CZK, TRY, CNY, INR, BRL, CAD, AUD, CHF, AED, ZAR, MXN, IDR, THB, VND, NGN, JPY,
-// KRW, SGD, HKD, NZD, SEK, NOK, DKK, ILS, SAR, PHP, MYR, TWD, PKR, LKR, MMK, BDT, ARS, GEL, HUF,
-// BMD, BHD, KWD, CLP. Число знаков после запятой у каждой в поле `decimals` (обычно 2; у
-// JPY/KRW/VND/CLP — 0, у BHD/KWD — 3) — берите его из ответа, не хардкодьте. У фиата нет сетей и
-// никогда не будет: в нём можно оценить счёт, но нельзя его получить.
+// - `currencies` — what you can **receive**: coins and their networks (plus flags for whether
+// accepting and payouts are available).
+// - `pricing_currencies` — what you can **set a price in** (`currency` when creating a payment):
+// the same coins **plus 45 fiat currencies** (`{"symbol":"EUR","decimals":2,"fiat":true}`) — USD,
+// EUR, GBP, RUB, UAH, PLN, CZK, TRY, CNY, INR, BRL, CAD, AUD, CHF, AED, ZAR, MXN, IDR, THB, VND,
+// NGN, JPY, KRW, SGD, HKD, NZD, SEK, NOK, DKK, ILS, SAR, PHP, MYR, TWD, PKR, LKR, MMK, BDT, ARS,
+// GEL, HUF, BMD, BHD, KWD, CLP. The number of decimal places of each is in the `decimals` field
+// (usually 2; JPY/KRW/VND/CLP — 0, BHD/KWD — 3) — take it from the response, do not hardcode it.
+// Fiat has no networks and never will: you can price an invoice in it, but you cannot receive it.
 //
-// Тенге, сом и сум пока не поддерживаются — источник курсов не котирует в них крипту напрямую, а
-// выводить курс перемножением двух других мы не будем.
+// The tenge, som and sum are not supported yet — the rate source does not quote crypto in them
+// directly, and we will not derive a rate by multiplying two others.
 //
 // Errors: internal, request.overloaded, request.rate_limited.
 func (s *CheckoutService) ListCurrencies(ctx context.Context, opts ...RequestOption) (*CurrenciesResult, error) {
@@ -2737,10 +2995,10 @@ func (s *CheckoutService) ListCurrencies(ctx context.Context, opts ...RequestOpt
 	}, opts)
 }
 
-// Get — Публичный статус платежа (страница оплаты) (GET /v1/pay/{id}).
+// Get — Public payment status (payment page) (GET /v1/pay/{id}).
 //
-// Без секрета — можно опрашивать прямо из браузера. Содержит `amount_remaining` для подсказки
-// «доплатите X».
+// No secret — can be polled directly from the browser. Contains `amount_remaining` for a "pay X
+// more" hint.
 //
 // Errors: internal, invoice.corrupt_pay_asset, onramp.bad_json, onramp.in_flight, onramp.no_assets,
 // onramp.no_live_key, onramp.no_test_key, onramp.read, onramp.request, onramp.suppresses,
@@ -2754,9 +3012,11 @@ func (s *CheckoutService) Get(ctx context.Context, id string, opts ...RequestOpt
 	}, opts)
 }
 
-// SelectMethod — Выбрать валюту и сеть для валюто-агностичной ссылки (POST /v1/pay/{id}/select).
+// SelectMethod — Choose the currency and network for a currency-agnostic link (POST
+// /v1/pay/{id}/select).
 //
-// Клиент выбирает `currency` + `network`; после этого фиксируется курс и выделяется адрес.
+// The customer picks `currency` + `network`; after that the rate is locked in and an address is
+// allocated.
 //
 // Errors: internal, invoice.address_failed, invoice.address_taken, invoice.corrupt_pay_asset,
 // invoice.expired, invoice.fiat_pay_asset, invoice.no_pay_asset, invoice.not_selectable,
@@ -2776,15 +3036,15 @@ func (s *CheckoutService) SelectMethod(ctx context.Context, id string, params *P
 	}, opts)
 }
 
-// StartOnramp — Оплатить фиатом: открыть покупку криптовалюты картой (POST /v1/pay/{id}/onramp).
+// StartOnramp — Pay with fiat: open a card purchase of crypto (POST /v1/pay/{id}/onramp).
 //
-// Покупатель без криптовалюты платит картой стороннему рампу, а тот шлёт монеты прямо на депозитный
-// адрес этого счёта. Ответ — ПОДПИСАННАЯ ссылка на виджет: подпись покрывает адрес получения и тег,
-// поэтому переписать их в браузере нельзя. `url` пустой, когда покупка уже идёт (смотрите `status`)
-// — второй виджет означал бы второе списание по одному заказу. `fiat_amount` — оценка: у рампов нет
-// режима «зафиксировать сумму получения», сумму фиата мы считаем обратным ходом из их котировки и с
-// запасом. Кнопку показывать только когда `GET /v1/pay/{id}` вернул `fiat_purchase_available:
-// true`.
+// A buyer without crypto pays by card to a third-party on-ramp, which sends the coins straight to
+// this invoice's deposit address. The response is a SIGNED widget link: the signature covers the
+// receiving address and tag, so they cannot be rewritten in the browser. `url` is empty when a
+// purchase is already in progress (see `status`) — a second widget would mean a second charge for
+// one order. `fiat_amount` is an estimate: on-ramps have no "fix the received amount" mode, so we
+// compute the fiat amount backwards from their quote, with a margin. Show the button only when `GET
+// /v1/pay/{id}` returned `fiat_purchase_available: true`.
 //
 // Errors: internal, invoice.corrupt_pay_asset, onramp.admit, onramp.advance,
 // onramp.asset_unsupported, onramp.bad_ed25519, onramp.bad_invoice, onramp.bad_json,
@@ -2804,11 +3064,11 @@ func (s *CheckoutService) StartOnramp(ctx context.Context, id string, opts ...Re
 	}, opts)
 }
 
-// GetOnramp — Статус карточной покупки по счёту (GET /v1/pay/{id}/onramp).
+// GetOnramp — Status of the card purchase for an invoice (GET /v1/pay/{id}/onramp).
 //
-// Что стало с покупкой: `new`, `pending`, `paid`, `completed`, `failed`, `canceled`, плюс `reason`
-// — дословная причина отказа провайдера, когда она есть. Пустой `status` = живой покупки нет. Счёт
-// при этом закрывают ДЕНЬГИ В ЦЕПОЧКЕ, а не этот статус.
+// What happened to the purchase: `new`, `pending`, `paid`, `completed`, `failed`, `canceled`, plus
+// `reason` — the provider's verbatim rejection reason, when there is one. An empty `status` = no
+// live purchase. The invoice, however, is closed by the MONEY ON CHAIN, not by this status.
 //
 // Errors: internal, invoice.corrupt_pay_asset, onramp.status_reason, pay.bad_uuid,
 // payment.not_found, request.overloaded, request.rate_limited.
@@ -2819,10 +3079,10 @@ func (s *CheckoutService) GetOnramp(ctx context.Context, id string, opts ...Requ
 	}, opts)
 }
 
-// GetQR — QR-код адреса оплаты (GET /v1/pay/{id}/qr).
+// GetQR — Payment address QR code (GET /v1/pay/{id}/qr).
 //
-// PNG-картинка с QR того адреса (и суммы), которые уже вернул `GET /v1/pay/{id}`. Без ключа — её
-// грузит браузер покупателя.
+// A PNG image with the QR code of the address (and amount) already returned by `GET /v1/pay/{id}`.
+// No key — the buyer's browser loads it.
 //
 // Errors: internal, invoice.corrupt_pay_asset, pay.bad_uuid, payment.not_found, request.overloaded,
 // request.rate_limited.
@@ -2833,14 +3093,14 @@ func (s *CheckoutService) GetQR(ctx context.Context, id string, opts ...RequestO
 	}, opts)
 }
 
-// SandboxService — Dev-store: тестовые деньги, симуляция депозитов и повтор вебхуков.
+// SandboxService — Dev store: test money, simulated deposits and webhook replay.
 type SandboxService struct{ r Requester }
 
-// OnboardStore — Создать (или вернуть) dev-store мерчанта (POST /v1/merchants/{id}/sandbox).
+// OnboardStore — Create (or return) the merchant's dev store (POST /v1/merchants/{id}/sandbox).
 //
-// Идемпотентно: у мерчанта максимум один dev-store, повторный вызов возвращает существующий.
-// Тестовый ключ возвращается каждый раз — он не защищает ничего, кроме тестовых денег. Вызывается
-// под онбординг-гейтом кабинета, не HMAC-ключом.
+// Idempotent: a merchant has at most one dev store, a repeated call returns the existing one. The
+// test key is returned every time — it protects nothing but test money. Called behind the dashboard
+// onboarding gate, not with the HMAC key.
 //
 // Errors: admin.bad_nonce, admin.bad_operator, admin.bad_signature, admin.bad_timestamp,
 // admin.disabled, admin.journal_unavailable, admin.replayed, admin.stale_signature,
@@ -2855,15 +3115,18 @@ func (s *SandboxService) OnboardStore(ctx context.Context, id string, opts ...Re
 	}, opts)
 }
 
-// Faucet — Кран: пополнить тестовый баланс (POST /v1/sandbox/faucet).
+// Faucet — Faucet: top up the test balance (POST /v1/sandbox/faucet).
 //
-// Только для тестового ключа dev-store. Начисляет тестовые деньги, чтобы гонять выплаты/возвраты, а
-// не только приём.
+// Dev-store test key only. Credits test money so you can exercise payouts/refunds, not just
+// accepting payments.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
-// ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
-// ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
+// Requires role: Admin when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
+// ledger.duplicate_posting, ledger.fiat_asset, ledger.idempotency_conflict,
+// ledger.missing_idempotency_key, ledger.no_lines, ledger.non_positive_amount,
+// ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature, merchant.key_expired,
 // merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
 // merchant.unknown_key, request.bad_json, request.body_read, request.control_char,
 // request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
@@ -2880,24 +3143,25 @@ func (s *SandboxService) Faucet(ctx context.Context, params *FaucetRequest, opts
 	}, opts)
 }
 
-// SimulateDeposit — Симулировать он-чейн депозит (POST /v1/sandbox/deposit).
+// SimulateDeposit — Simulate an on-chain deposit (POST /v1/sandbox/deposit).
 //
-// Проводит синтетический платёж через настоящий пайплайн зачисления. `amount` пустой — оплатить
-// ровно сколько нужно; `confirmations` меньше требуемого — проверка перехода pending→confirmed
-// (повторите тот же `txid` с большим числом); тот же `txid` повторно — проверка вашей
-// идемпотентности.
+// Runs a synthetic payment through the real crediting pipeline. Empty `amount` — pay exactly the
+// amount due; `confirmations` below the required number — tests the pending→confirmed transition
+// (repeat the same `txid` with a higher number); the same `txid` again — tests your idempotency.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, compliance.blocked,
-// compliance.blocked_address, compliance.blocklist_unavailable, compliance.no_destination,
-// compliance.no_network, compliance.sanctioned_address, compliance.sanctions_unavailable,
-// deposit.generation_stale, internal, invoice.bad_deposit, invoice.corrupt_pay_asset,
-// invoice.deposit_asset_mismatch, invoice.generation_stale, ledger.account_not_found,
-// ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting, ledger.fiat_asset,
-// ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
+// Requires role: Admin when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
+// compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
+// compliance.sanctions_unavailable, deposit.generation_stale, internal, invoice.bad_deposit,
+// invoice.corrupt_pay_asset, invoice.deposit_asset_mismatch, invoice.generation_stale,
+// ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
+// ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
 // ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited, merchant.secret_decrypt,
-// merchant.suspended, merchant.unknown_key, onramp.suppresses, payment.not_found,
-// payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee,
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.not_found, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, onramp.suppresses,
+// payment.not_found, payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee,
 // payout.approver_is_creator, payout.asset_mismatch, payout.bad_address, payout.bad_amount,
 // payout.bad_memo, payout.bad_owner_kind, payout.cap_unpriceable, payout.convert_bad_amount,
 // payout.convert_frozen, payout.convert_idempotency_conflict, payout.convert_insufficient,
@@ -2922,30 +3186,35 @@ func (s *SandboxService) SimulateDeposit(ctx context.Context, params *SimulateDe
 	}, opts)
 }
 
-// Reset — Сбросить dev-store к чистому состоянию (POST /v1/sandbox/reset).
+// Reset — Reset the dev store to a clean state (POST /v1/sandbox/reset).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// invoice.already_paid, invoice.corrupt_pay_asset, invoice.deposit_pending,
+// Requires role: Admin when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, invoice.already_paid, invoice.corrupt_pay_asset, invoice.deposit_pending,
 // ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction, ledger.duplicate_posting,
 // ledger.fiat_asset, ledger.idempotency_conflict, ledger.missing_idempotency_key, ledger.no_lines,
 // ledger.non_positive_amount, ledger.sandbox_live_mix, ledger.unbalanced, merchant.bad_signature,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, payment.not_found, payout.not_found, payoutlink.not_found,
-// payoutlink.not_funded, request.body_read, request.control_char, request.duplicate_field,
-// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep, sandbox.live_key.
+// merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt,
+// merchant.suspended, merchant.unknown_key, payment.not_found, payout.not_found,
+// payoutlink.not_found, payoutlink.not_funded, request.body_read, request.control_char,
+// request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
+// request.too_deep, sandbox.live_key.
 func (s *SandboxService) Reset(ctx context.Context, opts ...RequestOption) (*ResetResult, error) {
 	return doJSON[ResetResult](ctx, s.r, Call{
 		Route: Routes["sandboxReset"],
 	}, opts)
 }
 
-// ListWebhooks — Журнал доставок вебхуков dev-store (GET /v1/sandbox/webhooks).
+// ListWebhooks — Dev-store webhook delivery log (GET /v1/sandbox/webhooks).
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
-// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
-// request.rate_limited, request.too_deep, sandbox.live_key.
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep, sandbox.live_key.
 func (s *SandboxService) ListWebhooks(ctx context.Context, params *SandboxListWebhooksParams, opts ...RequestOption) *List[SandboxDelivery] {
 	return doPaged[SandboxDelivery](ctx, s.r, Call{
 		Route: Routes["sandboxListWebhooks"],
@@ -2953,19 +3222,85 @@ func (s *SandboxService) ListWebhooks(ctx context.Context, params *SandboxListWe
 	}, opts)
 }
 
-// ReplayWebhook — Переотправить доставку вебхука (POST /v1/sandbox/webhooks/replay).
+// ReplayWebhook — Resend a webhook delivery (POST /v1/sandbox/webhooks/replay).
 //
-// Ставит доставку заново в очередь настоящего диспетчера — с его ретраями и подписью, как в проде.
+// Re-queues the delivery into the real dispatcher — with its retries and signature, as in
+// production.
 //
-// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, internal,
-// merchant.bad_signature, merchant.key_mode_mismatch, merchant.rate_limited,
-// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.bad_json,
-// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
-// request.overloaded, request.rate_limited, request.too_deep, sandbox.bad_delivery,
-// sandbox.delivery_not_found, sandbox.live_key.
+// Requires role: Admin when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
+// internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
+// merchant.rate_limited, merchant.secret_decrypt, merchant.suspended, merchant.unknown_key,
+// request.bad_json, request.body_read, request.control_char, request.duplicate_field,
+// request.nul_byte, request.overloaded, request.rate_limited, request.too_deep,
+// sandbox.bad_delivery, sandbox.delivery_not_found, sandbox.live_key.
 func (s *SandboxService) ReplayWebhook(ctx context.Context, params *ReplayRequest, opts ...RequestOption) (*ReplayResult, error) {
 	return doJSON[ReplayResult](ctx, s.r, Call{
 		Route: Routes["sandboxReplayWebhook"],
 		Body:  genBody(params),
+	}, opts)
+}
+
+// CLILoginService — Browser login of the `oblodai` CLI (OAuth 2.0 device authorization, RFC 8628)
+// and logout of its key.
+type CLILoginService struct{ r Requester }
+
+// Start — Start a CLI browser login (POST /v1/cli/device).
+//
+// No key: this is how the CLI gets one. Returns `device_code` (the CLI's polling secret — never
+// show it), `user_code` (`ABCD-EFGH`, shown to the user), `verification_uri` and
+// `verification_uri_complete` (open the latter in the browser), `expires_in` (600) and `interval`
+// (5). The user signs in to the cabinet, checks the device, picks a store and approves; the key
+// gets that member's team role. At most 10 requests per minute per address (`cli.rate_limited`,
+// Retry-After).
+//
+// Errors: cli.bad_name, cli.rate_limited, cli.unavailable, internal, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
+func (s *CLILoginService) Start(ctx context.Context, params *CLIDeviceRequest, opts ...RequestOption) (*CLIDeviceAuthorization, error) {
+	return doJSON[CLIDeviceAuthorization](ctx, s.r, Call{
+		Route: Routes["startCliLogin"],
+		Body:  genBody(params),
+	}, opts)
+}
+
+// Poll — Poll a CLI login for its key (POST /v1/cli/token).
+//
+// Poll with `device_code` every `interval` seconds until it succeeds or fails for good. Errors (400
+// unless noted): `cli.authorization_pending` — keep polling; `cli.slow_down` — polled too early,
+// the interval grew by 5 seconds (`details.interval`); `cli.access_denied` (403) — denied in the
+// browser; `cli.expired_token` — start over; `cli.invalid_device_code` — unknown, or the key was
+// already handed out. Success returns the CLI key (`public_id`, `secret`, store, `mode`, `role`,
+// `expires_at`) exactly once: the secret is erased on the server as it is handed out, and of two
+// concurrent polls only one gets it.
+//
+// Errors: cli.access_denied, cli.authorization_pending, cli.expired_token, cli.invalid_device_code,
+// cli.slow_down, cli.unavailable, internal, merchant.secret_decrypt, request.bad_json,
+// request.body_read, request.control_char, request.duplicate_field, request.nul_byte,
+// request.overloaded, request.rate_limited, request.too_deep.
+func (s *CLILoginService) Poll(ctx context.Context, params *CLITokenRequest, opts ...RequestOption) (*CLIToken, error) {
+	return doJSON[CLIToken](ctx, s.r, Call{
+		Route: Routes["pollCliLogin"],
+		Body:  genBody(params),
+	}, opts)
+}
+
+// LogoutCLI — Log out: revoke this CLI key (POST /v1/cli/logout).
+//
+// Revokes the CLI key that signs the request; any role may call it. The integration key gets
+// `cli.not_cli_key` (403) — it is rotated in the cabinet, never here.
+//
+// Requires role: Viewer when called with a CLI key.
+//
+// Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.not_cli_key,
+// cli.permission_denied, cli.unavailable, internal, merchant.bad_signature, merchant.key_expired,
+// merchant.key_mode_mismatch, merchant.key_not_found, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, request.body_read,
+// request.control_char, request.duplicate_field, request.nul_byte, request.overloaded,
+// request.rate_limited, request.too_deep.
+func (s *CLILoginService) LogoutCLI(ctx context.Context, opts ...RequestOption) (*CLILogoutResult, error) {
+	return doJSON[CLILogoutResult](ctx, s.r, Call{
+		Route: Routes["logoutCli"],
 	}, opts)
 }

@@ -19,6 +19,9 @@ checkout.payment_link
 checkout.select_method
 checkout.start_onramp
 checkout.submit_source_of_funds
+cli_login.logout_cli
+cli_login.poll
+cli_login.start
 documents.create_job
 documents.download_job_file
 documents.get_balance

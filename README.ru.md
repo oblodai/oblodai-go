@@ -146,7 +146,7 @@ fmt.Println(deposit.Txid, deposit.Confirmations)
 Вся поверхность мерчанта, `client.<Сервис>.<Метод>` (таблица генерируется из контракта):
 
 <!-- sdkgen:methods -->
-16 ресурсов, 120 методов.
+17 ресурсов, 123 метода.
 
 | Ресурс | Методы |
 | --- | --- |
@@ -166,6 +166,7 @@ fmt.Println(deposit.Txid, deposit.Confirmations)
 | `Documents` | `GetSigned` · `GetBalance` · `GetFees` · `GetLedger` · `GetSplit` · `GetPayoutLinkCheque` · `GetStatement` · `GetBatch` · `GetPaymentLink` · `GetWalletStatement` · `GetReferrals` · `CreateJob` · `GetJob` · `DownloadJobFile` |
 | `Checkout` | `GetSourceOfFundsForm` · `SubmitSourceOfFunds` · `GetPublicPaymentLink` · `PaymentLink` · `ListCurrencies` · `Get` · `SelectMethod` · `StartOnramp` · `GetOnramp` · `GetQR` |
 | `Sandbox` | `OnboardStore` · `Faucet` · `SimulateDeposit` · `Reset` · `ListWebhooks` · `ReplayWebhook` |
+| `CLILogin` | `Start` · `Poll` · `LogoutCLI` |
 <!-- /sdkgen:methods -->
 
 Имя метода — `operationId` контракта без имени ресурса, в стиле Go; список имён зафиксирован в

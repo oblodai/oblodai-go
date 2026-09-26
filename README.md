@@ -15,7 +15,7 @@ Payments, payouts, payment links, splits, static wallets, webhooks — one API k
 <img src="https://img.shields.io/github/go-mod/go-version/oblodai/oblodai-go?style=flat-square" alt="Go version">
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-000000?style=flat-square" alt="License: MIT"></a>
 
-[Documentation](https://docs.oblodai.com) · [Dashboard](https://my.oblodai.com) · [Читать по-русски →](README.ru.md)
+[Documentation](https://docs.oblodai.com) · [Dashboard](https://my.oblodai.com) · [Read in Russian →](README.ru.md)
 
 </div>
 
@@ -146,7 +146,7 @@ fmt.Println(deposit.Txid, deposit.Confirmations)
 The whole merchant surface, `client.<Service>.<Method>` (the table is generated from the contract):
 
 <!-- sdkgen:methods -->
-16 resources, 120 methods.
+17 resources, 123 methods.
 
 | Resource | Methods |
 | --- | --- |
@@ -166,6 +166,7 @@ The whole merchant surface, `client.<Service>.<Method>` (the table is generated 
 | `Documents` | `GetSigned` · `GetBalance` · `GetFees` · `GetLedger` · `GetSplit` · `GetPayoutLinkCheque` · `GetStatement` · `GetBatch` · `GetPaymentLink` · `GetWalletStatement` · `GetReferrals` · `CreateJob` · `GetJob` · `DownloadJobFile` |
 | `Checkout` | `GetSourceOfFundsForm` · `SubmitSourceOfFunds` · `GetPublicPaymentLink` · `PaymentLink` · `ListCurrencies` · `Get` · `SelectMethod` · `StartOnramp` · `GetOnramp` · `GetQR` |
 | `Sandbox` | `OnboardStore` · `Faucet` · `SimulateDeposit` · `Reset` · `ListWebhooks` · `ReplayWebhook` |
+| `CLILogin` | `Start` · `Poll` · `LogoutCLI` |
 <!-- /sdkgen:methods -->
 
 Method names follow the contract's `operationId` without the resource name, in Go style; the
