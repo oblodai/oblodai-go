@@ -19,7 +19,7 @@ checkout.payment_link
 checkout.select_method
 checkout.start_onramp
 checkout.submit_source_of_funds
-cli_login.logout_cli
+cli_login.logout
 cli_login.poll
 cli_login.start
 documents.create_job
