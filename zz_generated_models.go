@@ -67,11 +67,11 @@ func genOneOf(data []byte, variants ...[]string) int {
 
 // AMLLinkView is a model of the API.
 type AMLLinkView struct {
-	// До какого момента ссылка действует (UTC).
+	// Until when the link is valid (UTC).
 	ExpiredAt string `json:"expired_at"`
-	// Ссылка на анкету — передайте её плательщику.
+	// The questionnaire link — hand it to the payer.
 	Link string `json:"link"`
-	// Статус заполнения анкеты.
+	// Questionnaire completion status.
 	Status SoFStatus `json:"status"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -101,9 +101,9 @@ func (m AMLLinkView) GoString() string { return m.String() }
 
 // AMLLinksRequest is a model of the API.
 type AMLLinksRequest struct {
-	// Идентификатор заказа мерчанта.
+	// The merchant's order id.
 	OrderID *string `json:"order_id,omitempty"`
-	// Идентификатор платежа. Нужен uuid или order_id; приоритет у uuid.
+	// Payment id. Either uuid or order_id is required; uuid takes precedence.
 	UUID *string `json:"uuid,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -133,7 +133,7 @@ func (m AMLLinksRequest) GoString() string { return m.String() }
 
 // AMLLinksResult is a model of the API.
 type AMLLinksResult struct {
-	// По ссылке на каждый заблокированный депозит платежа; пусто — блокировать нечего.
+	// One link per blocked deposit of the payment; empty — nothing is blocked.
 	Items []AMLLinkView `json:"items"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -163,8 +163,8 @@ func (m AMLLinksResult) GoString() string { return m.String() }
 
 // APIAllowEnableRequest is a model of the API.
 type APIAllowEnableRequest struct {
-	// true — принимать API-вызовы только с адресов из списка; false — список хранится, но не
-	// применяется.
+	// true — accept API calls only from addresses on the list; false — the list is kept but not
+	// enforced.
 	Enabled bool `json:"enabled"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -194,7 +194,7 @@ func (m APIAllowEnableRequest) GoString() string { return m.String() }
 
 // APIAllowEntryRequest is a model of the API.
 type APIAllowEntryRequest struct {
-	// IP или подсеть в CIDR (203.0.113.7 или 203.0.113.0/24).
+	// An IP or a CIDR subnet (203.0.113.7 or 203.0.113.0/24).
 	Cidr string `json:"cidr"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -224,9 +224,10 @@ func (m APIAllowEntryRequest) GoString() string { return m.String() }
 
 // APIAllowListResult is a model of the API.
 type APIAllowListResult struct {
-	// Применяется ли список: true — вызовы с адресов вне списка получают 403 auth.ip_not_allowed.
+	// Whether the list is enforced: true — calls from addresses outside the list get 403
+	// auth.ip_not_allowed.
 	Enabled bool `json:"enabled"`
-	// Разрешённые IP и подсети в CIDR.
+	// Allowed IPs and CIDR subnets.
 	Items []string `json:"items"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -256,19 +257,19 @@ func (m APIAllowListResult) GoString() string { return m.String() }
 
 // APILogEntry is a model of the API.
 type APILogEntry struct {
-	// Ключ, которым подписан запрос.
+	// The key the request was signed with.
 	APIKeyID string `json:"api_key_id"`
-	// Когда пришёл запрос (UTC).
+	// When the request arrived (UTC).
 	CreatedAt string `json:"created_at"`
-	// Длительность обработки, мс.
+	// Processing duration, ms.
 	DurationMs int64 `json:"duration_ms"`
-	// Адрес клиента.
+	// The customer's address.
 	IP string `json:"ip"`
-	// HTTP-метод.
+	// HTTP method.
 	Method string `json:"method"`
-	// Путь запроса.
+	// Request path.
 	Path string `json:"path"`
-	// Код ответа.
+	// Response code.
 	Status int64 `json:"status"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -298,17 +299,17 @@ func (m APILogEntry) GoString() string { return m.String() }
 
 // APILogRequest is a model of the API.
 type APILogRequest struct {
-	// Начало периода, YYYY-MM-DD, включительно.
+	// Start of the period, YYYY-MM-DD, inclusive.
 	From *string `json:"from,omitempty"`
-	// Размер страницы, 1..200; по умолчанию 20.
+	// Page size, 1..200; default 20.
 	Limit *int64 `json:"limit,omitempty"`
-	// Страница, с 1.
+	// Page, starting from 1.
 	Page *int64 `json:"page,omitempty"`
-	// Подстрока по «МЕТОД путь» — то, что человек видит в таблице.
+	// A substring of "METHOD path" — what a person sees in the table.
 	Q *string `json:"q,omitempty"`
-	// Точный код ответа; 0 — все.
+	// The exact response code; 0 — all.
 	Status *int64 `json:"status,omitempty"`
-	// Конец периода, YYYY-MM-DD, ВКЛЮЧИТЕЛЬНО (день целиком).
+	// End of the period, YYYY-MM-DD, INCLUSIVE (the whole day).
 	To *string `json:"to,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -338,11 +339,11 @@ func (m APILogRequest) GoString() string { return m.String() }
 
 // APILogResult is a model of the API.
 type APILogResult struct {
-	// Строки этой страницы, новые сверху.
+	// The rows of this page, newest first.
 	Items []APILogEntry `json:"items"`
-	// Сколько дней лог хранится.
+	// How many days the log is kept.
 	RetentionDays int64 `json:"retention_days"`
-	// Всего строк по фильтру.
+	// Total rows matching the filter.
 	Total int64 `json:"total"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -372,14 +373,14 @@ func (m APILogResult) GoString() string { return m.String() }
 
 // AcceptedConfiguredMethod is a model of the API.
 type AcceptedConfiguredMethod struct {
-	// Можно ли платить этим методом здесь.
+	// Whether this method can be used to pay here.
 	Available bool `json:"available"`
-	// Код актива.
+	// Asset code.
 	Currency string `json:"currency"`
-	// Сеть актива.
+	// The asset's network.
 	Network string `json:"network"`
-	// Почему недоступен: not_served_here — развёртывание не принимает этот метод, unknown_method —
-	// метода нет в каталоге; у доступного ключа нет.
+	// Why it is unavailable: not_served_here — the deployment does not accept this method,
+	// unknown_method — the method is not in the catalog; an available one has no such key.
 	Reason *AcceptedReason `json:"reason,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -409,9 +410,9 @@ func (m AcceptedConfiguredMethod) GoString() string { return m.String() }
 
 // AcceptedConfiguredMethodList is a model of the API.
 type AcceptedConfiguredMethodList struct {
-	// Записи этой страницы.
+	// The records of this page.
 	Items []AcceptedConfiguredMethod `json:"items"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -443,9 +444,9 @@ func (m AcceptedConfiguredMethodList) GoString() string { return m.String() }
 
 // AcceptedMethod is a model of the API.
 type AcceptedMethod struct {
-	// Код актива.
+	// Asset code.
 	Currency string `json:"currency"`
-	// Сеть актива.
+	// The asset's network.
 	Network string `json:"network"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -475,8 +476,8 @@ func (m AcceptedMethod) GoString() string { return m.String() }
 
 // AcceptedSetRequest is a model of the API.
 type AcceptedSetRequest struct {
-	// Полный список пар валюта+сеть, которыми разрешено платить; пустой список — принимать всё из
-	// каталога.
+	// The full list of currency+network pairs allowed for payment; an empty list — accept everything
+	// in the catalog.
 	Accepted []AcceptedMethod `json:"accepted"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -506,9 +507,9 @@ func (m AcceptedSetRequest) GoString() string { return m.String() }
 
 // AcceptedSetResult is a model of the API.
 type AcceptedSetResult struct {
-	// Набор сохранён.
+	// The set has been saved.
 	Ok bool `json:"ok"`
-	// Сохранённые, но неизвестные каталогу пары — оставлены как были; ключа нет, когда таких нет.
+	// Saved pairs that the catalog does not know — kept as they were; no key when there are none.
 	Unknown []AcceptedMethod `json:"unknown,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -538,9 +539,9 @@ func (m AcceptedSetResult) GoString() string { return m.String() }
 
 // AccuracyResult is a model of the API.
 type AccuracyResult struct {
-	// Допуск в процентах, 1–5; 0 — допуск выключен (нужна точная сумма).
+	// Tolerance in percent, 1–5; 0 — tolerance disabled (the exact amount is required).
 	AccuracyPercent int64 `json:"accuracy_percent"`
-	// Включён ли допуск.
+	// Whether the tolerance is enabled.
 	Enabled bool `json:"enabled"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -570,7 +571,7 @@ func (m AccuracyResult) GoString() string { return m.String() }
 
 // ApproveRequest is a model of the API.
 type ApproveRequest struct {
-	// Идентификатор выплаты.
+	// Payout id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -600,17 +601,18 @@ func (m ApproveRequest) GoString() string { return m.String() }
 
 // AutoConvertResult is a model of the API.
 type AutoConvertResult struct {
-	// Есть ли приказ. false — остальные поля — умолчания формы.
+	// Whether an order exists. false — the other fields are form defaults.
 	Configured bool `json:"configured"`
-	// Включён ли приказ.
+	// Whether the order is enabled.
 	Enabled bool `json:"enabled"`
-	// Пол одной конвертации в долларах, десятичной строкой (с умолчанием процесса).
+	// The floor for a single conversion in dollars, as a decimal string (with the process default
+	// applied).
 	MinAmount Decimal `json:"min_amount"`
-	// Режим зачисления: economy или instant.
+	// The crediting mode: economy or instant.
 	Mode AutoConvertMode `json:"mode"`
-	// Монеты, которые сводятся; пусто — [], не null.
+	// The coins being converted; empty — [], not null.
 	Sources []string `json:"sources"`
-	// Монета, в которую сводится выручка; пусто без приказа.
+	// The coin revenue is converted into; empty without an order.
 	Target string `json:"target"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -640,11 +642,11 @@ func (m AutoConvertResult) GoString() string { return m.String() }
 
 // AutoRefundPolicyResult is a model of the API.
 type AutoRefundPolicyResult struct {
-	// false — политику не задавали, действует умолчание (обе включены).
+	// false — no policy has been set, the default applies (both enabled).
 	Configured bool `json:"configured"`
-	// Возвращается ли излишек при переплате (paid_over).
+	// Whether the excess of an overpayment (paid_over) is refunded.
 	Overpay bool `json:"overpay"`
-	// Возвращаются ли средства при истёкшей недоплате (wrong_amount).
+	// Whether the funds of an expired underpayment (wrong_amount) are refunded.
 	Underpay bool `json:"underpay"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -674,7 +676,7 @@ func (m AutoRefundPolicyResult) GoString() string { return m.String() }
 
 // AutoWithdrawDeleteRequest is a model of the API.
 type AutoWithdrawDeleteRequest struct {
-	// Актив, автовывод которого выключить.
+	// The asset whose auto-withdrawal to disable.
 	Currency string `json:"currency"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -704,7 +706,7 @@ func (m AutoWithdrawDeleteRequest) GoString() string { return m.String() }
 
 // AutoWithdrawListResult is a model of the API.
 type AutoWithdrawListResult struct {
-	// Правила автовывода, по одному на актив.
+	// Auto-withdrawal rules, one per asset.
 	Items []AutoWithdrawRule `json:"items"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -734,13 +736,13 @@ func (m AutoWithdrawListResult) GoString() string { return m.String() }
 
 // AutoWithdrawRule is a model of the API.
 type AutoWithdrawRule struct {
-	// Адрес назначения.
+	// Destination address.
 	Address string `json:"address"`
-	// Актив.
+	// Asset.
 	Currency string `json:"currency"`
-	// Порог срабатывания в единицах актива.
+	// The trigger threshold in asset units.
 	MinAmount Decimal `json:"min_amount"`
-	// Сеть адреса назначения.
+	// The destination address network.
 	Network string `json:"network"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -770,14 +772,14 @@ func (m AutoWithdrawRule) GoString() string { return m.String() }
 
 // AutoWithdrawSetRequest is a model of the API.
 type AutoWithdrawSetRequest struct {
-	// Адрес назначения (внешний кошелёк мерчанта).
+	// Destination address (the merchant's external wallet).
 	Address string `json:"address"`
-	// Актив, который выводить автоматически.
+	// The asset to withdraw automatically.
 	Currency string `json:"currency"`
-	// Порог: вывод срабатывает, когда доступный баланс актива не меньше этой суммы; пусто — сетевой
-	// минимум.
+	// Threshold: the withdrawal triggers when the asset's available balance is at least this amount;
+	// empty — the network minimum.
 	MinAmount *string `json:"min_amount,omitempty"`
-	// Сеть адреса назначения.
+	// The destination address network.
 	Network string `json:"network"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -807,7 +809,7 @@ func (m AutoWithdrawSetRequest) GoString() string { return m.String() }
 
 // BalanceResult is a model of the API.
 type BalanceResult struct {
-	// Балансы владельца.
+	// The owner's balances.
 	Balance MerchantBalances `json:"balance"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -837,26 +839,27 @@ func (m BalanceResult) GoString() string { return m.String() }
 
 // BatchInfoItem is a model of the API.
 type BatchInfoItem struct {
-	// Машиночитаемый код ошибки — тот же, что вернул бы одиночный вызов (payment.below_minimum,
-	// payout.address_network_mismatch, …); batch.stopped / batch.key_revoked — элемент не выполнялся;
-	// только при status «error». Пусто у элементов, завершённых до ввода поля.
+	// The machine-readable error code — the same one a single call would return
+	// (payment.below_minimum, payout.address_network_mismatch, …); batch.stopped / batch.key_revoked —
+	// the item was not executed; only with status "error". Empty for items completed before the field
+	// was introduced.
 	ErrorCode *string `json:"error_code,omitempty"`
-	// HTTP-статус, которым ответил бы одиночный вызов (400, 409, …); отсутствует, если элемент не
-	// дошёл до обработчика (batch.stopped, batch.key_revoked).
+	// The HTTP status a single call would have returned (400, 409, …); absent if the item never
+	// reached the handler (batch.stopped, batch.key_revoked).
 	HTTPStatus *int64 `json:"http_status,omitempty"`
-	// Порядковый номер элемента в исходном массиве (с нуля).
+	// The item's index in the original array (zero-based).
 	Idx int64 `json:"idx"`
-	// Человекочитаемое сообщение об ошибке; только при status «error».
+	// A human-readable error message; only with status "error".
 	Message *string `json:"message,omitempty"`
-	// Итог элемента: true при status «done», false при status «error»; отсутствует, пока элемент не
-	// обработан.
+	// The item outcome: true with status "done", false with status "error"; absent until the item has
+	// been processed.
 	Ok *bool `json:"ok,omitempty"`
-	// order_id элемента, если вы его задавали; присутствует не всегда.
+	// The item's order_id, if you set one; not always present.
 	OrderID *string `json:"order_id,omitempty"`
-	// Результат успешной операции — тот же объект, что вернул бы одиночный вызов; только при status
-	// «done».
+	// The result of a successful operation — the same object a single call would return; only with
+	// status "done".
 	Result any `json:"result,omitempty"`
-	// Статус элемента: pending | processing | done | error.
+	// Item status: pending | processing | done | error.
 	Status BatchItemStatus `json:"status"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -886,11 +889,11 @@ func (m BatchInfoItem) GoString() string { return m.String() }
 
 // BatchInfoRequest is a model of the API.
 type BatchInfoRequest struct {
-	// Идентификатор батча из ответа на submit.
+	// The batch id from the submit response.
 	BatchID string `json:"batch_id"`
-	// Сколько элементов вернуть в items (пагинация).
+	// How many items to return in items (pagination).
 	Limit *int64 `json:"limit,omitempty"`
-	// Смещение по элементам.
+	// Offset in items.
 	Offset *int64 `json:"offset,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -920,28 +923,28 @@ func (m BatchInfoRequest) GoString() string { return m.String() }
 
 // BatchInfoResponse is a model of the API.
 type BatchInfoResponse struct {
-	// Идентификатор батча.
+	// Batch id.
 	BatchID string `json:"batch_id"`
-	// Время создания батча (ISO 8601, UTC).
+	// Batch creation time (ISO 8601, UTC).
 	CreatedAt string `json:"created_at"`
-	// Завершилось ошибкой (при on_error stop сюда попадают и пропущенные элементы).
+	// Failed (with on_error stop, skipped items are counted here too).
 	Failed int64 `json:"failed"`
-	// Страница элементов с результатом или ошибкой по каждому.
+	// A page of items with the result or error for each.
 	Items []BatchInfoItem `json:"items"`
-	// Вид батча: payment | refund | payout | transfer.
+	// Batch kind: payment | refund | payout | transfer.
 	Kind BatchKind `json:"kind"`
-	// Режим обработки ошибок, с которым батч был отправлен: continue | stop.
+	// The error handling mode the batch was submitted with: continue | stop.
 	OnError BatchOnError `json:"on_error"`
-	// Статус батча: pending | processing | completed | stopped. ТЕРМИНАЛЬНЫЕ — completed И stopped
-	// (опрашивайте до одного из них, не только до completed): completed = обработка дошла до конца,
-	// stopped = батч с on_error=stop остановился на первой ошибке (остальные элементы пропущены и
-	// учтены в failed). Ни один не значит «всё успешно» — смотрите succeeded/failed.
+	// Batch status: pending | processing | completed | stopped. TERMINAL ones are completed AND
+	// stopped (poll until either of them, not only completed): completed = processing reached the end,
+	// stopped = a batch with on_error=stop halted at the first error (the remaining items were skipped
+	// and counted in failed). Neither means "everything succeeded" — check succeeded/failed.
 	Status BatchStatus `json:"status"`
-	// Успешно обработано.
+	// Processed successfully.
 	Succeeded int64 `json:"succeeded"`
-	// Всего элементов в батче; считается по всему батчу и от пагинации не зависит.
+	// Total items in the batch; counted over the whole batch, independent of pagination.
 	Total int64 `json:"total"`
-	// Время последнего изменения (ISO 8601, UTC).
+	// Time of the last change (ISO 8601, UTC).
 	UpdatedAt string `json:"updated_at"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -971,13 +974,13 @@ func (m BatchInfoResponse) GoString() string { return m.String() }
 
 // BatchSubmitResponse is a model of the API.
 type BatchSubmitResponse struct {
-	// Идентификатор батча — с ним идите в POST /v1/batch/info за статусом и результатами.
+	// The batch id — use it with POST /v1/batch/info to get the status and results.
 	BatchID string `json:"batch_id"`
-	// Сколько элементов принято в обработку.
+	// How many items were accepted for processing.
 	Count int64 `json:"count"`
-	// Вид батча: payment | refund | payout | transfer.
+	// Batch kind: payment | refund | payout | transfer.
 	Kind BatchKind `json:"kind"`
-	// Стартовый статус — всегда pending.
+	// The initial status — always pending.
 	Status BatchStatus `json:"status"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1007,9 +1010,9 @@ func (m BatchSubmitResponse) GoString() string { return m.String() }
 
 // BlockWalletRequest is a model of the API.
 type BlockWalletRequest struct {
-	// Адрес статического кошелька
+	// Static wallet address
 	Address string `json:"address"`
-	// true — заблокировать (значение по умолчанию, если поле опущено); false — снять блокировку
+	// true — block (the default if the field is omitted); false — lift the block
 	IsForceBlock *bool `json:"is_force_block,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1039,11 +1042,11 @@ func (m BlockWalletRequest) GoString() string { return m.String() }
 
 // BlockWalletResult is a model of the API.
 type BlockWalletResult struct {
-	// Адрес кошелька.
+	// Wallet address.
 	Address string `json:"address"`
-	// Заблокирован ли кошелёк после вызова.
+	// Whether the wallet is blocked after the call.
 	Blocked bool `json:"blocked"`
-	// Идентификатор статического кошелька.
+	// Static wallet id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1073,12 +1076,12 @@ func (m BlockWalletResult) GoString() string { return m.String() }
 
 // BlockedRefundRequest is a model of the API.
 type BlockedRefundRequest struct {
-	// Адрес назначения возврата.
+	// Refund destination address.
 	Address string `json:"address"`
-	// Тег/мемо назначения (XRP destination tag, XLM memo id, TON comment). Обязателен для
-	// классического адреса на tag/memo-сети, если тег не встроен в X-/M-адрес.
+	// Destination tag/memo (XRP destination tag, XLM memo id, TON comment). Required for a classic
+	// address on a tag/memo network unless the tag is embedded in an X-/M-address.
 	Memo *string `json:"memo,omitempty"`
-	// Идентификатор статического кошелька (из ответа /v1/wallet).
+	// The static wallet id (from the /v1/wallet response).
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1108,58 +1111,58 @@ func (m BlockedRefundRequest) GoString() string { return m.String() }
 
 // BlockedRefundResult is a model of the API.
 type BlockedRefundResult struct {
-	// Адрес получателя.
+	// Recipient address.
 	Address string `json:"address"`
-	// Сумма выплаты в валюте currency, списанная с вашего баланса.
+	// The payout amount in currency, debited from your balance.
 	Amount Decimal `json:"amount"`
-	// true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).
+	// true — the payout is awaiting approval (internal scenarios; always false with an API key).
 	ApprovalRequired bool `json:"approval_required"`
-	// Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.
+	// The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.
 	Commission Decimal `json:"commission"`
-	// Время создания (ISO 8601).
+	// Creation time (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Код валюты выплаты.
+	// Payout currency code.
 	Currency string `json:"currency"`
-	// Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо
-	// или отдать получателю. Пусто, если генерация документов не включена.
+	// A signed link to the PDF receipt of this operation — opens without an API key, can be attached
+	// to an email or given to the recipient. Empty if document generation is not enabled.
 	DocumentURL string `json:"document_url"`
-	// Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма
-	// списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true,
-	// выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю
-	// приходит меньше запрошенного.
+	// Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the
+	// debit amount was increased by the fee, the recipient gets the full requested amount
+	// (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld
+	// from the payout, the recipient gets less than requested.
 	FeeBearer PayoutFeeBearer `json:"fee_bearer"`
-	// true — статус финальный (confirmed / failed / cancelled).
+	// true — the status is final (confirmed / failed / cancelled).
 	IsFinal bool `json:"is_final"`
-	// true — это возврат платежа, а не обычная выплата.
+	// true — this is a payment refund, not a regular payout.
 	IsRefund bool `json:"is_refund"`
-	// Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.
+	// The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.
 	Memo string `json:"memo"`
-	// Сеть блокчейна.
+	// Blockchain network.
 	Network string `json:"network"`
-	// Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см.
+	// Your payout number (reference). null for a refund: a refund has no identifier of yours, see
 	// payment_order_id.
 	OrderID *string `json:"order_id"`
-	// Сколько реально уходит получателю на адрес: amount − commission.
+	// How much actually goes to the recipient's address: amount − commission.
 	PayerAmount Decimal `json:"payer_amount"`
-	// Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата
-	// собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.
+	// Your order_id of the payment that was refunded (null for a regular payout). A refund has no
+	// order_id of its own — it comes as null, so match a refund to an order by this field.
 	PaymentOrderID *string `json:"payment_order_id"`
-	// Идентификатор возвращаемого платежа (null, если это не возврат).
+	// The id of the payment being refunded (null if this is not a refund).
 	RefundFor *string `json:"refund_for"`
-	// api (через интеграцию) | manual (из кабинета).
+	// api (via the integration) | manual (from the dashboard).
 	Source PayoutSource `json:"source"`
-	// Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй
-	// подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed
-	// (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории
-	// как есть.
+	// Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for
+	// the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) |
+	// confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history
+	// filter as is.
 	Status PayoutStatus `json:"status"`
-	// Хеш транзакции в блокчейне (появляется после отправки).
+	// The blockchain transaction hash (appears after sending).
 	Txid string `json:"txid"`
-	// Время последнего изменения (ISO 8601).
+	// Time of the last change (ISO 8601).
 	UpdatedAt string `json:"updated_at"`
-	// Идентификатор выплаты.
+	// Payout id.
 	UUID string `json:"uuid"`
-	// Кошелёк, с которого вернули деньги.
+	// The wallet the money was refunded from.
 	WalletUUID string `json:"wallet_uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1187,9 +1190,189 @@ func (m BlockedRefundResult) String() string { return describe("BlockedRefundRes
 // GoString is String, for %#v.
 func (m BlockedRefundResult) GoString() string { return m.String() }
 
+// CLIDeviceAuthorization is a model of the API.
+type CLIDeviceAuthorization struct {
+	// The CLI's secret for polling POST /v1/cli/token. Never show it to the user.
+	DeviceCode string `json:"device_code"`
+	// Seconds until the request expires.
+	ExpiresIn int64 `json:"expires_in"`
+	// Seconds to wait between polls; cli.slow_down raises it by 5.
+	Interval int64 `json:"interval"`
+	// The code the user confirms in the browser.
+	UserCode string `json:"user_code"`
+	// The cabinet page where the user enters the code.
+	VerificationURI string `json:"verification_uri"`
+	// The same page with the code filled in — open this one in the browser.
+	VerificationURIComplete string `json:"verification_uri_complete"`
+	// Extra holds the fields this SDK version does not know, as received.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON decodes the known fields and keeps the rest in Extra.
+func (m *CLIDeviceAuthorization) UnmarshalJSON(data []byte) error {
+	type plain CLIDeviceAuthorization
+	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
+		return err
+	}
+	m.Extra = genExtra(data, "device_code", "expires_in", "interval", "user_code", "verification_uri", "verification_uri_complete")
+	return nil
+}
+
+// MarshalJSON encodes the known fields and the ones in Extra.
+func (m CLIDeviceAuthorization) MarshalJSON() ([]byte, error) {
+	type plain CLIDeviceAuthorization
+	return genMarshal(plain(m), m.Extra)
+}
+
+// String renders the model for logs and debugging, the way the runtime describes models.
+func (m CLIDeviceAuthorization) String() string { return describe("CLIDeviceAuthorization", m) }
+
+// GoString is String, for %#v.
+func (m CLIDeviceAuthorization) GoString() string { return m.String() }
+
+// CLIDeviceRequest is a model of the API.
+type CLIDeviceRequest struct {
+	// The client asking for access (at most 64 characters); shown in the cabinet. Empty — "oblodai".
+	ClientName *string `json:"client_name,omitempty"`
+	// The device (at most 100 characters); shown in the cabinet and becomes the key label. Empty —
+	// "CLI".
+	DeviceName *string `json:"device_name,omitempty"`
+	// Extra holds the fields this SDK version does not know, as received.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON decodes the known fields and keeps the rest in Extra.
+func (m *CLIDeviceRequest) UnmarshalJSON(data []byte) error {
+	type plain CLIDeviceRequest
+	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
+		return err
+	}
+	m.Extra = genExtra(data, "client_name", "device_name")
+	return nil
+}
+
+// MarshalJSON encodes the known fields and the ones in Extra.
+func (m CLIDeviceRequest) MarshalJSON() ([]byte, error) {
+	type plain CLIDeviceRequest
+	return genMarshal(plain(m), m.Extra)
+}
+
+// String renders the model for logs and debugging, the way the runtime describes models.
+func (m CLIDeviceRequest) String() string { return describe("CLIDeviceRequest", m) }
+
+// GoString is String, for %#v.
+func (m CLIDeviceRequest) GoString() string { return m.String() }
+
+// CLILogoutResult is a model of the API.
+type CLILogoutResult struct {
+	// The CLI key that was revoked (the one that signed this request).
+	PublicID string `json:"public_id"`
+	// Always true: the key no longer authenticates.
+	Revoked bool `json:"revoked"`
+	// Extra holds the fields this SDK version does not know, as received.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON decodes the known fields and keeps the rest in Extra.
+func (m *CLILogoutResult) UnmarshalJSON(data []byte) error {
+	type plain CLILogoutResult
+	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
+		return err
+	}
+	m.Extra = genExtra(data, "public_id", "revoked")
+	return nil
+}
+
+// MarshalJSON encodes the known fields and the ones in Extra.
+func (m CLILogoutResult) MarshalJSON() ([]byte, error) {
+	type plain CLILogoutResult
+	return genMarshal(plain(m), m.Extra)
+}
+
+// String renders the model for logs and debugging, the way the runtime describes models.
+func (m CLILogoutResult) String() string { return describe("CLILogoutResult", m) }
+
+// GoString is String, for %#v.
+func (m CLILogoutResult) GoString() string { return m.String() }
+
+// CLIToken is a model of the API.
+type CLIToken struct {
+	// When the key stops working; log in again after that.
+	ExpiresAt string `json:"expires_at"`
+	// The key label (device name).
+	Label string `json:"label"`
+	// The merchant (store) the key acts for.
+	MerchantID string `json:"merchant_id"`
+	// The store's name at approval time.
+	MerchantName string `json:"merchant_name"`
+	// live — a production store; test — its sandbox.
+	Mode KeyMode `json:"mode"`
+	// The CLI key's public id (X-Public-Id).
+	PublicID string `json:"public_id"`
+	// The team member's role the key acts with (at approval time; the core checks the current one on
+	// every call).
+	Role Role `json:"role"`
+	// The key secret. Returned exactly once — store it now.
+	Secret string `json:"secret"`
+	// Extra holds the fields this SDK version does not know, as received.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON decodes the known fields and keeps the rest in Extra.
+func (m *CLIToken) UnmarshalJSON(data []byte) error {
+	type plain CLIToken
+	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
+		return err
+	}
+	m.Extra = genExtra(data, "expires_at", "label", "merchant_id", "merchant_name", "mode", "public_id", "role", "secret")
+	return nil
+}
+
+// MarshalJSON encodes the known fields and the ones in Extra.
+func (m CLIToken) MarshalJSON() ([]byte, error) {
+	type plain CLIToken
+	return genMarshal(plain(m), m.Extra)
+}
+
+// String renders the model for logs and debugging, the way the runtime describes models.
+func (m CLIToken) String() string { return describe("CLIToken", m) }
+
+// GoString is String, for %#v.
+func (m CLIToken) GoString() string { return m.String() }
+
+// CLITokenRequest is a model of the API.
+type CLITokenRequest struct {
+	// device_code from POST /v1/cli/device.
+	DeviceCode string `json:"device_code"`
+	// Extra holds the fields this SDK version does not know, as received.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON decodes the known fields and keeps the rest in Extra.
+func (m *CLITokenRequest) UnmarshalJSON(data []byte) error {
+	type plain CLITokenRequest
+	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
+		return err
+	}
+	m.Extra = genExtra(data, "device_code")
+	return nil
+}
+
+// MarshalJSON encodes the known fields and the ones in Extra.
+func (m CLITokenRequest) MarshalJSON() ([]byte, error) {
+	type plain CLITokenRequest
+	return genMarshal(plain(m), m.Extra)
+}
+
+// String renders the model for logs and debugging, the way the runtime describes models.
+func (m CLITokenRequest) String() string { return describe("CLITokenRequest", m) }
+
+// GoString is String, for %#v.
+func (m CLITokenRequest) GoString() string { return m.String() }
+
 // CancelPayoutRequest is a model of the API.
 type CancelPayoutRequest struct {
-	// Идентификатор выплаты (или возврата) для отмены.
+	// The id of the payout (or refund) to cancel.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1219,16 +1402,16 @@ func (m CancelPayoutRequest) GoString() string { return m.String() }
 
 // CheckoutConfigRequest is a model of the API.
 type CheckoutConfigRequest struct {
-	// Слать ли покупателю чек на почту после оплаты. Чек уходит только если покупатель оставил адрес.
-	// По умолчанию — да.
+	// Whether to email the buyer a receipt after payment. The receipt is sent only if the buyer left
+	// an address. Defaults to yes.
 	EmailReceipts *bool `json:"email_receipts,omitempty"`
-	// Куда вернуть покупателя, если он ушёл с оплаты. Пустая строка — никуда не отправлять. Поле можно
-	// не присылать — тогда прежнее значение сохранится. Подставляется только в те счета, где
-	// url_return не задан.
+	// Where to send the buyer if they left the payment page. An empty string — do not redirect. The
+	// field may be omitted — then the previous value is kept. Applied only to invoices where
+	// url_return is not set.
 	FailURL *string `json:"fail_url,omitempty"`
-	// Куда вернуть покупателя после успешной оплаты. Пустая строка — никуда не отправлять. Поле можно
-	// не присылать — тогда прежнее значение сохранится. Подставляется только в те счета, где
-	// url_success не задан.
+	// Where to send the buyer after a successful payment. An empty string — do not redirect. The field
+	// may be omitted — then the previous value is kept. Applied only to invoices where url_success is
+	// not set.
 	SuccessURL *string `json:"success_url,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1258,11 +1441,11 @@ func (m CheckoutConfigRequest) GoString() string { return m.String() }
 
 // CheckoutConfigView is a model of the API.
 type CheckoutConfigView struct {
-	// Слать ли покупателю чек на почту после оплаты.
+	// Whether to email the buyer a receipt after payment.
 	EmailReceipts bool `json:"email_receipts"`
-	// Куда вернуть покупателя, ушедшего с оплаты; пусто — никуда.
+	// Where to send a buyer who left the payment page; empty — nowhere.
 	FailURL string `json:"fail_url"`
-	// Куда вернуть покупателя после оплаты; пусто — никуда.
+	// Where to send the buyer after payment; empty — nowhere.
 	SuccessURL string `json:"success_url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1292,12 +1475,11 @@ func (m CheckoutConfigView) GoString() string { return m.String() }
 
 // ClaimRequest is a model of the API.
 type ClaimRequest struct {
-	// Адрес получателя в сети выплаты.
+	// The recipient's address on the payout network.
 	Address string `json:"address"`
-	// Memo/tag — только для сетей, где он обязателен.
+	// Memo/tag — only for networks where it is required.
 	Memo *string `json:"memo,omitempty"`
-	// Код получения — если отправитель установил его на ссылку. После 10 неверных вводов ссылка
-	// запирается.
+	// Claim passcode — if the sender set one on the link. After 10 wrong attempts the link is locked.
 	Passcode *string `json:"passcode,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1327,15 +1509,15 @@ func (m ClaimRequest) GoString() string { return m.String() }
 
 // ConversionEconomyQuote is a model of the API.
 type ConversionEconomyQuote struct {
-	// Доступен ли режим сейчас.
+	// Whether the mode is available right now.
 	Available bool `json:"available"`
-	// Комиссия режима в процентах.
+	// The mode's fee, in percent.
 	FeePercent Decimal `json:"fee_percent"`
-	// Гарантированный минимум к получению, в валюте котировки.
+	// The guaranteed minimum to receive, in the quote currency.
 	MinOut Decimal `json:"min_out"`
-	// Почему недоступен: no_route; пусто — доступен.
+	// Why it is unavailable: no_route; empty — available.
 	Reason string `json:"reason"`
-	// За сколько минут исполняется заявка.
+	// How many minutes the order takes to execute.
 	WindowMinutes int64 `json:"window_minutes"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1365,13 +1547,13 @@ func (m ConversionEconomyQuote) GoString() string { return m.String() }
 
 // ConversionInstantQuote is a model of the API.
 type ConversionInstantQuote struct {
-	// Доступен ли режим сейчас.
+	// Whether the mode is available right now.
 	Available bool `json:"available"`
-	// Сколько придёт, в валюте котировки.
+	// How much will arrive, in the quote currency.
 	EstimatedOut Decimal `json:"estimated_out"`
-	// Комиссия режима в процентах.
+	// The mode's fee, in percent.
 	FeePercent Decimal `json:"fee_percent"`
-	// Почему недоступен: frozen, position_cap; пусто — доступен.
+	// Why it is unavailable: frozen, position_cap; empty — available.
 	Reason string `json:"reason"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1401,9 +1583,9 @@ func (m ConversionInstantQuote) GoString() string { return m.String() }
 
 // ConversionModes is a model of the API.
 type ConversionModes struct {
-	// Конвертация через партию ликвидации.
+	// Conversion via a liquidation batch.
 	Economy ConversionEconomyQuote `json:"economy"`
-	// Мгновенная конвертация по спред-курсу.
+	// Instant conversion at the spread rate.
 	Instant ConversionInstantQuote `json:"instant"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1431,45 +1613,46 @@ func (m ConversionModes) String() string { return describe("ConversionModes", m)
 // GoString is String, for %#v.
 func (m ConversionModes) GoString() string { return m.String() }
 
-// ConversionWebhook — Приходит, когда конвертация в эконом-режиме исполнена (completed — зачислено)
-// или отменена с возвратом исходной суммы (refunded).
+// ConversionWebhook — Sent when an economy-mode conversion is executed (completed — credited) or
+// cancelled with the source amount returned (refunded).
 type ConversionWebhook struct {
-	// Когда завершена (ISO 8601).
+	// When completed (ISO 8601).
 	CompletedAt string `json:"completed_at"`
-	// Когда конвертация принята (ISO 8601).
+	// When the conversion was accepted (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Подписанная ссылка на PDF-чек конвертации; пусто у возврата и когда документы выключены.
+	// A signed link to the PDF conversion receipt; empty for a refund and when documents are disabled.
 	DocumentURL string `json:"document_url"`
-	// Когда событие произошло, UTC с миллисекундами (ISO 8601).
+	// When the event happened, UTC with milliseconds (ISO 8601).
 	EventAt string `json:"event_at"`
-	// Комиссия конвертации, в процентах.
+	// Conversion fee, in percent.
 	FeePercent Decimal `json:"fee_percent"`
-	// Из какой валюты.
+	// Source currency.
 	From string `json:"from"`
-	// Идентификатор конвертации — тот id, что вернул запрос конвертации.
+	// The conversion id — the id returned by the conversion request.
 	ID string `json:"id"`
-	// Всегда true: событие приходит, когда деньги уже зачислены или возвращены.
+	// Always true: the event arrives when the money has already been credited or returned.
 	IsFinal bool `json:"is_final"`
-	// Режим: economy (исполнена очередью) | instant.
+	// Mode: economy (executed via the queue) | instant.
 	Mode string `json:"mode"`
-	// Причина возврата (market_below_min | window_expired); пусто у completed.
+	// The refund reason (market_below_min | window_expired); empty for completed.
 	Reason string `json:"reason"`
-	// Сколько зачислено, в валюте to. Есть только у completed; у refunded поля нет.
+	// How much was credited, in the to currency. Present only for completed; refunded has no such
+	// field.
 	Received *Decimal `json:"received,omitempty"`
-	// Сколько отдано, в валюте from.
+	// How much was given, in the from currency.
 	Sent Decimal `json:"sent"`
-	// Глобальный номер события: в пределах одного объекта больший номер новее, меньший — опоздавшая
-	// доставка, её нужно отбросить. У репетиции (test: true) всегда 0.
+	// The global event number: within one object a higher number is newer, a lower one is a late
+	// delivery and must be discarded. Always 0 on a rehearsal (test: true).
 	Sequence int64 `json:"sequence"`
-	// completed — зачислено; refunded — исходная сумма возвращена.
+	// completed — credited; refunded — the source amount was returned.
 	Status ConversionWebhookStatus `json:"status"`
-	// Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true — внутри
-	// подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик обязан
-	// игнорировать, даже если подпись верна.
+	// Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true —
+	// inside the signature. A live event never carries this field: your handler must ignore a body
+	// with test: true even if the signature is valid.
 	Test *bool `json:"test,omitempty"`
-	// В какую валюту.
+	// Target currency.
 	To string `json:"to"`
-	// Вид события: payment | payout | wallet | conversion — какое тело пришло.
+	// Event kind: payment | payout | wallet | conversion — which body arrived.
 	Type string `json:"type"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1499,11 +1682,11 @@ func (m ConversionWebhook) GoString() string { return m.String() }
 
 // CreateWalletRequest is a model of the API.
 type CreateWalletRequest struct {
-	// Символ валюты приёма (USDT, BTC, ETH, …)
+	// The symbol of the accepted currency (USDT, BTC, ETH, …)
 	Currency string `json:"currency"`
-	// Сеть приёма (tron, ethereum, bitcoin, …)
+	// The receiving network (tron, ethereum, bitcoin, …)
 	Network string `json:"network"`
-	// Ваш идентификатор клиента/заказа. Закрепляет отдельный постоянный адрес за клиентом
+	// Your customer/order identifier. Assigns a dedicated permanent address to the customer
 	OrderID *string `json:"order_id,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1533,9 +1716,9 @@ func (m CreateWalletRequest) GoString() string { return m.String() }
 
 // CurrenciesResult is a model of the API.
 type CurrenciesResult struct {
-	// Чем счёт можно оплатить: монеты по сетям.
+	// What the invoice can be paid with: coins by network.
 	Currencies []CurrencyEntry `json:"currencies"`
-	// В чём счёт можно выставить: те же монеты и фиат; отсортированы по коду.
+	// What an invoice can be priced in: the same coins plus fiat; sorted by code.
 	PricingCurrencies []PricingCurrency `json:"pricing_currencies"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1565,9 +1748,9 @@ func (m CurrenciesResult) GoString() string { return m.String() }
 
 // CurrencyEntry is a model of the API.
 type CurrencyEntry struct {
-	// Код валюты.
+	// Currency code.
 	Currency string `json:"currency"`
-	// Знаков после запятой в суммах этой валюты.
+	// Decimal places in amounts of this currency.
 	Decimals int64             `json:"decimals"`
 	Networks []CurrencyNetwork `json:"networks"`
 	// Extra holds the fields this SDK version does not know, as received.
@@ -1598,23 +1781,23 @@ func (m CurrencyEntry) GoString() string { return m.String() }
 
 // CurrencyNetwork is a model of the API.
 type CurrencyNetwork struct {
-	// То же, что deposit_available.
+	// The same as deposit_available.
 	Available bool `json:"available"`
-	// Номер EVM-сети (EIP-155); только у EVM-сетей.
+	// The EVM chain id (EIP-155); EVM networks only.
 	ChainID *int64 `json:"chain_id,omitempty"`
-	// Контракт токена; у монеты сети ключа нет.
+	// The token contract; a native coin has no such key.
 	Contract *string `json:"contract,omitempty"`
-	// false — метод показывается на оплате только после явного включения мерчантом.
+	// false — the method is shown at checkout only after the merchant explicitly enables it.
 	DefaultOffer bool `json:"default_offer"`
-	// Приём в этой сети работает на этом развёртывании.
+	// Accepting payments on this network works on this deployment.
 	DepositAvailable bool `json:"deposit_available"`
-	// native — монета сети, token — токен контракта.
+	// native — the network's native coin, token — a contract token.
 	Kind AssetKind `json:"kind"`
-	// Подтверждений до зачисления.
+	// Confirmations until crediting.
 	MinConfirmations int64 `json:"min_confirmations"`
-	// Сеть.
+	// Network.
 	Network string `json:"network"`
-	// Выплаты в этой сети работают на этом развёртывании.
+	// Payouts on this network work on this deployment.
 	PayoutAvailable bool `json:"payout_available"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1644,27 +1827,27 @@ func (m CurrencyNetwork) GoString() string { return m.String() }
 
 // DocumentJobAccepted is a model of the API.
 type DocumentJobAccepted struct {
-	// Когда задача поставлена (UTC).
+	// When the job was queued (UTC).
 	CreatedAt string `json:"created_at"`
-	// Почему файла нет; есть у задачи в статусе failed или expired.
+	// Why there is no file; present on a job in status failed or expired.
 	Error *DocumentJobError `json:"error,omitempty"`
-	// Готовый файл; есть у задачи в статусе done.
+	// The finished file; present on a job in status done.
 	File *DocumentJobFile `json:"file,omitempty"`
-	// Формат файла: pdf или csv.
+	// File format: pdf or csv.
 	Format string `json:"format"`
-	// Идентификатор задачи.
+	// Job id.
 	JobID string `json:"job_id"`
-	// Вид отчёта.
+	// Report kind.
 	Kind DocumentJobKind `json:"kind"`
-	// Язык документа.
+	// Document language.
 	Lang string `json:"lang"`
-	// Период отчёта.
+	// Report period.
 	Period DocumentJobPeriod `json:"period"`
-	// Срок готовности; есть, пока задача в очереди или в работе.
+	// The readiness deadline; present while the job is queued or in progress.
 	ReadyWithin *string `json:"ready_within,omitempty"`
-	// Статус задачи: queued, processing, done, failed или expired.
+	// Job status: queued, processing, done, failed or expired.
 	Status DocumentJobStatus `json:"status"`
-	// Когда задача менялась последний раз (UTC).
+	// When the job last changed (UTC).
 	UpdatedAt string `json:"updated_at"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1694,9 +1877,9 @@ func (m DocumentJobAccepted) GoString() string { return m.String() }
 
 // DocumentJobError is a model of the API.
 type DocumentJobError struct {
-	// Машинный код отказа.
+	// The machine code of the rejection.
 	Code string `json:"code"`
-	// Что случилось и что делать.
+	// What happened and what to do.
 	Message string `json:"message"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1726,13 +1909,13 @@ func (m DocumentJobError) GoString() string { return m.String() }
 
 // DocumentJobFile is a model of the API.
 type DocumentJobFile struct {
-	// Путь скачивания (GET под ключом мерчанта).
+	// The download path (GET under the merchant key).
 	DownloadURL string `json:"download_url"`
-	// До какого момента файл хранится (UTC).
+	// Until when the file is kept (UTC).
 	ExpiresAt *string `json:"expires_at,omitempty"`
-	// Строк в отчёте.
+	// Rows in the report.
 	Rows int64 `json:"rows"`
-	// Размер файла в байтах.
+	// File size in bytes.
 	SizeBytes int64 `json:"size_bytes"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1762,7 +1945,7 @@ func (m DocumentJobFile) GoString() string { return m.String() }
 
 // DocumentJobInfoRequest is a model of the API.
 type DocumentJobInfoRequest struct {
-	// Идентификатор задачи из ответа создания.
+	// The job id from the creation response.
 	JobID string `json:"job_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1792,9 +1975,9 @@ func (m DocumentJobInfoRequest) GoString() string { return m.String() }
 
 // DocumentJobPeriod is a model of the API.
 type DocumentJobPeriod struct {
-	// Начало периода, YYYY-MM-DD.
+	// Start of the period, YYYY-MM-DD.
 	From string `json:"from"`
-	// Конец периода включительно, YYYY-MM-DD.
+	// End of the period, inclusive, YYYY-MM-DD.
 	To string `json:"to"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1824,16 +2007,16 @@ func (m DocumentJobPeriod) GoString() string { return m.String() }
 
 // DocumentJobRequest is a model of the API.
 type DocumentJobRequest struct {
-	// Формат файла: pdf (по умолчанию) или csv. CSV собирается без вёрстки — для тяжёлых выписок
-	// дешевле и грузится в Excel/1С.
+	// File format: pdf (default) or csv. CSV is built without layout — cheaper for heavy statements
+	// and imports into Excel/1C.
 	Format *string `json:"format,omitempty"`
-	// Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).
+	// Start of the period, YYYY-MM-DD (defaults to the first day of the current month).
 	From *string `json:"from,omitempty"`
-	// Вид отчёта: statement (операции), fees (комиссии) или ledger (движения баланса).
+	// Report kind: statement (operations), fees (fees) or ledger (balance movements).
 	Kind DocumentJobKind `json:"kind"`
-	// Язык документа (по умолчанию en).
+	// Document language (en by default).
 	Lang *string `json:"lang,omitempty"`
-	// Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня). Период — до двух лет.
+	// End of the period, inclusive, YYYY-MM-DD (defaults to today). The period is up to two years.
 	To *string `json:"to,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1863,27 +2046,27 @@ func (m DocumentJobRequest) GoString() string { return m.String() }
 
 // DocumentJobView is a model of the API.
 type DocumentJobView struct {
-	// Когда задача поставлена (UTC).
+	// When the job was queued (UTC).
 	CreatedAt string `json:"created_at"`
-	// Почему файла нет; есть у задачи в статусе failed или expired.
+	// Why there is no file; present on a job in status failed or expired.
 	Error *DocumentJobError `json:"error,omitempty"`
-	// Готовый файл; есть у задачи в статусе done.
+	// The finished file; present on a job in status done.
 	File *DocumentJobFile `json:"file,omitempty"`
-	// Формат файла: pdf или csv.
+	// File format: pdf or csv.
 	Format string `json:"format"`
-	// Идентификатор задачи.
+	// Job id.
 	JobID string `json:"job_id"`
-	// Вид отчёта.
+	// Report kind.
 	Kind DocumentJobKind `json:"kind"`
-	// Язык документа.
+	// Document language.
 	Lang string `json:"lang"`
-	// Период отчёта.
+	// Report period.
 	Period DocumentJobPeriod `json:"period"`
-	// Срок готовности; есть, пока задача в очереди или в работе.
+	// The readiness deadline; present while the job is queued or in progress.
 	ReadyWithin *string `json:"ready_within,omitempty"`
-	// Статус задачи: queued, processing, done, failed или expired.
+	// Job status: queued, processing, done, failed or expired.
 	Status DocumentJobStatus `json:"status"`
-	// Когда задача менялась последний раз (UTC).
+	// When the job last changed (UTC).
 	UpdatedAt string `json:"updated_at"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1942,21 +2125,24 @@ func (m ErrorEnvelope) GoString() string { return m.String() }
 
 // ErrorError is a model of the API.
 type ErrorError struct {
-	// Стабильный машинный код `<область>.<причина>` — единственное поле, по которому можно ветвиться.
-	// Список известных кодов — ErrorCode; новые коды добавляются без смены версии, поэтому клиент
-	// обязан переживать незнакомый код.
+	// A stable machine code `<area>.<reason>` — the only field you may branch on. The list of known
+	// codes is ErrorCode; new codes are added without a version change, so a client must tolerate an
+	// unknown code.
 	Code string `json:"code"`
-	// Имя поля запроса, к которому относится ошибка, в присланном написании. Отсутствует, если ошибка
-	// не про конкретное поле.
+	// Machine-readable facts about this refusal, with keys documented by its code (e.g.
+	// `cli.permission_denied` carries `required_role` and `role`). Absent when the code has none.
+	Details map[string]string `json:"details,omitempty"`
+	// The name of the request field the error refers to, spelled as sent. Absent if the error is not
+	// about a specific field.
 	Field *string `json:"field,omitempty"`
-	// Человекочитаемое пояснение. Текст не является контрактом и может меняться.
+	// A human-readable explanation. The text is not part of the contract and may change.
 	Message *string `json:"message,omitempty"`
-	// Идентификатор запроса (дублирует X-Request-ID) — приложите его к обращению в поддержку.
+	// The request id (duplicates X-Request-ID) — include it when contacting support.
 	RequestID *string `json:"request_id,omitempty"`
-	// Подсказка, через сколько секунд повторять (дублирует заголовок Retry-After).
+	// A hint of how many seconds to wait before retrying (duplicates the Retry-After header).
 	RetryAfter *int64 `json:"retry_after,omitempty"`
-	// true — повтор того же запроса без изменений может пройти, когда условие снимется; false —
-	// повторять бессмысленно без правки запроса.
+	// true — repeating the same request unchanged may succeed once the condition clears; false —
+	// retrying is pointless without changing the request.
 	Retryable bool `json:"retryable"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -1968,7 +2154,7 @@ func (m *ErrorError) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
 		return err
 	}
-	m.Extra = genExtra(data, "code", "field", "message", "request_id", "retry_after", "retryable")
+	m.Extra = genExtra(data, "code", "details", "field", "message", "request_id", "retry_after", "retryable")
 	return nil
 }
 
@@ -1986,11 +2172,11 @@ func (m ErrorError) GoString() string { return m.String() }
 
 // ExchangeRate is a model of the API.
 type ExchangeRate struct {
-	// Цена одной единицы from в to, десятичной строкой.
+	// The price of one unit of from in to, as a decimal string.
 	Course string `json:"course"`
-	// Исходная валюта.
+	// Source currency.
 	From string `json:"from"`
-	// Валюта котировки.
+	// Quote currency.
 	To string `json:"to"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2020,17 +2206,18 @@ func (m ExchangeRate) GoString() string { return m.String() }
 
 // ExchangeRatesRequest is a model of the API.
 type ExchangeRatesRequest struct {
-	// Сумма в currency_from. Вместе с currency_from и currency_to добавляет в ответ блок modes: обе
-	// цены конвертации (instant/economy) с доступностью каждого режима
+	// The amount in currency_from. Together with currency_from and currency_to it adds a modes block
+	// to the response: both conversion prices (instant/economy) with the availability of each mode
 	Amount *Decimal `json:"amount,omitempty"`
-	// Код валюты. Если задан — вернётся курс только по нему. Если пусто или тело {} — по всем валютам
+	// Currency code. If set, only its rate is returned. If empty or the body is {} — rates for all
+	// currencies
 	CurrencyFrom *string `json:"currency_from,omitempty"`
-	// Валюта котировки: по умолчанию USDT; любой прайсинговый актив, включая фиаты с прямым фидом
+	// Quote currency: USDT by default; any pricing asset, including fiat currencies with a direct feed
 	// (EUR, RUB, …)
 	CurrencyTo *string `json:"currency_to,omitempty"`
-	// Размер страницы, 1–100; по умолчанию 25
+	// Page size, 1–100; default 25
 	Limit *int64 `json:"limit,omitempty"`
-	// Смещение от начала списка; по умолчанию 0
+	// Offset from the start of the list; default 0
 	Offset *int64 `json:"offset,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2060,12 +2247,12 @@ func (m ExchangeRatesRequest) GoString() string { return m.String() }
 
 // ExchangeRatesResult is a model of the API.
 type ExchangeRatesResult struct {
-	// Курсы этой страницы.
+	// The rates of this page.
 	Items []ExchangeRate `json:"items"`
-	// Квота конвертации в обоих режимах; нет ключа — квоту не просили, она не удалась или пара вне
-	// режимов.
+	// The conversion quota in both modes; no key — no quota was requested, it failed, or the pair is
+	// outside both modes.
 	Modes *ConversionModes `json:"modes,omitempty"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2095,11 +2282,11 @@ func (m ExchangeRatesResult) GoString() string { return m.String() }
 
 // FaucetRequest is a model of the API.
 type FaucetRequest struct {
-	// Сумма тестовых денег, строкой; потолок 1000000 за вызов.
+	// The amount of test money, as a string; capped at 1000000 per call.
 	Amount Decimal `json:"amount"`
-	// Актив пополнения (USDT, BTC, …).
+	// Deposit asset (USDT, BTC, …).
 	Asset string `json:"asset"`
-	// Ключ безопасного повтора; пусто — каждый вызов даёт новое пополнение.
+	// The safe-retry key; empty — every call creates a new top-up.
 	IdempotencyKey *string `json:"idempotency_key,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2129,11 +2316,11 @@ func (m FaucetRequest) GoString() string { return m.String() }
 
 // FaucetResult is a model of the API.
 type FaucetResult struct {
-	// Зачисленная сумма в точности актива.
+	// The credited amount at the asset's precision.
 	Amount Decimal `json:"amount"`
-	// Актив пополнения.
+	// Deposit asset.
 	Asset string `json:"asset"`
-	// Журнальная запись пополнения; повтор с тем же idempotency_key возвращает ту же.
+	// The ledger entry of the top-up; a retry with the same idempotency_key returns the same one.
 	JournalID string `json:"journal_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2163,17 +2350,17 @@ func (m FaucetResult) GoString() string { return m.String() }
 
 // HistoryRequest is a model of the API.
 type HistoryRequest struct {
-	// Только для /v1/payout/history: true — вместе с выплатами вернуть и возвраты (прежнее поведение
-	// ленты без kind). По умолчанию false: возвраты — отдельно, kind=refund.
+	// Only for /v1/payout/history: true — return refunds together with payouts (the former behavior of
+	// the feed without kind). Default false: refunds are separate, kind=refund.
 	IncludeRefunds *bool `json:"include_refunds,omitempty"`
-	// Только для /v1/payout/history: payout — обычные выплаты, refund — возвраты; пусто — обычные
-	// выплаты (с include_refunds=true — всё вместе).
+	// Only for /v1/payout/history: payout — regular payouts, refund — refunds; empty — regular payouts
+	// (with include_refunds=true — everything together).
 	Kind *PayoutKind `json:"kind,omitempty"`
-	// Размер страницы, 1–100; вне диапазона — 25.
+	// Page size, 1–100; out of range — 25.
 	Limit *int64 `json:"limit,omitempty"`
-	// Смещение от начала списка (новые сверху).
+	// Offset from the start of the list (newest first).
 	Offset *int64 `json:"offset,omitempty"`
-	// Фильтр по статусу (точное значение из словаря статусов); пусто — все.
+	// Filter by status (an exact value from the status vocabulary); empty — all.
 	Status *string `json:"status,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2203,18 +2390,18 @@ func (m HistoryRequest) GoString() string { return m.String() }
 
 // LinkCheckoutRequest is a model of the API.
 type LinkCheckoutRequest struct {
-	// Сумма, которую ввёл покупатель, в валюте цены ссылки; обязательна для open и range, для fixed
-	// игнорируется
+	// The amount the buyer entered, in the link's price currency; required for open and range, ignored
+	// for fixed
 	Amount *Decimal `json:"amount,omitempty"`
-	// Валюта расчёта — монета, которой платит покупатель; нужна, только если ссылка не закрепила
+	// The settlement currency — the coin the buyer pays with; needed only if the link did not pin
 	// pinned_currency
 	Currency *string `json:"currency,omitempty"`
-	// Сеть расчёта; нужна, только если ссылка не закрепила pinned_network
+	// The settlement network; needed only if the link did not pin pinned_network
 	Network *string `json:"network,omitempty"`
-	// Номер заказа магазина из встроенного виджета (data-oblodai-order-id); переносится на счёт и в
-	// вебхук для сопоставления с заказом; не ключ идемпотентности
+	// The store's order number from the embedded widget (data-oblodai-order-id); carried over to the
+	// invoice and the webhook for matching with the order; not an idempotency key
 	OrderID *string `json:"order_id,omitempty"`
-	// Email покупателя — на него автоматически уйдёт чек после оплаты
+	// The buyer's email — a receipt is sent to it automatically after payment
 	PayerEmail *string `json:"payer_email,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2244,9 +2431,9 @@ func (m LinkCheckoutRequest) GoString() string { return m.String() }
 
 // LookupRequest is a model of the API.
 type LookupRequest struct {
-	// Ваша ссылка на заказ.
+	// Your order reference.
 	OrderID *string `json:"order_id,omitempty"`
-	// Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.
+	// The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.
 	UUID *string `json:"uuid,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2276,9 +2463,9 @@ func (m LookupRequest) GoString() string { return m.String() }
 
 // MassPayoutRequest is a model of the API.
 type MassPayoutRequest struct {
-	// Массив до 100 элементов; поля каждого — как в POST /v1/payout.
+	// An array of up to 100 items; the fields of each are as in POST /v1/payout.
 	Payouts []PayoutRequest `json:"payouts"`
-	// Метка происхождения, применяется ко всем элементам без своего source.
+	// The origin label, applied to all items without their own source.
 	Source *string `json:"source,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2308,7 +2495,7 @@ func (m MassPayoutRequest) GoString() string { return m.String() }
 
 // MassPayoutResult is a model of the API.
 type MassPayoutResult struct {
-	// Элементы в порядке запроса.
+	// Items in request order.
 	Items []MassPayoutResultItemsItem `json:"items"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2338,19 +2525,19 @@ func (m MassPayoutResult) GoString() string { return m.String() }
 
 // MassPayoutResultItemsItem is a model of the API.
 type MassPayoutResultItemsItem struct {
-	// Машинный код отказа; есть при ok=false.
+	// The machine code of the rejection; present when ok=false.
 	ErrorCode *string `json:"error_code,omitempty"`
-	// HTTP-статус, которым ответил бы одиночный вызов; есть при ok=false.
+	// The HTTP status a single call would have returned; present when ok=false.
 	HTTPStatus *int64 `json:"http_status,omitempty"`
-	// Номер элемента в запросе.
+	// The item's number in the request.
 	Idx int64 `json:"idx"`
-	// Текст отказа; есть при ok=false.
+	// The rejection text; present when ok=false.
 	Message *string `json:"message,omitempty"`
-	// Элемент выполнен.
+	// The item was executed.
 	Ok bool `json:"ok"`
-	// order_id элемента, если он был в запросе.
+	// The item's order_id, if it was in the request.
 	OrderID *string `json:"order_id,omitempty"`
-	// Результат одиночного вызова; есть при ok=true.
+	// The result of a single call; present when ok=true.
 	Result *PayoutItem `json:"result,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2380,11 +2567,12 @@ func (m MassPayoutResultItemsItem) GoString() string { return m.String() }
 
 // MerchantBalanceEntry is a model of the API.
 type MerchantBalanceEntry struct {
-	// Доступно к выводу, десятичной строкой.
+	// Available to withdraw, as a decimal string.
 	Balance string `json:"balance"`
-	// Сколько этой монеты сейчас едет через очередь автоконверта (economy); нет ключа — очереди нет.
+	// How much of this coin is currently in transit through the auto-conversion queue (economy); no
+	// key — no queue.
 	Converting *Decimal `json:"converting,omitempty"`
-	// Символ актива.
+	// Asset symbol.
 	Currency string `json:"currency"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2414,7 +2602,7 @@ func (m MerchantBalanceEntry) GoString() string { return m.String() }
 
 // MerchantBalances is a model of the API.
 type MerchantBalances struct {
-	// Доступные балансы по активам.
+	// Available balances per asset.
 	Merchant []MerchantBalanceEntry `json:"merchant"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2444,9 +2632,9 @@ func (m MerchantBalances) GoString() string { return m.String() }
 
 // OnboardKey is a model of the API.
 type OnboardKey struct {
-	// Публичная часть ключа.
+	// The public part of the key.
 	PublicID string `json:"public_id"`
-	// Секрет ключа; пусто у повторного ответа песочницы (секрет хэширован).
+	// The key secret; empty in a repeated sandbox response (the secret is hashed).
 	Secret string `json:"secret"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2476,7 +2664,7 @@ func (m OnboardKey) GoString() string { return m.String() }
 
 // OnrampIdle is a model of the API.
 type OnrampIdle struct {
-	// Пустая строка: живой он-рамп-сессии по счёту нет.
+	// An empty string: there is no live on-ramp session for the invoice.
 	Status OnrampIdleStatus `json:"status"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2506,13 +2694,13 @@ func (m OnrampIdle) GoString() string { return m.String() }
 
 // OnrampSessionView is a model of the API.
 type OnrampSessionView struct {
-	// Срок жизни сессии (UTC).
+	// Session lifetime (UTC).
 	ExpiresAt string `json:"expires_at"`
-	// Причина отказа провайдера дословно; пусто, если её нет.
+	// The provider's rejection reason, verbatim; empty if there is none.
 	Reason string `json:"reason"`
-	// Идентификатор он-рамп-сессии.
+	// On-ramp session id.
 	SessionID string `json:"session_id"`
-	// Состояние сессии.
+	// Session state.
 	Status OnrampStatus `json:"status"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2542,22 +2730,23 @@ func (m OnrampSessionView) GoString() string { return m.String() }
 
 // OnrampStartResponse is a model of the API.
 type OnrampStartResponse struct {
-	// Срок жизни сессии, RFC3339 (UTC).
+	// Session lifetime, RFC3339 (UTC).
 	ExpiresAt string `json:"expires_at"`
-	// Сколько спишется с карты, в целых единицах фиата; пусто, если провайдер суммы не назвал. Оценка:
-	// курс и комиссия провайдера двигаются.
+	// How much will be charged to the card, in whole fiat units; empty if the provider did not name an
+	// amount. An estimate: the provider's rate and fee move.
 	FiatAmount string `json:"fiat_amount"`
-	// Валюта списания.
+	// Debit currency.
 	FiatCurrency string `json:"fiat_currency"`
-	// Какой рамп дал лучшую котировку на момент открытия.
+	// Which on-ramp gave the best quote at the time of opening.
 	Provider *string `json:"provider,omitempty"`
-	// Причина отказа провайдера, дословно, когда она есть.
+	// The provider's rejection reason, verbatim, when there is one.
 	Reason *string `json:"reason,omitempty"`
-	// Идентификатор он-рамп-сессии.
+	// On-ramp session id.
 	SessionID string `json:"session_id"`
-	// Состояние сессии.
+	// Session state.
 	Status OnrampStatus `json:"status"`
-	// Подписанная ссылка на виджет покупки. Пустая, если покупка уже идёт: тогда смотрите status.
+	// A signed link to the purchase widget. Empty if a purchase is already in progress: then check
+	// status.
 	URL string `json:"url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2587,9 +2776,9 @@ func (m OnrampStartResponse) GoString() string { return m.String() }
 
 // PageRequest is a model of the API.
 type PageRequest struct {
-	// Размер страницы, 1–100; вне диапазона — 25.
+	// Page size, 1–100; out of range — 25.
 	Limit *int64 `json:"limit,omitempty"`
-	// Смещение от начала списка.
+	// Offset from the start of the list.
 	Offset *int64 `json:"offset,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2619,13 +2808,13 @@ func (m PageRequest) GoString() string { return m.String() }
 
 // Pagination is a model of the API.
 type Pagination struct {
-	// Есть ли записи дальше этой страницы.
+	// Whether there are records beyond this page.
 	HasPages bool `json:"has_pages"`
-	// Смещение этой страницы.
+	// The offset of this page.
 	Offset int64 `json:"offset"`
-	// Размер страницы, которую отдали.
+	// The size of the page returned.
 	PerPage int64 `json:"per_page"`
-	// Всего записей по фильтру (на всех страницах).
+	// Total records matching the filter (across all pages).
 	Total int64 `json:"total"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2655,9 +2844,9 @@ func (m Pagination) GoString() string { return m.String() }
 
 // PaySelectRequest is a model of the API.
 type PaySelectRequest struct {
-	// Выбранная валюта оплаты.
+	// The chosen payment currency.
 	Currency string `json:"currency"`
-	// Выбранная сеть.
+	// The chosen network.
 	Network string `json:"network"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2687,13 +2876,13 @@ func (m PaySelectRequest) GoString() string { return m.String() }
 
 // PayServiceCommission is a model of the API.
 type PayServiceCommission struct {
-	// Единица fee_amount: USD у приёма, валюта выплаты у выплаты.
+	// The unit of fee_amount: USD for accepting payments, the payout currency for payouts.
 	Currency *string `json:"currency,omitempty"`
-	// Фиксированная часть комиссии в валюте currency; null — не определилась.
+	// The fixed part of the fee in currency; null — could not be determined.
 	FeeAmount *Decimal `json:"fee_amount"`
-	// exact — договорная ставка; estimated — оценка по сетевой комиссии.
+	// exact — a contractual rate; estimated — an estimate based on the network fee.
 	FeeType FeeType `json:"fee_type"`
-	// Процент комиссии; null — не определился.
+	// The fee percentage; null — could not be determined.
 	Percent *string `json:"percent"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2724,12 +2913,12 @@ func (m PayServiceCommission) GoString() string { return m.String() }
 // PayServiceEntry is a model of the API.
 type PayServiceEntry struct {
 	Commission PayServiceCommission `json:"commission"`
-	// Валюта.
+	// Currency.
 	Currency string `json:"currency"`
-	// Метод работает на этом развёртывании.
+	// The method works on this deployment.
 	IsAvailable bool            `json:"is_available"`
 	Limit       PayServiceLimit `json:"limit"`
-	// Сеть.
+	// Network.
 	Network string `json:"network"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2759,9 +2948,9 @@ func (m PayServiceEntry) GoString() string { return m.String() }
 
 // PayServiceEntryList is a model of the API.
 type PayServiceEntryList struct {
-	// Записи этой страницы.
+	// The records of this page.
 	Items []PayServiceEntry `json:"items"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2791,11 +2980,11 @@ func (m PayServiceEntryList) GoString() string { return m.String() }
 
 // PayServiceLimit is a model of the API.
 type PayServiceLimit struct {
-	// Единица сумм limit; нет ключа — нет и границ в деньгах.
+	// The unit of the limit amounts; no key — no monetary bounds either.
 	Currency *string `json:"currency,omitempty"`
-	// Потолок одной выплаты в USD; "" — потолка нет (у приёма — всегда).
+	// The cap for a single payout in USD; "" — no cap (always so for accepting payments).
 	MaxAmount string `json:"max_amount"`
-	// Минимальная сумма в валюте currency: "" — минимума нет, null — не определилась.
+	// The minimum amount in currency: "" — no minimum, null — could not be determined.
 	MinAmount *string `json:"min_amount"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2825,43 +3014,44 @@ func (m PayServiceLimit) GoString() string { return m.String() }
 
 // PaymentBatchItem is a model of the API.
 type PaymentBatchItem struct {
-	// Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта.
+	// Underpayment/overpayment tolerance, 0–5 %. Overrides the merchant setting.
 	AccuracyPaymentPercent *float64 `json:"accuracy_payment_percent,omitempty"`
-	// Приватные данные мерчанта, эхом в вебхуках (покупателю не видны).
+	// The merchant's private data, echoed in webhooks (not visible to the buyer).
 	AdditionalData *string `json:"additional_data,omitempty"`
-	// Сумма к оплате в валюте currency.
+	// The amount to pay in currency.
 	Amount Decimal `json:"amount"`
-	// Код валюты цены: любой из 23 фиатов (USD, EUR, RUB, …) или любая монета (USDT, BTC, …). У JPY и
-	// KRW ноль знаков после запятой.
+	// The price currency code: any of the 23 fiat currencies (USD, EUR, RUB, …) or any coin (USDT,
+	// BTC, …). JPY and KRW have zero decimal places.
 	Currency string `json:"currency"`
-	// Разрешить доплату остатка.
+	// Allow paying the remainder.
 	IsPaymentMultiple *bool `json:"is_payment_multiple,omitempty"`
-	// Оживить просроченный счёт по order_id вместо создания нового.
+	// Revive an expired invoice by order_id instead of creating a new one.
 	IsRefresh *bool `json:"is_refresh,omitempty"`
-	// Время жизни счёта в секундах, 300–43200; по умолчанию 3600. Значения вне диапазона обрезаются к
-	// ближайшей границе.
+	// Invoice lifetime in seconds, 300–43200; default 3600. Out-of-range values are clamped to the
+	// nearest bound.
 	LifetimeSeconds *int64 `json:"lifetime_seconds,omitempty"`
-	// Сеть расчёта (напр. tron, ethereum). Необязательна — см. режимы выбора валюты и сети.
+	// The settlement network (e.g. tron, ethereum). Optional — see the currency and network selection
+	// modes.
 	Network *string `json:"network,omitempty"`
-	// Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется.
+	// The merchant reference; the idempotency key. Strongly recommended.
 	OrderID string `json:"order_id"`
-	// Email плательщика. Если задан — после оплаты на него автоматически уходит чек; он же получатель
-	// по умолчанию у POST /v1/payment/send-email.
+	// The payer's email. If set, a receipt is sent to it automatically after payment; it is also the
+	// default recipient for POST /v1/payment/send-email.
 	PayerEmail *string `json:"payer_email,omitempty"`
-	// Устаревшее: % сетевой наценки на плательщика (0–100); payer-facing наценки настраиваются через
+	// Deprecated: % network surcharge on the payer (0–100); payer-facing surcharges are configured via
 	// discount.
 	Subtract *int64 `json:"subtract,omitempty"`
-	// Тема страницы оплаты: dark | light.
+	// Payment page theme: dark | light.
 	Theme *string `json:"theme,omitempty"`
-	// Валюта расчёта — крипта, которой платят. По умолчанию = currency (только если currency —
-	// крипта); при цене в фиате задайте явно либо опустите вместе с network.
+	// The settlement currency — the crypto used to pay. Defaults to currency (only if currency is
+	// crypto); for a fiat price set it explicitly or omit it together with network.
 	ToCurrency *string `json:"to_currency,omitempty"`
-	// Индивидуальный webhook для этого счёта. Требует зарегистрированного эндпоинта (POST
-	// /v1/webhooks): доставка подписывается его секретом.
+	// A per-invoice webhook. Requires a registered endpoint (POST /v1/webhooks): the delivery is
+	// signed with its secret.
 	URLCallback *string `json:"url_callback,omitempty"`
-	// Ссылка «назад в магазин» на странице оплаты.
+	// The "back to store" link on the payment page.
 	URLReturn *string `json:"url_return,omitempty"`
-	// Редирект после успешной оплаты.
+	// Redirect after a successful payment.
 	URLSuccess *string `json:"url_success,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2891,11 +3081,11 @@ func (m PaymentBatchItem) GoString() string { return m.String() }
 
 // PaymentBatchRequest is a model of the API.
 type PaymentBatchRequest struct {
-	// Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop —
-	// прекратить обработку после первой ошибки.
+	// What to do when an item fails: continue (default) — process the rest; stop — stop processing
+	// after the first error.
 	OnError *BatchOnError `json:"on_error,omitempty"`
-	// Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payment; order_id обязателен у
-	// каждого элемента: по нему сопоставляются результаты и он защищает от дублей.
+	// An array of 1 to 5000 items — the same fields as in POST /v1/payment; order_id is required on
+	// each item: results are matched by it and it protects against duplicates.
 	Payments []PaymentBatchItem `json:"payments"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2925,11 +3115,12 @@ func (m PaymentBatchRequest) GoString() string { return m.String() }
 
 // PaymentDiscountRule is a model of the API.
 type PaymentDiscountRule struct {
-	// Монета правила. Пусто — правило по умолчанию для всех монет, у которых нет своего.
+	// The rule's coin. Empty — the default rule for all coins that have no rule of their own.
 	Currency string `json:"currency"`
-	// Процент, от -99 до 99. Плюс — скидка плательщику за оплату этой монетой, минус — наценка.
+	// Percent, from -99 to 99. Plus — a discount to the payer for paying with this coin, minus — a
+	// surcharge.
 	DiscountPercent int64 `json:"discount_percent"`
-	// Сеть. Пусто — любая сеть этой монеты.
+	// Network. Empty — any network of this coin.
 	Network string `json:"network"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2959,9 +3150,9 @@ func (m PaymentDiscountRule) GoString() string { return m.String() }
 
 // PaymentDiscountRuleList is a model of the API.
 type PaymentDiscountRuleList struct {
-	// Записи этой страницы.
+	// The records of this page.
 	Items []PaymentDiscountRule `json:"items"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2991,17 +3182,17 @@ func (m PaymentDiscountRuleList) GoString() string { return m.String() }
 
 // PaymentFeeResult is a model of the API.
 type PaymentFeeResult struct {
-	// Разрешён ли мерчанту перенос комиссии на покупателя (решение оператора).
+	// Whether the merchant is allowed to pass the fee on to the buyer (an operator decision).
 	Enabled bool `json:"enabled"`
-	// Фиксированная часть комиссии на платёж, USD десятичной строкой.
+	// The fixed part of the fee per payment, USD as a decimal string.
 	FeeFixedUsd *Decimal `json:"fee_fixed_usd,omitempty"`
-	// Устарело: та же фиксированная часть целыми центами США числом — читайте fee_fixed_usd.
+	// Deprecated: the same fixed part in whole US cents as a number — read fee_fixed_usd.
 	FeeFixedUsdCents *int64 `json:"fee_fixed_usd_cents,omitempty"`
-	// true — персональный тариф; false — умолчание платформы.
+	// true — a personal rate; false — the platform default.
 	FeeIndividual *bool `json:"fee_individual,omitempty"`
-	// Процент комиссии мерчанта.
+	// The merchant fee percentage.
 	FeePercent *Decimal `json:"fee_percent,omitempty"`
-	// Доля, которую применит следующий счёт; 0, если оператор выключил перенос комиссии.
+	// The share the next invoice will apply; 0 if the operator has disabled fee pass-through.
 	PayerPaysPercent int64 `json:"payer_pays_percent"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3031,136 +3222,144 @@ func (m PaymentFeeResult) GoString() string { return m.String() }
 
 // PaymentInfoResult is a model of the API.
 type PaymentInfoResult struct {
-	// Ваши приватные данные, которые вернутся в ответе и в вебхуке.
+	// Your private data, returned in the response and in the webhook.
 	AdditionalData string `json:"additional_data"`
-	// Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька —
-	// платёж обязан нести destination_tag, иначе сеть его отклонит.
+	// The address the customer sends money to. On XRP this is the classic r-address of a SHARED wallet
+	// — the payment must carry destination_tag, otherwise the network rejects it.
 	Address string `json:"address"`
-	// Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же
-	// кодирует QR. Пусто на остальных сетях.
+	// XLM only: the same payment details in one string — a muxed M… address (SEP-23), address and memo
+	// together; the QR code encodes it as well. Empty on other networks.
 	AddressMuxed string `json:"address_muxed"`
-	// QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address (адрес+тег
-	// одной строкой).
+	// The address QR code as a PNG data: URI — can go straight into <img src>. On XRP it encodes the
+	// X-address (address + tag in one string).
 	AddressQRCode string `json:"address_qr_code"`
-	// Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его
-	// же кодирует QR. Пусто на остальных сетях.
+	// XRP only: the same payment details in one string in X-address format (XLS-5) — address and tag
+	// together; the QR code encodes it as well. Empty on other networks.
 	AddressXaddress string `json:"address_xaddress"`
-	// Сумма к оплате в валюте цены (например, в USD).
+	// The amount to pay in the price currency (e.g. USD).
 	Amount Decimal `json:"amount"`
-	// Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло).
-	// Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+	// How much has already been paid and confirmed, in the payment crypto; always a string (0 if
+	// nothing has arrived). Empty until the payment currency is chosen (an invoice without a
+	// currency).
 	AmountPaid string `json:"amount_paid"`
-	// Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает. Пусто, пока валюта оплаты
-	// не выбрана (счёт без валюты).
+	// How much is still left to pay (due − paid); 0 if enough has been paid. Empty until the payment
+	// currency is chosen (an invoice without a currency).
 	AmountRemaining string `json:"amount_remaining"`
-	// Наша комиссия с этого платежа — УДЕРЖАННАЯ величина, в валюте оплаты (payer_currency). Ставка
-	// счёта уже включает амортизированный фиксированный сбор — второй раз он не берётся. ПУСТО, пока
-	// по счёту ничего не зачислено (и у валюто-агностичного счёта до выбора монеты): нуля здесь не
-	// бывает у неоплаченного счёта — «0» читалось бы как «комиссию не берут». У оплаченного счёта с
-	// нулевым тарифом 0 — настоящий.
+	// Our fee on this payment — the WITHHELD amount, in the payment currency (payer_currency). The
+	// invoice rate already includes the amortized fixed fee — it is not charged a second time. EMPTY
+	// until anything has been credited on the invoice (and, for a currency-agnostic invoice, until a
+	// coin is chosen): an unpaid invoice never shows zero here — "0" would read as "no fee is
+	// charged". For a paid invoice with a zero rate, 0 is genuine.
 	Commission string `json:"commission"`
-	// Текущее число подтверждений входящего платежа.
+	// The current number of confirmations of the incoming payment.
 	Confirmations int64 `json:"confirmations"`
-	// Время создания (ISO 8601).
+	// Creation time (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько
-	// счёт СТОИТ, а не чем за него платят (это payer_currency).
+	// The price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. It says how
+	// much the invoice COSTS, not what it is paid with (that is payer_currency).
 	Currency string `json:"currency"`
-	// Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo
-	// получателя» на бирже или в кошельке). Пусто на остальных сетях.
+	// XRP only: the numeric destination tag the customer MUST specify in the transfer (the "recipient
+	// tag/memo" field at the exchange or in the wallet). Empty on other networks.
 	DestinationTag string `json:"destination_tag"`
-	// Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо
-	// или отдать клиенту. Пусто, если генерация документов не включена.
+	// A signed link to the PDF receipt of this operation — opens without an API key, can be attached
+	// to an email or given to the customer. Empty if document generation is not enabled.
 	DocumentURL string `json:"document_url"`
-	// Курс, зафиксированный этим счётом (сколько валюты оплаты за 1 единицу валюты цены) — по нему
-	// рассчитан payer_amount. Пусто, пока валюта не выбрана.
+	// The rate locked in by this invoice (how much of the payment currency per 1 unit of the price
+	// currency) — payer_amount is calculated from it. Empty until the currency is chosen.
 	ExchangeRate string `json:"exchange_rate"`
-	// Когда истекает счёт (ISO 8601, как и все временные поля).
+	// When the invoice expires (ISO 8601, like all time fields).
 	ExpiredAt string `json:"expired_at"`
-	// Ставка комиссии этого счёта в процентах — та, что зафиксирована в момент создания (смена тарифа
-	// не меняет уже созданные счета). Уже включает амортизированный фиксированный сбор. В отличие от
-	// commission известна с первой секунды и присутствует всегда.
+	// The fee rate of this invoice in percent — the one locked in at creation (a pricing change does
+	// not affect invoices already created). Already includes the amortized fixed fee. Unlike
+	// commission, it is known from the first second and is always present.
 	FeePercent Decimal `json:"fee_percent"`
-	// true — статус финальный, больше не изменится.
+	// true — the status is final and will not change again.
 	IsFinal bool `json:"is_final"`
-	// true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.
+	// true — this is a currency-agnostic link; the customer has not chosen the currency/network yet.
 	IsMulti bool `json:"is_multi"`
-	// true — счёт песочницы (dev-магазина): деньги ненастоящие, в живую сверку не включайте.
+	// true — a sandbox (dev store) invoice: the money is not real, do not include it in live
+	// reconciliation.
 	IsTest bool `json:"is_test"`
-	// Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле
-	// «memo» на бирже или в кошельке. Пусто на остальных сетях.
+	// XLM (Stellar) only: the numeric memo (ID type) the customer MUST specify in the transfer — the
+	// "memo" field at the exchange or in the wallet. Empty on other networks.
 	Memo string `json:"memo"`
-	// Сколько зачислено (или будет зачислено) вам: amount_paid − network_surcharge − commission.
-	// Сетевые расходы на сбор депозита оплачивает плательщик отдельной строкой (network_surcharge) —
-	// из вашей суммы они НЕ вычитаются. Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+	// How much has been (or will be) credited to you: amount_paid − network_surcharge − commission.
+	// The network costs of sweeping the deposit are paid by the payer as a separate line
+	// (network_surcharge) — they are NOT deducted from your amount. Empty until the payment currency
+	// is chosen (an invoice without a currency).
 	MerchantAmount string `json:"merchant_amount"`
-	// Ваша скидка или наценка для ВЫБРАННОГО способа оплаты, в валюте оплаты: на столько сдвинулась
-	// сумма плательщика из-за настройки по этой монете и сети. Положительное — плательщик платит
-	// МЕНЬШЕ (скидка), отрицательное — больше (наценка). Пусто, если настройки для метода нет.
+	// Your discount or surcharge for the CHOSEN payment method, in the payment currency: how much the
+	// payer's amount shifted because of the setting for this coin and network. Positive — the payer
+	// pays LESS (discount), negative — more (surcharge). Empty if there is no setting for the method.
 	MethodAdjustment string `json:"method_adjustment"`
-	// Та же скидка/наценка в базисных пунктах (так она переживает переоценку курса). Знак тот же, что
-	// в настройке скидок: ПЛЮС — скидка, МИНУС — наценка.
+	// The same discount/surcharge in basis points (this way it survives a rate re-quote). The sign is
+	// the same as in the discount setting: PLUS — a discount, MINUS — a surcharge.
 	MethodAdjustmentBps int64 `json:"method_adjustment_bps"`
-	// Сеть блокчейна (например, tron).
+	// Blockchain network (e.g. tron).
 	Network string `json:"network"`
-	// Сетевая надбавка плательщика в валюте оплаты: стоимость сбора депозита в выбранной сети
-	// (активация адреса, если адрес новый, плюс энергия/газ с запасом), зафиксированная при выборе
-	// сети. Пусто до выбора сети; 0, если надбавка выключена.
+	// The payer's network surcharge in the payment currency: the cost of sweeping the deposit on the
+	// chosen network (address activation, if the address is new, plus energy/gas with a margin),
+	// locked in when the network is chosen. Empty until the network is chosen; 0 if the surcharge is
+	// disabled.
 	NetworkSurcharge string `json:"network_surcharge"`
-	// Та же надбавка в базисных пунктах от суммы к оплате (так она переживает переоценку курса).
+	// The same surcharge in basis points of the amount due (this way it survives a rate re-quote).
 	NetworkSurchargeBps int64 `json:"network_surcharge_bps"`
-	// Ваш номер заказа, который вы передали при создании.
+	// Your order number that you passed at creation.
 	OrderID string `json:"order_id"`
-	// Момент фактической оплаты — зачисление последнего подтверждённого перевода (ISO 8601). null,
-	// пока оплата не пришла. Отличайте от updated_at: тот сдвигается любым изменением счёта.
+	// The moment of actual payment — the crediting of the last confirmed transfer (ISO 8601). null
+	// until the payment arrives. Not to be confused with updated_at, which moves on any change to the
+	// invoice.
 	PaidAt *string `json:"paid_at"`
-	// Адрес, С КОТОРОГО пришёл первый подтверждённый депозит — на аккаунт-сетях (EVM/Tron/Solana/TON);
-	// пусто на UTXO. ⚠ Это НЕ обязательно адрес для возврата: отправителем может быть биржа, сдача
-	// UTXO-транзакции или горячий омнибус крипто-он-рампа, если покупатель платил картой. Прежде чем
-	// возвращать деньги сюда, смотрите payer_address_is_refundable.
+	// The address the first confirmed deposit came FROM — on account-based networks
+	// (EVM/Tron/Solana/TON); empty on UTXO. ⚠ This is NOT necessarily a refund address: the sender may
+	// be an exchange, the change of a UTXO transaction, or the omnibus hot wallet of a crypto on-ramp
+	// if the buyer paid by card. Before refunding money here, check payer_address_is_refundable.
 	PayerAddress string `json:"payer_address"`
-	// true — payer_address принадлежит плательщику, и в /v1/payment/refund можно опустить address
-	// (вернём на него). false — адрес возврата неизвестен (UTXO/XRP, оплата картой через он-рамп,
-	// адрес не записан): спросите адрес у покупателя и передайте address явно, иначе запрос будет
-	// отклонён с refund.no_address.
+	// true — payer_address belongs to the payer, and address may be omitted in /v1/payment/refund (we
+	// refund to it). false — the refund address is unknown (UTXO/XRP, card payment via an on-ramp,
+	// address not recorded): ask the buyer for an address and pass address explicitly, otherwise the
+	// request is rejected with refund.no_address.
 	PayerAddressIsRefundable bool `json:"payer_address_is_refundable"`
-	// Сколько нужно отправить в крипте оплаты. Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+	// How much must be sent in the payment crypto. Empty until the payment currency is chosen (an
+	// invoice without a currency).
 	PayerAmount string `json:"payer_amount"`
-	// Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi),
-	// пока клиент не выбрал монету — валюты расчёта у него ещё нет.
+	// The currency the customer pays in (e.g. USDT). Empty for a currency-agnostic invoice (is_multi)
+	// until the customer picks a coin — it has no settlement currency yet.
 	PayerCurrency string `json:"payer_currency"`
-	// E-mail плательщика, если вы его передали.
+	// The payer's email, if you provided it.
 	PayerEmail string `json:"payer_email"`
-	// До какого момента действует зафиксированный payer_amount (ISO 8601; окно ~5 мин, после него
-	// страница оплаты перекотирует счёт). Пусто, когда перекотировки уже не будет: валюта не выбрана,
-	// депозит замечен, счёт вышел из created или истёк — сумма зафиксирована навсегда.
+	// Until when the locked payer_amount is valid (ISO 8601; a ~5 min window, after which the payment
+	// page re-quotes the invoice). Empty when there will be no more re-quotes: the currency has not
+	// been chosen, a deposit has been seen, the invoice has left created or expired — the amount is
+	// locked for good.
 	RateExpiresAt string `json:"rate_expires_at"`
-	// Сколько возвращено от оплаченного: none, partial или full (отменённые и неудавшиеся возвраты не
-	// считаются).
+	// How much of the paid amount has been refunded: none, partial or full (cancelled and failed
+	// refunds are not counted).
 	RefundStatus *RefundRollup `json:"refund_status,omitempty"`
-	// Возвраты по этому платежу.
+	// Refunds for this payment.
 	Refunds []PaymentRefundLine `json:"refunds,omitempty"`
-	// Сколько подтверждений нужно для зачисления (зависит от суммы и сети).
+	// How many confirmations are required for crediting (depends on the amount and the network).
 	RequiredConfirmations int64 `json:"required_confirmations"`
-	// Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату,
-	// ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid (оплачено) |
-	// paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled
-	// (отменён) | under_review (поступление задержано на проверке, разбирает оператор).
+	// Status: select (the customer is choosing a currency) | created (awaiting payment) |
+	// confirm_check (payment seen, awaiting confirmations; with amount_remaining > 0 — partial,
+	// awaiting the remainder) | paid (paid) | paid_over (overpaid) | wrong_amount (underpaid, expired)
+	// | expired (expired) | cancelled (cancelled) | under_review (the deposit is held for review, an
+	// operator is handling it).
 	Status PaymentStatus `json:"status"`
-	// Все подтверждённые переводы, которыми оплачен счёт. Частичная оплата несколькими переводами —
-	// штатный сценарий wrong_amount; один txid наверху — лишь последний замеченный.
+	// All confirmed transfers that paid the invoice. Partial payment by several transfers is a regular
+	// wrong_amount scenario; the single txid above is only the last one seen.
 	TxList []PaymentTx `json:"tx_list"`
-	// Хеш входящей транзакции (когда замечена).
+	// The hash of the incoming transaction (once seen).
 	Txid string `json:"txid"`
-	// Время последнего изменения (ISO 8601).
+	// Time of the last change (ISO 8601).
 	UpdatedAt string `json:"updated_at"`
-	// Ссылка на готовую страницу оплаты.
+	// A link to the ready-made payment page.
 	URL string `json:"url"`
-	// Ссылка «вернуться в магазин» до оплаты.
+	// The "back to store" link before payment.
 	URLReturn string `json:"url_return"`
-	// Куда перенаправить после успешной оплаты.
+	// Where to redirect after a successful payment.
 	URLSuccess string `json:"url_success"`
-	// Наш идентификатор платежа (используйте его в info/refund).
+	// Our payment identifier (use it in info/refund).
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3190,26 +3389,26 @@ func (m PaymentInfoResult) GoString() string { return m.String() }
 
 // PaymentLinkCreateRequest is a model of the API.
 type PaymentLinkCreateRequest struct {
-	// Сумма — для режима fixed; обязательна в этом режиме
+	// Amount — for fixed mode; required in this mode
 	AmountFixed *string `json:"amount_fixed,omitempty"`
-	// Режим суммы: fixed | open | range
+	// Amount mode: fixed | open | range
 	AmountMode AmountMode `json:"amount_mode"`
-	// Валюта цены — фиат (USD, EUR, RUB, …) или монета; список — pricing_currencies из GET
+	// The price currency — fiat (USD, EUR, RUB, …) or a coin; the list is pricing_currencies from GET
 	// /v1/currencies
 	Currency string `json:"currency"`
-	// Описание на странице оплаты
+	// Description on the payment page
 	Description *string `json:"description,omitempty"`
-	// Срок жизни ссылки, секунд от момента создания; 0 (по умолчанию) — ссылка бессрочная
+	// The link lifetime, in seconds from creation; 0 (default) — the link never expires
 	ExpiresInSeconds *int64 `json:"expires_in_seconds,omitempty"`
-	// Верхняя граница — для range; обязательна в этом режиме
+	// Upper bound — for range; required in this mode
 	MaxAmount *Decimal `json:"max_amount,omitempty"`
-	// Нижняя граница: необязательный «пол» для open, обязательный минимум для range
+	// Lower bound: an optional "floor" for open, a required minimum for range
 	MinAmount *Decimal `json:"min_amount,omitempty"`
-	// Валюта расчёта (монета), закреплённая за ссылкой; пусто — монету выбирает покупатель
+	// The settlement currency (coin) pinned to the link; empty — the buyer chooses the coin
 	PinnedCurrency *string `json:"pinned_currency,omitempty"`
-	// Сеть расчёта, закреплённая за ссылкой; пусто — сеть выбирает покупатель
+	// The settlement network pinned to the link; empty — the buyer chooses the network
 	PinnedNetwork *string `json:"pinned_network,omitempty"`
-	// Заголовок на странице оплаты
+	// Title on the payment page
 	Title *string `json:"title,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3239,37 +3438,38 @@ func (m PaymentLinkCreateRequest) GoString() string { return m.String() }
 
 // PaymentLinkDetail is a model of the API.
 type PaymentLinkDetail struct {
-	// Ссылка принимает оплату.
+	// The link accepts payments.
 	Active bool `json:"active"`
-	// Сумма для режима fixed.
+	// The amount for fixed mode.
 	AmountFixed *Decimal `json:"amount_fixed,omitempty"`
-	// Режим суммы.
+	// Amount mode.
 	AmountMode AmountMode `json:"amount_mode"`
-	// Когда создана (UTC).
+	// When created (UTC).
 	CreatedAt string `json:"created_at"`
-	// Валюта цены.
+	// Price currency.
 	Currency string `json:"currency"`
-	// Описание на странице оплаты.
+	// Description on the payment page.
 	Description string `json:"description"`
-	// Подписанная ссылка на PDF-плакат с QR оплаты; пусто, когда рендер документов не включён.
+	// A signed link to a PDF poster with the payment QR code; empty when document rendering is not
+	// enabled.
 	DocumentURL string `json:"document_url"`
-	// Когда ссылка истекает (UTC); нет — бессрочная.
+	// When the link expires (UTC); absent — never expires.
 	ExpiresAt *string `json:"expires_at,omitempty"`
-	// Идентификатор ссылки.
+	// Link id.
 	LinkID string `json:"link_id"`
-	// Верхняя граница для range.
+	// Upper bound for range.
 	MaxAmount *Decimal `json:"max_amount,omitempty"`
-	// Нижняя граница для open/range.
+	// Lower bound for open/range.
 	MinAmount *Decimal `json:"min_amount,omitempty"`
-	// Платежи по ссылке, страница по limit/offset запроса.
+	// Payments through the link, paged by the request's limit/offset.
 	Payments []PaymentLinkPayment `json:"payments"`
-	// Закреплённая валюта оплаты.
+	// The pinned payment currency.
 	PinnedCurrency *string `json:"pinned_currency,omitempty"`
-	// Закреплённая сеть оплаты.
+	// The pinned payment network.
 	PinnedNetwork *string `json:"pinned_network,omitempty"`
-	// Заголовок страницы оплаты.
+	// Payment page title.
 	Title string `json:"title"`
-	// Публичный URL страницы оплаты; пусто, если публичный адрес не настроен.
+	// The public URL of the payment page; empty if the public address is not configured.
 	URL string `json:"url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3299,11 +3499,11 @@ func (m PaymentLinkDetail) GoString() string { return m.String() }
 
 // PaymentLinkLookupRequest is a model of the API.
 type PaymentLinkLookupRequest struct {
-	// Размер страницы платежей по ссылке, 1–100; вне диапазона — 25.
+	// The page size for payments through the link, 1–100; out of range — 25.
 	Limit *int64 `json:"limit,omitempty"`
-	// Идентификатор платёжной ссылки.
+	// Payment link id.
 	LinkID string `json:"link_id"`
-	// Смещение страницы платежей.
+	// The offset of the payments page.
 	Offset *int64 `json:"offset,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3333,17 +3533,17 @@ func (m PaymentLinkLookupRequest) GoString() string { return m.String() }
 
 // PaymentLinkPayment is a model of the API.
 type PaymentLinkPayment struct {
-	// Цена счёта в валюте цены ссылки.
+	// The invoice price in the link's price currency.
 	Amount Decimal `json:"amount"`
-	// Когда создан (UTC).
+	// When created (UTC).
 	CreatedAt string `json:"created_at"`
-	// Валюта цены.
+	// Price currency.
 	Currency string `json:"currency"`
-	// Номер заказа магазина, если виджет его передал.
+	// The store's order number, if the widget passed one.
 	OrderID *string `json:"order_id,omitempty"`
-	// Статус платежа.
+	// Payment status.
 	Status PaymentStatus `json:"status"`
-	// Идентификатор платежа.
+	// Payment id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3373,25 +3573,25 @@ func (m PaymentLinkPayment) GoString() string { return m.String() }
 
 // PaymentLinkPublicView is a model of the API.
 type PaymentLinkPublicView struct {
-	// Сумма для fixed.
+	// Amount for fixed.
 	AmountFixed *string `json:"amount_fixed,omitempty"`
-	// fixed, open или range.
+	// fixed, open or range.
 	AmountMode AmountMode `json:"amount_mode"`
-	// Валюта цены.
+	// Price currency.
 	Currency string `json:"currency"`
-	// Описание.
+	// Description.
 	Description string `json:"description"`
-	// Идентификатор ссылки.
+	// Link id.
 	LinkID string `json:"link_id"`
-	// Верхняя граница для range.
+	// Upper bound for range.
 	MaxAmount *Decimal `json:"max_amount,omitempty"`
-	// Нижняя граница для open/range.
+	// Lower bound for open/range.
 	MinAmount *Decimal `json:"min_amount,omitempty"`
-	// Закреплённая валюта оплаты.
+	// The pinned payment currency.
 	PinnedCurrency *string `json:"pinned_currency,omitempty"`
-	// Закреплённая сеть оплаты.
+	// The pinned payment network.
 	PinnedNetwork *string `json:"pinned_network,omitempty"`
-	// Заголовок страницы.
+	// Page title.
 	Title string `json:"title"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3421,12 +3621,13 @@ func (m PaymentLinkPublicView) GoString() string { return m.String() }
 
 // PaymentLinkResponse is a model of the API.
 type PaymentLinkResponse struct {
-	// Подписанная ссылка на PDF-плакат с QR оплаты (печать на кассу). Пусто, если генерация документов
-	// не включена.
+	// A signed link to a PDF poster with the payment QR code (for printing at the till). Empty if
+	// document generation is not enabled.
 	DocumentURL string `json:"document_url"`
-	// Идентификатор ссылки
+	// Link id
 	LinkID string `json:"link_id"`
-	// Публичный URL страницы оплаты — его вы даёте покупателю: кнопкой, в письме, QR-кодом
+	// The public URL of the payment page — the one you give to the buyer: as a button, in an email, as
+	// a QR code
 	URL string `json:"url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3456,9 +3657,10 @@ func (m PaymentLinkResponse) GoString() string { return m.String() }
 
 // PaymentLinkToggleRequest is a model of the API.
 type PaymentLinkToggleRequest struct {
-	// true — ссылка принимает оплату; false — выключена (страница покажет, что ссылка неактивна).
+	// true — the link accepts payments; false — disabled (the page will show that the link is
+	// inactive).
 	Active bool `json:"active"`
-	// Идентификатор платёжной ссылки.
+	// Payment link id.
 	LinkID string `json:"link_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3488,9 +3690,9 @@ func (m PaymentLinkToggleRequest) GoString() string { return m.String() }
 
 // PaymentLinkToggled is a model of the API.
 type PaymentLinkToggled struct {
-	// Новое состояние: true — принимает оплату.
+	// The new state: true — accepts payments.
 	Active bool `json:"active"`
-	// Идентификатор ссылки.
+	// Link id.
 	LinkID string `json:"link_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3520,35 +3722,36 @@ func (m PaymentLinkToggled) GoString() string { return m.String() }
 
 // PaymentLinkView is a model of the API.
 type PaymentLinkView struct {
-	// Ссылка принимает оплату.
+	// The link accepts payments.
 	Active bool `json:"active"`
-	// Сумма для режима fixed.
+	// The amount for fixed mode.
 	AmountFixed *Decimal `json:"amount_fixed,omitempty"`
-	// Режим суммы.
+	// Amount mode.
 	AmountMode AmountMode `json:"amount_mode"`
-	// Когда создана (UTC).
+	// When created (UTC).
 	CreatedAt string `json:"created_at"`
-	// Валюта цены.
+	// Price currency.
 	Currency string `json:"currency"`
-	// Описание на странице оплаты.
+	// Description on the payment page.
 	Description string `json:"description"`
-	// Подписанная ссылка на PDF-плакат с QR оплаты; пусто, когда рендер документов не включён.
+	// A signed link to a PDF poster with the payment QR code; empty when document rendering is not
+	// enabled.
 	DocumentURL string `json:"document_url"`
-	// Когда ссылка истекает (UTC); нет — бессрочная.
+	// When the link expires (UTC); absent — never expires.
 	ExpiresAt *string `json:"expires_at,omitempty"`
-	// Идентификатор ссылки.
+	// Link id.
 	LinkID string `json:"link_id"`
-	// Верхняя граница для range.
+	// Upper bound for range.
 	MaxAmount *Decimal `json:"max_amount,omitempty"`
-	// Нижняя граница для open/range.
+	// Lower bound for open/range.
 	MinAmount *Decimal `json:"min_amount,omitempty"`
-	// Закреплённая валюта оплаты.
+	// The pinned payment currency.
 	PinnedCurrency *string `json:"pinned_currency,omitempty"`
-	// Закреплённая сеть оплаты.
+	// The pinned payment network.
 	PinnedNetwork *string `json:"pinned_network,omitempty"`
-	// Заголовок страницы оплаты.
+	// Payment page title.
 	Title string `json:"title"`
-	// Публичный URL страницы оплаты; пусто, если публичный адрес не настроен.
+	// The public URL of the payment page; empty if the public address is not configured.
 	URL string `json:"url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3578,9 +3781,9 @@ func (m PaymentLinkView) GoString() string { return m.String() }
 
 // PaymentLinkViewList is a model of the API.
 type PaymentLinkViewList struct {
-	// Записи этой страницы.
+	// The records of this page.
 	Items []PaymentLinkView `json:"items"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3610,15 +3813,15 @@ func (m PaymentLinkViewList) GoString() string { return m.String() }
 
 // PaymentQRResult is a model of the API.
 type PaymentQRResult struct {
-	// Депозитный адрес; пусто, пока его нет.
+	// The deposit address; empty until there is one.
 	Address string `json:"address"`
-	// PNG QR-кода как data:-URI; "" — адреса ещё нет (монета не выбрана) или он не платёжный
-	// (песочница).
+	// The QR code PNG as a data: URI; "" — there is no address yet (the coin has not been chosen) or
+	// it is not a payment address (sandbox).
 	Image string `json:"image"`
-	// true — в QR платёжный запрос с суммой (кошелёк подставит её сам); false — только адрес, сумму
-	// плательщик вводит.
+	// true — the QR code holds a payment request with the amount (the wallet fills it in); false —
+	// address only, the payer enters the amount.
 	IsURI bool `json:"is_uri"`
-	// Что закодировано в QR: платёжный URI сети с суммой или голый адрес.
+	// What the QR code encodes: the network's payment URI with the amount, or the bare address.
 	Payload string `json:"payload"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3648,19 +3851,19 @@ func (m PaymentQRResult) GoString() string { return m.String() }
 
 // PaymentRefundLine is a model of the API.
 type PaymentRefundLine struct {
-	// Куда возвращено.
+	// Where the refund went.
 	Address string `json:"address"`
-	// Сумма возврата в монете платежа.
+	// The refund amount in the payment coin.
 	Amount Decimal `json:"amount"`
-	// Когда создан (RFC 3339).
+	// When created (RFC 3339).
 	CreatedAt string `json:"created_at"`
-	// Статус возврата окончательный.
+	// The refund status is final.
 	IsFinal bool `json:"is_final"`
-	// Статус выплаты-возврата.
+	// The status of the refund payout.
 	Status PayoutStatus `json:"status"`
-	// Хэш транзакции возврата; пусто, пока не отправлен.
+	// The refund transaction hash; empty until sent.
 	Txid string `json:"txid"`
-	// Идентификатор возврата (это выплата).
+	// The refund id (it is a payout).
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3690,43 +3893,44 @@ func (m PaymentRefundLine) GoString() string { return m.String() }
 
 // PaymentRequest is a model of the API.
 type PaymentRequest struct {
-	// Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта.
+	// Underpayment/overpayment tolerance, 0–5 %. Overrides the merchant setting.
 	AccuracyPaymentPercent *float64 `json:"accuracy_payment_percent,omitempty"`
-	// Приватные данные мерчанта, эхом в вебхуках (покупателю не видны).
+	// The merchant's private data, echoed in webhooks (not visible to the buyer).
 	AdditionalData *string `json:"additional_data,omitempty"`
-	// Сумма к оплате в валюте currency.
+	// The amount to pay in currency.
 	Amount Decimal `json:"amount"`
-	// Код валюты цены: любой из 23 фиатов (USD, EUR, RUB, …) или любая монета (USDT, BTC, …). У JPY и
-	// KRW ноль знаков после запятой.
+	// The price currency code: any of the 23 fiat currencies (USD, EUR, RUB, …) or any coin (USDT,
+	// BTC, …). JPY and KRW have zero decimal places.
 	Currency string `json:"currency"`
-	// Разрешить доплату остатка.
+	// Allow paying the remainder.
 	IsPaymentMultiple *bool `json:"is_payment_multiple,omitempty"`
-	// Оживить просроченный счёт по order_id вместо создания нового.
+	// Revive an expired invoice by order_id instead of creating a new one.
 	IsRefresh *bool `json:"is_refresh,omitempty"`
-	// Время жизни счёта в секундах, 300–43200; по умолчанию 3600. Значения вне диапазона обрезаются к
-	// ближайшей границе.
+	// Invoice lifetime in seconds, 300–43200; default 3600. Out-of-range values are clamped to the
+	// nearest bound.
 	LifetimeSeconds *int64 `json:"lifetime_seconds,omitempty"`
-	// Сеть расчёта (напр. tron, ethereum). Необязательна — см. режимы выбора валюты и сети.
+	// The settlement network (e.g. tron, ethereum). Optional — see the currency and network selection
+	// modes.
 	Network *string `json:"network,omitempty"`
-	// Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется.
+	// The merchant reference; the idempotency key. Strongly recommended.
 	OrderID *string `json:"order_id,omitempty"`
-	// Email плательщика. Если задан — после оплаты на него автоматически уходит чек; он же получатель
-	// по умолчанию у POST /v1/payment/send-email.
+	// The payer's email. If set, a receipt is sent to it automatically after payment; it is also the
+	// default recipient for POST /v1/payment/send-email.
 	PayerEmail *string `json:"payer_email,omitempty"`
-	// Устаревшее: % сетевой наценки на плательщика (0–100); payer-facing наценки настраиваются через
+	// Deprecated: % network surcharge on the payer (0–100); payer-facing surcharges are configured via
 	// discount.
 	Subtract *int64 `json:"subtract,omitempty"`
-	// Тема страницы оплаты: dark | light.
+	// Payment page theme: dark | light.
 	Theme *string `json:"theme,omitempty"`
-	// Валюта расчёта — крипта, которой платят. По умолчанию = currency (только если currency —
-	// крипта); при цене в фиате задайте явно либо опустите вместе с network.
+	// The settlement currency — the crypto used to pay. Defaults to currency (only if currency is
+	// crypto); for a fiat price set it explicitly or omit it together with network.
 	ToCurrency *string `json:"to_currency,omitempty"`
-	// Индивидуальный webhook для этого счёта. Требует зарегистрированного эндпоинта (POST
-	// /v1/webhooks): доставка подписывается его секретом.
+	// A per-invoice webhook. Requires a registered endpoint (POST /v1/webhooks): the delivery is
+	// signed with its secret.
 	URLCallback *string `json:"url_callback,omitempty"`
-	// Ссылка «назад в магазин» на странице оплаты.
+	// The "back to store" link on the payment page.
 	URLReturn *string `json:"url_return,omitempty"`
-	// Редирект после успешной оплаты.
+	// Redirect after a successful payment.
 	URLSuccess *string `json:"url_success,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3756,16 +3960,16 @@ func (m PaymentRequest) GoString() string { return m.String() }
 
 // PaymentTx is a model of the API.
 type PaymentTx struct {
-	// Сумма перевода в валюте оплаты.
+	// The transfer amount in the payment currency.
 	Amount Decimal `json:"amount"`
-	// Когда перевод зачислен (ISO 8601).
+	// When the transfer was credited (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Высота блока, в котором перевод подтверждён.
+	// The height of the block in which the transfer was confirmed.
 	Height int64 `json:"height"`
-	// Сеть, в которой пришёл перевод. На EVM может отличаться от network счёта: депозит зачитывается и
-	// на другой цепочке с тем же адресом.
+	// The network the transfer arrived on. On EVM it may differ from the invoice's network: a deposit
+	// is also credited on another chain with the same address.
 	Network string `json:"network"`
-	// Хеш транзакции.
+	// Transaction hash.
 	Txid string `json:"txid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3795,131 +3999,139 @@ func (m PaymentTx) GoString() string { return m.String() }
 
 // PaymentView is a model of the API.
 type PaymentView struct {
-	// Ваши приватные данные, которые вернутся в ответе и в вебхуке.
+	// Your private data, returned in the response and in the webhook.
 	AdditionalData string `json:"additional_data"`
-	// Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька —
-	// платёж обязан нести destination_tag, иначе сеть его отклонит.
+	// The address the customer sends money to. On XRP this is the classic r-address of a SHARED wallet
+	// — the payment must carry destination_tag, otherwise the network rejects it.
 	Address string `json:"address"`
-	// Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же
-	// кодирует QR. Пусто на остальных сетях.
+	// XLM only: the same payment details in one string — a muxed M… address (SEP-23), address and memo
+	// together; the QR code encodes it as well. Empty on other networks.
 	AddressMuxed string `json:"address_muxed"`
-	// QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address (адрес+тег
-	// одной строкой).
+	// The address QR code as a PNG data: URI — can go straight into <img src>. On XRP it encodes the
+	// X-address (address + tag in one string).
 	AddressQRCode string `json:"address_qr_code"`
-	// Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его
-	// же кодирует QR. Пусто на остальных сетях.
+	// XRP only: the same payment details in one string in X-address format (XLS-5) — address and tag
+	// together; the QR code encodes it as well. Empty on other networks.
 	AddressXaddress string `json:"address_xaddress"`
-	// Сумма к оплате в валюте цены (например, в USD).
+	// The amount to pay in the price currency (e.g. USD).
 	Amount Decimal `json:"amount"`
-	// Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло).
-	// Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+	// How much has already been paid and confirmed, in the payment crypto; always a string (0 if
+	// nothing has arrived). Empty until the payment currency is chosen (an invoice without a
+	// currency).
 	AmountPaid string `json:"amount_paid"`
-	// Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает. Пусто, пока валюта оплаты
-	// не выбрана (счёт без валюты).
+	// How much is still left to pay (due − paid); 0 if enough has been paid. Empty until the payment
+	// currency is chosen (an invoice without a currency).
 	AmountRemaining string `json:"amount_remaining"`
-	// Наша комиссия с этого платежа — УДЕРЖАННАЯ величина, в валюте оплаты (payer_currency). Ставка
-	// счёта уже включает амортизированный фиксированный сбор — второй раз он не берётся. ПУСТО, пока
-	// по счёту ничего не зачислено (и у валюто-агностичного счёта до выбора монеты): нуля здесь не
-	// бывает у неоплаченного счёта — «0» читалось бы как «комиссию не берут». У оплаченного счёта с
-	// нулевым тарифом 0 — настоящий.
+	// Our fee on this payment — the WITHHELD amount, in the payment currency (payer_currency). The
+	// invoice rate already includes the amortized fixed fee — it is not charged a second time. EMPTY
+	// until anything has been credited on the invoice (and, for a currency-agnostic invoice, until a
+	// coin is chosen): an unpaid invoice never shows zero here — "0" would read as "no fee is
+	// charged". For a paid invoice with a zero rate, 0 is genuine.
 	Commission string `json:"commission"`
-	// Текущее число подтверждений входящего платежа.
+	// The current number of confirmations of the incoming payment.
 	Confirmations int64 `json:"confirmations"`
-	// Время создания (ISO 8601).
+	// Creation time (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько
-	// счёт СТОИТ, а не чем за него платят (это payer_currency).
+	// The price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. It says how
+	// much the invoice COSTS, not what it is paid with (that is payer_currency).
 	Currency string `json:"currency"`
-	// Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo
-	// получателя» на бирже или в кошельке). Пусто на остальных сетях.
+	// XRP only: the numeric destination tag the customer MUST specify in the transfer (the "recipient
+	// tag/memo" field at the exchange or in the wallet). Empty on other networks.
 	DestinationTag string `json:"destination_tag"`
-	// Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо
-	// или отдать клиенту. Пусто, если генерация документов не включена.
+	// A signed link to the PDF receipt of this operation — opens without an API key, can be attached
+	// to an email or given to the customer. Empty if document generation is not enabled.
 	DocumentURL string `json:"document_url"`
-	// Курс, зафиксированный этим счётом (сколько валюты оплаты за 1 единицу валюты цены) — по нему
-	// рассчитан payer_amount. Пусто, пока валюта не выбрана.
+	// The rate locked in by this invoice (how much of the payment currency per 1 unit of the price
+	// currency) — payer_amount is calculated from it. Empty until the currency is chosen.
 	ExchangeRate string `json:"exchange_rate"`
-	// Когда истекает счёт (ISO 8601, как и все временные поля).
+	// When the invoice expires (ISO 8601, like all time fields).
 	ExpiredAt string `json:"expired_at"`
-	// Ставка комиссии этого счёта в процентах — та, что зафиксирована в момент создания (смена тарифа
-	// не меняет уже созданные счета). Уже включает амортизированный фиксированный сбор. В отличие от
-	// commission известна с первой секунды и присутствует всегда.
+	// The fee rate of this invoice in percent — the one locked in at creation (a pricing change does
+	// not affect invoices already created). Already includes the amortized fixed fee. Unlike
+	// commission, it is known from the first second and is always present.
 	FeePercent Decimal `json:"fee_percent"`
-	// true — статус финальный, больше не изменится.
+	// true — the status is final and will not change again.
 	IsFinal bool `json:"is_final"`
-	// true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.
+	// true — this is a currency-agnostic link; the customer has not chosen the currency/network yet.
 	IsMulti bool `json:"is_multi"`
-	// true — счёт песочницы (dev-магазина): деньги ненастоящие, в живую сверку не включайте.
+	// true — a sandbox (dev store) invoice: the money is not real, do not include it in live
+	// reconciliation.
 	IsTest bool `json:"is_test"`
-	// Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле
-	// «memo» на бирже или в кошельке. Пусто на остальных сетях.
+	// XLM (Stellar) only: the numeric memo (ID type) the customer MUST specify in the transfer — the
+	// "memo" field at the exchange or in the wallet. Empty on other networks.
 	Memo string `json:"memo"`
-	// Сколько зачислено (или будет зачислено) вам: amount_paid − network_surcharge − commission.
-	// Сетевые расходы на сбор депозита оплачивает плательщик отдельной строкой (network_surcharge) —
-	// из вашей суммы они НЕ вычитаются. Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+	// How much has been (or will be) credited to you: amount_paid − network_surcharge − commission.
+	// The network costs of sweeping the deposit are paid by the payer as a separate line
+	// (network_surcharge) — they are NOT deducted from your amount. Empty until the payment currency
+	// is chosen (an invoice without a currency).
 	MerchantAmount string `json:"merchant_amount"`
-	// Ваша скидка или наценка для ВЫБРАННОГО способа оплаты, в валюте оплаты: на столько сдвинулась
-	// сумма плательщика из-за настройки по этой монете и сети. Положительное — плательщик платит
-	// МЕНЬШЕ (скидка), отрицательное — больше (наценка). Пусто, если настройки для метода нет.
+	// Your discount or surcharge for the CHOSEN payment method, in the payment currency: how much the
+	// payer's amount shifted because of the setting for this coin and network. Positive — the payer
+	// pays LESS (discount), negative — more (surcharge). Empty if there is no setting for the method.
 	MethodAdjustment string `json:"method_adjustment"`
-	// Та же скидка/наценка в базисных пунктах (так она переживает переоценку курса). Знак тот же, что
-	// в настройке скидок: ПЛЮС — скидка, МИНУС — наценка.
+	// The same discount/surcharge in basis points (this way it survives a rate re-quote). The sign is
+	// the same as in the discount setting: PLUS — a discount, MINUS — a surcharge.
 	MethodAdjustmentBps int64 `json:"method_adjustment_bps"`
-	// Сеть блокчейна (например, tron).
+	// Blockchain network (e.g. tron).
 	Network string `json:"network"`
-	// Сетевая надбавка плательщика в валюте оплаты: стоимость сбора депозита в выбранной сети
-	// (активация адреса, если адрес новый, плюс энергия/газ с запасом), зафиксированная при выборе
-	// сети. Пусто до выбора сети; 0, если надбавка выключена.
+	// The payer's network surcharge in the payment currency: the cost of sweeping the deposit on the
+	// chosen network (address activation, if the address is new, plus energy/gas with a margin),
+	// locked in when the network is chosen. Empty until the network is chosen; 0 if the surcharge is
+	// disabled.
 	NetworkSurcharge string `json:"network_surcharge"`
-	// Та же надбавка в базисных пунктах от суммы к оплате (так она переживает переоценку курса).
+	// The same surcharge in basis points of the amount due (this way it survives a rate re-quote).
 	NetworkSurchargeBps int64 `json:"network_surcharge_bps"`
-	// Ваш номер заказа, который вы передали при создании.
+	// Your order number that you passed at creation.
 	OrderID string `json:"order_id"`
-	// Момент фактической оплаты — зачисление последнего подтверждённого перевода (ISO 8601). null,
-	// пока оплата не пришла. Отличайте от updated_at: тот сдвигается любым изменением счёта.
+	// The moment of actual payment — the crediting of the last confirmed transfer (ISO 8601). null
+	// until the payment arrives. Not to be confused with updated_at, which moves on any change to the
+	// invoice.
 	PaidAt *string `json:"paid_at"`
-	// Адрес, С КОТОРОГО пришёл первый подтверждённый депозит — на аккаунт-сетях (EVM/Tron/Solana/TON);
-	// пусто на UTXO. ⚠ Это НЕ обязательно адрес для возврата: отправителем может быть биржа, сдача
-	// UTXO-транзакции или горячий омнибус крипто-он-рампа, если покупатель платил картой. Прежде чем
-	// возвращать деньги сюда, смотрите payer_address_is_refundable.
+	// The address the first confirmed deposit came FROM — on account-based networks
+	// (EVM/Tron/Solana/TON); empty on UTXO. ⚠ This is NOT necessarily a refund address: the sender may
+	// be an exchange, the change of a UTXO transaction, or the omnibus hot wallet of a crypto on-ramp
+	// if the buyer paid by card. Before refunding money here, check payer_address_is_refundable.
 	PayerAddress string `json:"payer_address"`
-	// true — payer_address принадлежит плательщику, и в /v1/payment/refund можно опустить address
-	// (вернём на него). false — адрес возврата неизвестен (UTXO/XRP, оплата картой через он-рамп,
-	// адрес не записан): спросите адрес у покупателя и передайте address явно, иначе запрос будет
-	// отклонён с refund.no_address.
+	// true — payer_address belongs to the payer, and address may be omitted in /v1/payment/refund (we
+	// refund to it). false — the refund address is unknown (UTXO/XRP, card payment via an on-ramp,
+	// address not recorded): ask the buyer for an address and pass address explicitly, otherwise the
+	// request is rejected with refund.no_address.
 	PayerAddressIsRefundable bool `json:"payer_address_is_refundable"`
-	// Сколько нужно отправить в крипте оплаты. Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+	// How much must be sent in the payment crypto. Empty until the payment currency is chosen (an
+	// invoice without a currency).
 	PayerAmount string `json:"payer_amount"`
-	// Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi),
-	// пока клиент не выбрал монету — валюты расчёта у него ещё нет.
+	// The currency the customer pays in (e.g. USDT). Empty for a currency-agnostic invoice (is_multi)
+	// until the customer picks a coin — it has no settlement currency yet.
 	PayerCurrency string `json:"payer_currency"`
-	// E-mail плательщика, если вы его передали.
+	// The payer's email, if you provided it.
 	PayerEmail string `json:"payer_email"`
-	// До какого момента действует зафиксированный payer_amount (ISO 8601; окно ~5 мин, после него
-	// страница оплаты перекотирует счёт). Пусто, когда перекотировки уже не будет: валюта не выбрана,
-	// депозит замечен, счёт вышел из created или истёк — сумма зафиксирована навсегда.
+	// Until when the locked payer_amount is valid (ISO 8601; a ~5 min window, after which the payment
+	// page re-quotes the invoice). Empty when there will be no more re-quotes: the currency has not
+	// been chosen, a deposit has been seen, the invoice has left created or expired — the amount is
+	// locked for good.
 	RateExpiresAt string `json:"rate_expires_at"`
-	// Сколько подтверждений нужно для зачисления (зависит от суммы и сети).
+	// How many confirmations are required for crediting (depends on the amount and the network).
 	RequiredConfirmations int64 `json:"required_confirmations"`
-	// Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату,
-	// ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid (оплачено) |
-	// paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled
-	// (отменён) | under_review (поступление задержано на проверке, разбирает оператор).
+	// Status: select (the customer is choosing a currency) | created (awaiting payment) |
+	// confirm_check (payment seen, awaiting confirmations; with amount_remaining > 0 — partial,
+	// awaiting the remainder) | paid (paid) | paid_over (overpaid) | wrong_amount (underpaid, expired)
+	// | expired (expired) | cancelled (cancelled) | under_review (the deposit is held for review, an
+	// operator is handling it).
 	Status PaymentStatus `json:"status"`
-	// Все подтверждённые переводы, которыми оплачен счёт. Частичная оплата несколькими переводами —
-	// штатный сценарий wrong_amount; один txid наверху — лишь последний замеченный.
+	// All confirmed transfers that paid the invoice. Partial payment by several transfers is a regular
+	// wrong_amount scenario; the single txid above is only the last one seen.
 	TxList []PaymentTx `json:"tx_list"`
-	// Хеш входящей транзакции (когда замечена).
+	// The hash of the incoming transaction (once seen).
 	Txid string `json:"txid"`
-	// Время последнего изменения (ISO 8601).
+	// Time of the last change (ISO 8601).
 	UpdatedAt string `json:"updated_at"`
-	// Ссылка на готовую страницу оплаты.
+	// A link to the ready-made payment page.
 	URL string `json:"url"`
-	// Ссылка «вернуться в магазин» до оплаты.
+	// The "back to store" link before payment.
 	URLReturn string `json:"url_return"`
-	// Куда перенаправить после успешной оплаты.
+	// Where to redirect after a successful payment.
 	URLSuccess string `json:"url_success"`
-	// Наш идентификатор платежа (используйте его в info/refund).
+	// Our payment identifier (use it in info/refund).
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3949,9 +4161,9 @@ func (m PaymentView) GoString() string { return m.String() }
 
 // PaymentViewList is a model of the API.
 type PaymentViewList struct {
-	// Записи этой страницы.
+	// The records of this page.
 	Items []PaymentView `json:"items"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3979,51 +4191,51 @@ func (m PaymentViewList) String() string { return describe("PaymentViewList", m)
 // GoString is String, for %#v.
 func (m PaymentViewList) GoString() string { return m.String() }
 
-// PaymentWebhook — Приходит, когда платёж переходит в paid, paid_over, wrong_amount, expired или
-// under_review, и когда откатывается из них (реорганизация сети). Текущий статус — любой из словаря
-// — можно запросить заново: POST /v1/payment/resend. Сверять с заказом по order_id/uuid, с
-// блокчейном — по txid и network.
+// PaymentWebhook — Sent when a payment moves to paid, paid_over, wrong_amount, expired or
+// under_review, and when it rolls back from them (a chain reorganization). The current status — any
+// value from the vocabulary — can be requested again: POST /v1/payment/resend. Match it to the
+// order by order_id/uuid and to the blockchain by txid and network.
 type PaymentWebhook struct {
-	// Ваши данные, переданные при создании платежа, как есть.
+	// Your data passed when creating the payment, as is.
 	AdditionalData string `json:"additional_data"`
-	// Сумма счёта в валюте currency.
+	// The invoice amount in currency.
 	Amount Decimal `json:"amount"`
-	// Валюта счёта.
+	// Invoice currency.
 	Currency string `json:"currency"`
-	// Когда событие произошло, UTC с миллисекундами (ISO 8601).
+	// When the event happened, UTC with milliseconds (ISO 8601).
 	EventAt string `json:"event_at"`
-	// true — статус финальный, дальше платёж не изменится.
+	// true — the status is final, the payment will not change any further.
 	IsFinal bool `json:"is_final"`
-	// Сеть, в которой пришли деньги.
+	// The network the money arrived on.
 	Network string `json:"network"`
-	// Ваш order_id платежа.
+	// Your order_id for the payment.
 	OrderID string `json:"order_id"`
-	// Адрес, с которого пришёл платёж (пусто, если неизвестен). Возвращать на него можно только при
+	// The address the payment came from (empty if unknown). Refunding to it is allowed only when
 	// payer_address_is_refundable = true.
 	PayerAddress string `json:"payer_address"`
-	// true — payer_address принадлежит плательщику и годится как адрес возврата; false — это адрес
-	// биржи, провайдера карты или сдачи, возвращать на него нельзя.
+	// true — payer_address belongs to the payer and is usable as a refund address; false — it is an
+	// exchange, card provider or change address, refunding to it is not allowed.
 	PayerAddressIsRefundable bool `json:"payer_address_is_refundable"`
-	// Сколько плательщик должен был заплатить в валюте payer_currency.
+	// How much the payer was supposed to pay, in payer_currency.
 	PayerAmount Decimal `json:"payer_amount"`
-	// Валюта, в которой платит плательщик.
+	// The currency the payer pays in.
 	PayerCurrency string `json:"payer_currency"`
-	// Сколько фактически получено (подтверждено), в валюте payer_currency.
+	// How much was actually received (confirmed), in payer_currency.
 	PaymentAmount Decimal `json:"payment_amount"`
-	// Глобальный номер события: в пределах одного объекта больший номер новее, меньший — опоздавшая
-	// доставка, её нужно отбросить. У репетиции (test: true) всегда 0.
+	// The global event number: within one object a higher number is newer, a lower one is a late
+	// delivery and must be discarded. Always 0 on a rehearsal (test: true).
 	Sequence int64 `json:"sequence"`
-	// Статус платежа — тот же литерал, что в /v1/payment/info и фильтре истории.
+	// The payment status — the same literal as in /v1/payment/info and the history filter.
 	Status PaymentStatus `json:"status"`
-	// Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true — внутри
-	// подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик обязан
-	// игнорировать, даже если подпись верна.
+	// Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true —
+	// inside the signature. A live event never carries this field: your handler must ignore a body
+	// with test: true even if the signature is valid.
 	Test *bool `json:"test,omitempty"`
-	// Хеш транзакции, которой пришёл платёж (пусто, пока платежа нет).
+	// The hash of the transaction the payment arrived with (empty until there is a payment).
 	Txid string `json:"txid"`
-	// Вид события: payment | payout | wallet | conversion — какое тело пришло.
+	// Event kind: payment | payout | wallet | conversion — which body arrived.
 	Type string `json:"type"`
-	// Идентификатор платежа.
+	// Payment id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4053,11 +4265,11 @@ func (m PaymentWebhook) GoString() string { return m.String() }
 
 // PayoutBatchRequest is a model of the API.
 type PayoutBatchRequest struct {
-	// Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop —
-	// прекратить обработку после первой ошибки.
+	// What to do when an item fails: continue (default) — process the rest; stop — stop processing
+	// after the first error.
 	OnError *BatchOnError `json:"on_error,omitempty"`
-	// Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payout; order_id у каждого элемента
-	// обязателен и служит ключом идемпотентности: повтор вернёт уже созданную выплату.
+	// An array of 1 to 5000 items — the same fields as in POST /v1/payout; order_id is required on
+	// each item and serves as the idempotency key: a retry returns the payout already created.
 	Payouts []PayoutRequest `json:"payouts"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4087,14 +4299,14 @@ func (m PayoutBatchRequest) GoString() string { return m.String() }
 
 // PayoutCalculateRequest is a model of the API.
 type PayoutCalculateRequest struct {
-	// Сумма выплаты, строкой.
+	// The payout amount, as a string.
 	Amount Decimal `json:"amount"`
-	// Актив выплаты (USDT, BTC, …).
+	// Payout asset (USDT, BTC, …).
 	Currency string `json:"currency"`
-	// true — комиссия списывается с баланса поверх суммы (получатель получит ровно amount); false — из
-	// суммы выплаты.
+	// true — the fee is debited from the balance on top of the amount (the recipient gets exactly
+	// amount); false — from the payout amount.
 	IsSubtract *bool `json:"is_subtract,omitempty"`
-	// Сеть выплаты; обязательна, если актив живёт в нескольких сетях.
+	// Payout network; required if the asset lives on several networks.
 	Network *string `json:"network,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4124,19 +4336,19 @@ func (m PayoutCalculateRequest) GoString() string { return m.String() }
 
 // PayoutCalculation is a model of the API.
 type PayoutCalculation struct {
-	// Сколько спишется с баланса; null — неизвестно (комиссию не оценить).
+	// How much will be debited from the balance; null — unknown (the fee cannot be estimated).
 	Amount *Decimal `json:"amount"`
-	// Сетевая комиссия; null — не оценить сейчас.
+	// Network fee; null — cannot be estimated right now.
 	Commission *Decimal `json:"commission"`
-	// Актив выплаты.
+	// Payout asset.
 	Currency string `json:"currency"`
-	// Кто платит комиссию: gateway, merchant или recipient.
+	// Who pays the fee: gateway, merchant or recipient.
 	FeeBearer PayoutFeeBearer `json:"fee_bearer"`
-	// exact — комиссия договорная (шлюз её берёт на себя); estimated — оценка оракула.
+	// exact — the fee is contractual (the gateway absorbs it); estimated — an oracle estimate.
 	FeeType FeeType `json:"fee_type"`
-	// Сеть — как пришла в запросе.
+	// The network — as it came in the request.
 	Network string `json:"network"`
-	// Сколько получит адрес; null — неизвестно.
+	// How much the address will receive; null — unknown.
 	PayerAmount *Decimal `json:"payer_amount"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4166,15 +4378,15 @@ func (m PayoutCalculation) GoString() string { return m.String() }
 
 // PayoutClaimLockedView is a model of the API.
 type PayoutClaimLockedView struct {
-	// Получить можно сейчас: ссылка оплачена и не истекла.
+	// Can be claimed now: the link is funded and has not expired.
 	Claimable bool `json:"claimable"`
-	// До какого момента ссылку можно получить (UTC).
+	// Until when the link can be claimed (UTC).
 	ExpiresAt string `json:"expires_at"`
-	// Всегда true: суммы и сеть покажутся после кода в заголовке X-Claim-Passcode.
+	// Always true: amounts and network are shown after the passcode in the X-Claim-Passcode header.
 	PasscodeRequired bool `json:"passcode_required"`
-	// Состояние ссылки.
+	// Link state.
 	Status PayoutLinkStatus `json:"status"`
-	// Заголовок от отправителя.
+	// Title from the sender.
 	Title string `json:"title"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4204,29 +4416,30 @@ func (m PayoutClaimLockedView) GoString() string { return m.String() }
 
 // PayoutClaimView is a model of the API.
 type PayoutClaimView struct {
-	// Сумма ссылки — обещание получателю.
+	// The link amount — a promise to the recipient.
 	Amount Decimal `json:"amount"`
-	// Получить можно сейчас: ссылка оплачена и не истекла.
+	// Can be claimed now: the link is funded and has not expired.
 	Claimable bool `json:"claimable"`
-	// Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).
+	// Network fee; null — cannot be estimated right now (zero would mean the claim is free).
 	Commission *Decimal `json:"commission"`
-	// Актив выплаты.
+	// Payout asset.
 	Currency string `json:"currency"`
-	// До какого момента ссылку можно получить (UTC).
+	// Until when the link can be claimed (UTC).
 	ExpiresAt string `json:"expires_at"`
-	// Кто платит сетевую комиссию.
+	// Who pays the network fee.
 	FeeBearer PayoutLinkFeeBearer `json:"fee_bearer"`
-	// exact — комиссия зафиксирована; estimated — оценка по текущей сети.
+	// exact — the fee is fixed; estimated — an estimate based on the current network.
 	FeeType FeeType `json:"fee_type"`
-	// Сеть выплаты.
+	// Payout network.
 	Network string `json:"network"`
-	// Сообщение от отправителя.
+	// Message from the sender.
 	Note string `json:"note"`
-	// Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).
+	// How much will reach the recipient; null — cannot be said (the fee was not estimated or ate the
+	// amount).
 	PayerAmount *Decimal `json:"payer_amount"`
-	// Состояние ссылки.
+	// Link state.
 	Status PayoutLinkStatus `json:"status"`
-	// Заголовок от отправителя.
+	// Title from the sender.
 	Title string `json:"title"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4256,25 +4469,26 @@ func (m PayoutClaimView) GoString() string { return m.String() }
 
 // PayoutClaimed is a model of the API.
 type PayoutClaimed struct {
-	// Адрес получателя.
+	// Recipient address.
 	Address string `json:"address"`
-	// Сумма ссылки — обещание получателю.
+	// The link amount — a promise to the recipient.
 	Amount Decimal `json:"amount"`
-	// Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).
+	// Network fee; null — cannot be estimated right now (zero would mean the claim is free).
 	Commission *Decimal `json:"commission"`
-	// Актив выплаты.
+	// Payout asset.
 	Currency string `json:"currency"`
-	// Кто платит сетевую комиссию.
+	// Who pays the network fee.
 	FeeBearer PayoutLinkFeeBearer `json:"fee_bearer"`
-	// exact — комиссия зафиксирована; estimated — оценка по текущей сети.
+	// exact — the fee is fixed; estimated — an estimate based on the current network.
 	FeeType FeeType `json:"fee_type"`
-	// Сеть выплаты.
+	// Payout network.
 	Network string `json:"network"`
-	// Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).
+	// How much will reach the recipient; null — cannot be said (the fee was not estimated or ate the
+	// amount).
 	PayerAmount *Decimal `json:"payer_amount"`
-	// Выплата получателю.
+	// The payout to the recipient.
 	PayoutID string `json:"payout_id"`
-	// Состояние ссылки после получения.
+	// The link state after the claim.
 	Status PayoutLinkStatus `json:"status"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4304,9 +4518,9 @@ func (m PayoutClaimed) GoString() string { return m.String() }
 
 // PayoutFeeResult is a model of the API.
 type PayoutFeeResult struct {
-	// true — проект задал настройку сам; false — действует умолчание шлюза.
+	// true — the project set this setting itself; false — the gateway default applies.
 	Configured bool `json:"configured"`
-	// Действующее значение: настройка проекта, а без неё — умолчание шлюза.
+	// The effective value: the project setting, or the gateway default if there is none.
 	FeeOnRecipient bool `json:"fee_on_recipient"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4336,60 +4550,60 @@ func (m PayoutFeeResult) GoString() string { return m.String() }
 
 // PayoutInfoResult is a model of the API.
 type PayoutInfoResult struct {
-	// Адрес получателя.
+	// Recipient address.
 	Address string `json:"address"`
-	// Сумма выплаты в валюте currency, списанная с вашего баланса.
+	// The payout amount in currency, debited from your balance.
 	Amount Decimal `json:"amount"`
-	// true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).
+	// true — the payout is awaiting approval (internal scenarios; always false with an API key).
 	ApprovalRequired bool `json:"approval_required"`
-	// Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.
+	// The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.
 	Commission Decimal `json:"commission"`
-	// Время создания (ISO 8601).
+	// Creation time (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Код валюты выплаты.
+	// Payout currency code.
 	Currency string `json:"currency"`
-	// Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо
-	// или отдать получателю. Пусто, если генерация документов не включена.
+	// A signed link to the PDF receipt of this operation — opens without an API key, can be attached
+	// to an email or given to the recipient. Empty if document generation is not enabled.
 	DocumentURL string `json:"document_url"`
-	// Причина сбоя выплаты человеческим текстом; null — сбоя нет.
+	// The payout failure reason as human-readable text; null — no failure.
 	Error *string `json:"error"`
-	// Машинный код причины; null — сбоя нет.
+	// The machine reason code; null — no failure.
 	ErrorCode *string `json:"error_code"`
-	// Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма
-	// списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true,
-	// выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю
-	// приходит меньше запрошенного.
+	// Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the
+	// debit amount was increased by the fee, the recipient gets the full requested amount
+	// (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld
+	// from the payout, the recipient gets less than requested.
 	FeeBearer PayoutFeeBearer `json:"fee_bearer"`
-	// true — статус финальный (confirmed / failed / cancelled).
+	// true — the status is final (confirmed / failed / cancelled).
 	IsFinal bool `json:"is_final"`
-	// true — это возврат платежа, а не обычная выплата.
+	// true — this is a payment refund, not a regular payout.
 	IsRefund bool `json:"is_refund"`
-	// Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.
+	// The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.
 	Memo string `json:"memo"`
-	// Сеть блокчейна.
+	// Blockchain network.
 	Network string `json:"network"`
-	// Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см.
+	// Your payout number (reference). null for a refund: a refund has no identifier of yours, see
 	// payment_order_id.
 	OrderID *string `json:"order_id"`
-	// Сколько реально уходит получателю на адрес: amount − commission.
+	// How much actually goes to the recipient's address: amount − commission.
 	PayerAmount Decimal `json:"payer_amount"`
-	// Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата
-	// собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.
+	// Your order_id of the payment that was refunded (null for a regular payout). A refund has no
+	// order_id of its own — it comes as null, so match a refund to an order by this field.
 	PaymentOrderID *string `json:"payment_order_id"`
-	// Идентификатор возвращаемого платежа (null, если это не возврат).
+	// The id of the payment being refunded (null if this is not a refund).
 	RefundFor *string `json:"refund_for"`
-	// api (через интеграцию) | manual (из кабинета).
+	// api (via the integration) | manual (from the dashboard).
 	Source PayoutSource `json:"source"`
-	// Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй
-	// подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed
-	// (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории
-	// как есть.
+	// Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for
+	// the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) |
+	// confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history
+	// filter as is.
 	Status PayoutStatus `json:"status"`
-	// Хеш транзакции в блокчейне (появляется после отправки).
+	// The blockchain transaction hash (appears after sending).
 	Txid string `json:"txid"`
-	// Время последнего изменения (ISO 8601).
+	// Time of the last change (ISO 8601).
 	UpdatedAt string `json:"updated_at"`
-	// Идентификатор выплаты.
+	// Payout id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4419,58 +4633,58 @@ func (m PayoutInfoResult) GoString() string { return m.String() }
 
 // PayoutItem is a model of the API.
 type PayoutItem struct {
-	// Адрес получателя.
+	// Recipient address.
 	Address string `json:"address"`
-	// Сумма выплаты в валюте currency, списанная с вашего баланса.
+	// The payout amount in currency, debited from your balance.
 	Amount Decimal `json:"amount"`
-	// true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).
+	// true — the payout is awaiting approval (internal scenarios; always false with an API key).
 	ApprovalRequired bool `json:"approval_required"`
-	// Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.
+	// The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.
 	Commission Decimal `json:"commission"`
-	// Конверсия, сделанная по пути выплаты; нет ключа — конверсии не было.
+	// The conversion performed on the payout path; no key — there was no conversion.
 	Convert map[string]any `json:"convert,omitempty"`
-	// Время создания (ISO 8601).
+	// Creation time (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Код валюты выплаты.
+	// Payout currency code.
 	Currency string `json:"currency"`
-	// Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо
-	// или отдать получателю. Пусто, если генерация документов не включена.
+	// A signed link to the PDF receipt of this operation — opens without an API key, can be attached
+	// to an email or given to the recipient. Empty if document generation is not enabled.
 	DocumentURL string `json:"document_url"`
-	// Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма
-	// списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true,
-	// выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю
-	// приходит меньше запрошенного.
+	// Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the
+	// debit amount was increased by the fee, the recipient gets the full requested amount
+	// (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld
+	// from the payout, the recipient gets less than requested.
 	FeeBearer PayoutFeeBearer `json:"fee_bearer"`
-	// true — статус финальный (confirmed / failed / cancelled).
+	// true — the status is final (confirmed / failed / cancelled).
 	IsFinal bool `json:"is_final"`
-	// true — это возврат платежа, а не обычная выплата.
+	// true — this is a payment refund, not a regular payout.
 	IsRefund bool `json:"is_refund"`
-	// Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.
+	// The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.
 	Memo string `json:"memo"`
-	// Сеть блокчейна.
+	// Blockchain network.
 	Network string `json:"network"`
-	// Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см.
+	// Your payout number (reference). null for a refund: a refund has no identifier of yours, see
 	// payment_order_id.
 	OrderID *string `json:"order_id"`
-	// Сколько реально уходит получателю на адрес: amount − commission.
+	// How much actually goes to the recipient's address: amount − commission.
 	PayerAmount Decimal `json:"payer_amount"`
-	// Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата
-	// собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.
+	// Your order_id of the payment that was refunded (null for a regular payout). A refund has no
+	// order_id of its own — it comes as null, so match a refund to an order by this field.
 	PaymentOrderID *string `json:"payment_order_id"`
-	// Идентификатор возвращаемого платежа (null, если это не возврат).
+	// The id of the payment being refunded (null if this is not a refund).
 	RefundFor *string `json:"refund_for"`
-	// api (через интеграцию) | manual (из кабинета).
+	// api (via the integration) | manual (from the dashboard).
 	Source PayoutSource `json:"source"`
-	// Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй
-	// подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed
-	// (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории
-	// как есть.
+	// Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for
+	// the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) |
+	// confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history
+	// filter as is.
 	Status PayoutStatus `json:"status"`
-	// Хеш транзакции в блокчейне (появляется после отправки).
+	// The blockchain transaction hash (appears after sending).
 	Txid string `json:"txid"`
-	// Время последнего изменения (ISO 8601).
+	// Time of the last change (ISO 8601).
 	UpdatedAt string `json:"updated_at"`
-	// Идентификатор выплаты.
+	// Payout id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4500,34 +4714,35 @@ func (m PayoutItem) GoString() string { return m.String() }
 
 // PayoutLinkBatchItem is a model of the API.
 type PayoutLinkBatchItem struct {
-	// Сумма в currency, строкой; больше нуля
+	// The amount in currency, as a string; greater than zero
 	Amount Decimal `json:"amount"`
-	// Крипто-актив выплаты (USDT, BTC, …); фиат невозможен
+	// The payout crypto asset (USDT, BTC, …); fiat is not possible
 	Currency string `json:"currency"`
-	// Если задан — получателю уходит письмо с кнопкой «Получить средства»; сбой доставки не отменяет
-	// создание ссылки
+	// If set, the recipient gets an email with a "Claim funds" button; a delivery failure does not
+	// cancel the link creation
 	Email *string `json:"email,omitempty"`
-	// Срок жизни ссылки в секундах, клампится в диапазон 3600–2592000 (час–30 суток); без поля или при
-	// 0 ссылка живёт 1 час, а не максимум — задавайте явно
+	// The link lifetime in seconds, clamped to the range 3600–2592000 (an hour to 30 days); without
+	// the field or at 0 the link lives 1 hour, not the maximum — set it explicitly
 	ExpiresInSeconds *int64 `json:"expires_in_seconds,omitempty"`
-	// Кто платит сетевую комиссию: "recipient" (по умолчанию — вычитается из суммы, получателю придёт
-	// меньше) или "merchant" (резервируется сумма плюс комиссия, получателю придёт ровно amount)
+	// Who pays the network fee: "recipient" (default — deducted from the amount, the recipient gets
+	// less) or "merchant" (the amount plus the fee is reserved, the recipient gets exactly amount)
 	FeeBearer *PayoutLinkFeeBearer `json:"fee_bearer,omitempty"`
-	// Сеть выплаты получателю (tron, bitcoin, …)
+	// The network of the payout to the recipient (tron, bitcoin, …)
 	Network string `json:"network"`
-	// Сообщение получателю (видно на странице получения и в письме)
+	// A message to the recipient (visible on the claim page and in the email)
 	Note *string `json:"note,omitempty"`
-	// Код получения — второй фактор к ссылке: "auto" — сгенерируем и вернём ОДИН раз в ответе, либо
-	// свой (6–64 видимых символа), пусто — без кода. Код передавайте получателю ОТДЕЛЬНЫМ от ссылки
-	// каналом (в письмо он не кладётся); после 10 неверных вводов ссылка запирается.
+	// Claim passcode — a second factor for the link: "auto" — we generate it and return it ONCE in the
+	// response, or your own (6–64 visible characters), empty — no passcode. Give the passcode to the
+	// recipient over a channel SEPARATE from the link (it is not included in the email); after 10
+	// wrong attempts the link is locked.
 	Passcode *string `json:"passcode,omitempty"`
-	// Ваш ключ дедупликации ссылки, уникальный на мерчанта: повтор с тем же reference не зарезервирует
-	// деньги второй раз. В одиночном POST /v1/payout/link необязателен — без него ключом становится
-	// заголовок Idempotency-Key, а без обоих запрос отвергается (payoutlink.idempotency_required). В
-	// пачке POST /v1/payout/link/batch обязателен у каждой ссылки: Idempotency-Key пачки на элементы
-	// не переносится
+	// Your deduplication key for the link, unique per merchant: a retry with the same reference will
+	// not reserve the money a second time. Optional in a single POST /v1/payout/link — without it the
+	// Idempotency-Key header becomes the key, and without both the request is rejected
+	// (payoutlink.idempotency_required). Required on every link in a POST /v1/payout/link/batch: the
+	// batch's Idempotency-Key is not carried over to the items
 	Reference string `json:"reference"`
-	// Заголовок — виден получателю на странице получения
+	// Title — visible to the recipient on the claim page
 	Title *string `json:"title,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4557,8 +4772,8 @@ func (m PayoutLinkBatchItem) GoString() string { return m.String() }
 
 // PayoutLinkBatchRequest is a model of the API.
 type PayoutLinkBatchRequest struct {
-	// До 500 ссылок за вызов; каждая проходит или падает независимо, ответ выровнен по индексам
-	// запроса. reference обязателен у каждой.
+	// Up to 500 links per call; each succeeds or fails independently, the response is aligned with the
+	// request indices. reference is required on each.
 	Items []PayoutLinkBatchItem `json:"items"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4588,7 +4803,7 @@ func (m PayoutLinkBatchRequest) GoString() string { return m.String() }
 
 // PayoutLinkBatchResult is a model of the API.
 type PayoutLinkBatchResult struct {
-	// Элементы в порядке запроса; result — ответ одиночного POST /v1/payout/link.
+	// Items in request order; result — the response of a single POST /v1/payout/link.
 	Items []PayoutLinkBatchResultItemsItem `json:"items"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4618,19 +4833,19 @@ func (m PayoutLinkBatchResult) GoString() string { return m.String() }
 
 // PayoutLinkBatchResultItemsItem is a model of the API.
 type PayoutLinkBatchResultItemsItem struct {
-	// Машинный код отказа; есть при ok=false.
+	// The machine code of the rejection; present when ok=false.
 	ErrorCode *string `json:"error_code,omitempty"`
-	// HTTP-статус, которым ответил бы одиночный вызов; есть при ok=false.
+	// The HTTP status a single call would have returned; present when ok=false.
 	HTTPStatus *int64 `json:"http_status,omitempty"`
-	// Номер элемента в запросе.
+	// The item's number in the request.
 	Idx int64 `json:"idx"`
-	// Текст отказа; есть при ok=false.
+	// The rejection text; present when ok=false.
 	Message *string `json:"message,omitempty"`
-	// Элемент выполнен.
+	// The item was executed.
 	Ok bool `json:"ok"`
-	// order_id элемента, если он был в запросе.
+	// The item's order_id, if it was in the request.
 	OrderID *string `json:"order_id,omitempty"`
-	// Результат одиночного вызова; есть при ok=true.
+	// The result of a single call; present when ok=true.
 	Result *PayoutLinkCreated `json:"result,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4662,11 +4877,11 @@ func (m PayoutLinkBatchResultItemsItem) GoString() string { return m.String() }
 
 // PayoutLinkChequeRequest is a model of the API.
 type PayoutLinkChequeRequest struct {
-	// Секрет получения из ответа создания выплатной ссылки. Хранится только хешем и повторно не
-	// выдаётся — чек можно напечатать, лишь пока токен у вас.
+	// The claim secret from the payout link creation response. Stored only as a hash and not issued
+	// again — the cheque can be printed only while you still have the token.
 	ClaimToken string `json:"claim_token"`
-	// Язык документа — один из 41 поддерживаемого кода (en по умолчанию); полный список — в ошибке
-	// document.unknown_lang.
+	// Document language — one of the 41 supported codes (en by default); the full list is in the
+	// document.unknown_lang error.
 	Lang *string `json:"lang,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4696,49 +4911,50 @@ func (m PayoutLinkChequeRequest) GoString() string { return m.String() }
 
 // PayoutLinkCreated is a model of the API.
 type PayoutLinkCreated struct {
-	// Сумма ссылки — обещание получателю.
+	// The link amount — a promise to the recipient.
 	Amount Decimal `json:"amount"`
-	// Пачка, в которой создана ссылка.
+	// The batch in which the link was created.
 	BatchID *string `json:"batch_id,omitempty"`
-	// Адрес, который указал получатель.
+	// The address the recipient specified.
 	ClaimAddress *string `json:"claim_address,omitempty"`
-	// Секрет ссылки получения; выдаётся один раз и хранится только хешем.
+	// The claim link secret; issued once and stored only as a hash.
 	ClaimToken string `json:"claim_token"`
-	// Страница получения; пусто, если публичный адрес не настроен.
+	// The claim page; empty if the public address is not configured.
 	ClaimURL string `json:"claim_url"`
-	// Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).
+	// Network fee; null — cannot be estimated right now (zero would mean the claim is free).
 	Commission *Decimal `json:"commission"`
-	// Когда создана (UTC).
+	// When created (UTC).
 	CreatedAt string `json:"created_at"`
-	// Актив выплаты.
+	// Payout asset.
 	Currency string `json:"currency"`
-	// Адрес, на который ушло письмо получателю.
+	// The address the email to the recipient was sent to.
 	Email *string `json:"email,omitempty"`
-	// До какого момента ссылку можно получить (UTC).
+	// Until when the link can be claimed (UTC).
 	ExpiresAt string `json:"expires_at"`
-	// Кто платит сетевую комиссию.
+	// Who pays the network fee.
 	FeeBearer PayoutLinkFeeBearer `json:"fee_bearer"`
-	// exact — комиссия зафиксирована; estimated — оценка по текущей сети.
+	// exact — the fee is fixed; estimated — an estimate based on the current network.
 	FeeType FeeType `json:"fee_type"`
-	// Идентификатор ссылки.
+	// Link id.
 	LinkID string `json:"link_id"`
-	// Сеть выплаты.
+	// Payout network.
 	Network string `json:"network"`
-	// Сообщение получателю.
+	// Message to the recipient.
 	Note string `json:"note"`
-	// Сгенерированный код получения (passcode=auto); выдаётся один раз.
+	// The generated claim passcode (passcode=auto); issued once.
 	Passcode *string `json:"passcode,omitempty"`
-	// Получение требует кода.
+	// Claiming requires a passcode.
 	PasscodeProtected bool `json:"passcode_protected"`
-	// Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).
+	// How much will reach the recipient; null — cannot be said (the fee was not estimated or ate the
+	// amount).
 	PayerAmount *Decimal `json:"payer_amount"`
-	// Выплата, порождённая получением; есть у полученной ссылки.
+	// The payout created by the claim; present on a claimed link.
 	PayoutID *string `json:"payout_id,omitempty"`
-	// Ваш ключ дедупликации.
+	// Your deduplication key.
 	Reference *string `json:"reference,omitempty"`
-	// Состояние ссылки.
+	// Link state.
 	Status PayoutLinkStatus `json:"status"`
-	// Заголовок, видный получателю.
+	// Title visible to the recipient.
 	Title string `json:"title"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4768,7 +4984,7 @@ func (m PayoutLinkCreated) GoString() string { return m.String() }
 
 // PayoutLinkIDRequest is a model of the API.
 type PayoutLinkIDRequest struct {
-	// Идентификатор выплатной ссылки (link_id из ответа создания).
+	// The payout link id (link_id from the creation response).
 	LinkID string `json:"link_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4798,34 +5014,35 @@ func (m PayoutLinkIDRequest) GoString() string { return m.String() }
 
 // PayoutLinkItem is a model of the API.
 type PayoutLinkItem struct {
-	// Сумма в currency, строкой; больше нуля
+	// The amount in currency, as a string; greater than zero
 	Amount Decimal `json:"amount"`
-	// Крипто-актив выплаты (USDT, BTC, …); фиат невозможен
+	// The payout crypto asset (USDT, BTC, …); fiat is not possible
 	Currency string `json:"currency"`
-	// Если задан — получателю уходит письмо с кнопкой «Получить средства»; сбой доставки не отменяет
-	// создание ссылки
+	// If set, the recipient gets an email with a "Claim funds" button; a delivery failure does not
+	// cancel the link creation
 	Email *string `json:"email,omitempty"`
-	// Срок жизни ссылки в секундах, клампится в диапазон 3600–2592000 (час–30 суток); без поля или при
-	// 0 ссылка живёт 1 час, а не максимум — задавайте явно
+	// The link lifetime in seconds, clamped to the range 3600–2592000 (an hour to 30 days); without
+	// the field or at 0 the link lives 1 hour, not the maximum — set it explicitly
 	ExpiresInSeconds *int64 `json:"expires_in_seconds,omitempty"`
-	// Кто платит сетевую комиссию: "recipient" (по умолчанию — вычитается из суммы, получателю придёт
-	// меньше) или "merchant" (резервируется сумма плюс комиссия, получателю придёт ровно amount)
+	// Who pays the network fee: "recipient" (default — deducted from the amount, the recipient gets
+	// less) or "merchant" (the amount plus the fee is reserved, the recipient gets exactly amount)
 	FeeBearer *PayoutLinkFeeBearer `json:"fee_bearer,omitempty"`
-	// Сеть выплаты получателю (tron, bitcoin, …)
+	// The network of the payout to the recipient (tron, bitcoin, …)
 	Network string `json:"network"`
-	// Сообщение получателю (видно на странице получения и в письме)
+	// A message to the recipient (visible on the claim page and in the email)
 	Note *string `json:"note,omitempty"`
-	// Код получения — второй фактор к ссылке: "auto" — сгенерируем и вернём ОДИН раз в ответе, либо
-	// свой (6–64 видимых символа), пусто — без кода. Код передавайте получателю ОТДЕЛЬНЫМ от ссылки
-	// каналом (в письмо он не кладётся); после 10 неверных вводов ссылка запирается.
+	// Claim passcode — a second factor for the link: "auto" — we generate it and return it ONCE in the
+	// response, or your own (6–64 visible characters), empty — no passcode. Give the passcode to the
+	// recipient over a channel SEPARATE from the link (it is not included in the email); after 10
+	// wrong attempts the link is locked.
 	Passcode *string `json:"passcode,omitempty"`
-	// Ваш ключ дедупликации ссылки, уникальный на мерчанта: повтор с тем же reference не зарезервирует
-	// деньги второй раз. В одиночном POST /v1/payout/link необязателен — без него ключом становится
-	// заголовок Idempotency-Key, а без обоих запрос отвергается (payoutlink.idempotency_required). В
-	// пачке POST /v1/payout/link/batch обязателен у каждой ссылки: Idempotency-Key пачки на элементы
-	// не переносится
+	// Your deduplication key for the link, unique per merchant: a retry with the same reference will
+	// not reserve the money a second time. Optional in a single POST /v1/payout/link — without it the
+	// Idempotency-Key header becomes the key, and without both the request is rejected
+	// (payoutlink.idempotency_required). Required on every link in a POST /v1/payout/link/batch: the
+	// batch's Idempotency-Key is not carried over to the items
 	Reference *string `json:"reference,omitempty"`
-	// Заголовок — виден получателю на странице получения
+	// Title — visible to the recipient on the claim page
 	Title *string `json:"title,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4855,43 +5072,44 @@ func (m PayoutLinkItem) GoString() string { return m.String() }
 
 // PayoutLinkView is a model of the API.
 type PayoutLinkView struct {
-	// Сумма ссылки — обещание получателю.
+	// The link amount — a promise to the recipient.
 	Amount Decimal `json:"amount"`
-	// Пачка, в которой создана ссылка.
+	// The batch in which the link was created.
 	BatchID *string `json:"batch_id,omitempty"`
-	// Адрес, который указал получатель.
+	// The address the recipient specified.
 	ClaimAddress *string `json:"claim_address,omitempty"`
-	// Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).
+	// Network fee; null — cannot be estimated right now (zero would mean the claim is free).
 	Commission *Decimal `json:"commission"`
-	// Когда создана (UTC).
+	// When created (UTC).
 	CreatedAt string `json:"created_at"`
-	// Актив выплаты.
+	// Payout asset.
 	Currency string `json:"currency"`
-	// Адрес, на который ушло письмо получателю.
+	// The address the email to the recipient was sent to.
 	Email *string `json:"email,omitempty"`
-	// До какого момента ссылку можно получить (UTC).
+	// Until when the link can be claimed (UTC).
 	ExpiresAt string `json:"expires_at"`
-	// Кто платит сетевую комиссию.
+	// Who pays the network fee.
 	FeeBearer PayoutLinkFeeBearer `json:"fee_bearer"`
-	// exact — комиссия зафиксирована; estimated — оценка по текущей сети.
+	// exact — the fee is fixed; estimated — an estimate based on the current network.
 	FeeType FeeType `json:"fee_type"`
-	// Идентификатор ссылки.
+	// Link id.
 	LinkID string `json:"link_id"`
-	// Сеть выплаты.
+	// Payout network.
 	Network string `json:"network"`
-	// Сообщение получателю.
+	// Message to the recipient.
 	Note string `json:"note"`
-	// Получение требует кода.
+	// Claiming requires a passcode.
 	PasscodeProtected bool `json:"passcode_protected"`
-	// Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).
+	// How much will reach the recipient; null — cannot be said (the fee was not estimated or ate the
+	// amount).
 	PayerAmount *Decimal `json:"payer_amount"`
-	// Выплата, порождённая получением; есть у полученной ссылки.
+	// The payout created by the claim; present on a claimed link.
 	PayoutID *string `json:"payout_id,omitempty"`
-	// Ваш ключ дедупликации.
+	// Your deduplication key.
 	Reference *string `json:"reference,omitempty"`
-	// Состояние ссылки.
+	// Link state.
 	Status PayoutLinkStatus `json:"status"`
-	// Заголовок, видный получателю.
+	// Title visible to the recipient.
 	Title string `json:"title"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4921,9 +5139,9 @@ func (m PayoutLinkView) GoString() string { return m.String() }
 
 // PayoutLinkViewList is a model of the API.
 type PayoutLinkViewList struct {
-	// Записи этой страницы.
+	// The records of this page.
 	Items []PayoutLinkView `json:"items"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -4953,27 +5171,27 @@ func (m PayoutLinkViewList) GoString() string { return m.String() }
 
 // PayoutRequest is a model of the API.
 type PayoutRequest struct {
-	// Адрес получателя.
+	// Recipient address.
 	Address string `json:"address"`
-	// Сумма выплаты в валюте currency.
+	// The payout amount in currency.
 	Amount Decimal `json:"amount"`
-	// Код валюты (например USDT).
+	// Currency code (e.g. USDT).
 	Currency string `json:"currency"`
-	// Профинансировать выплату конвертацией баланса. Только USDT → currency.
+	// Fund the payout by converting balance. USDT → currency only.
 	FromCurrency *string `json:"from_currency,omitempty"`
-	// Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает
-	// amount; false — получатель получает amount-fee; не передано — fee-config проекта.
+	// Who pays the network fee: true — amount+fee is debited from the balance, the recipient gets
+	// amount; false — the recipient gets amount-fee; omitted — the project's fee-config.
 	IsSubtract *bool `json:"is_subtract,omitempty"`
-	// Тег/мемо назначения (TON Jetton). Максимум 120 символов.
+	// Destination tag/memo (TON Jetton). At most 120 characters.
 	Memo *string `json:"memo,omitempty"`
-	// Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями.
+	// Network (tron, ethereum, …). Required for coins with several networks.
 	Network *string `json:"network,omitempty"`
-	// Ваш номер выплаты; ключ идемпотентности.
+	// Your payout number; the idempotency key.
 	OrderID string `json:"order_id"`
-	// Метка происхождения: api (по умолчанию) или manual.
+	// The origin label: api (default) or manual.
 	Source *string `json:"source,omitempty"`
-	// Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного
-	// эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.
+	// Your own webhook URL for this payout (passes the SSRF check). Requires a registered endpoint
+	// (POST /v1/webhooks): the delivery is signed with its secret.
 	URLCallback *string `json:"url_callback,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5003,27 +5221,27 @@ func (m PayoutRequest) GoString() string { return m.String() }
 
 // PayoutValidateRequest is a model of the API.
 type PayoutValidateRequest struct {
-	// Адрес получателя.
+	// Recipient address.
 	Address string `json:"address"`
-	// Сумма выплаты в валюте currency.
+	// The payout amount in currency.
 	Amount Decimal `json:"amount"`
-	// Код валюты (например USDT).
+	// Currency code (e.g. USDT).
 	Currency string `json:"currency"`
-	// Профинансировать выплату конвертацией баланса. Только USDT → currency.
+	// Fund the payout by converting balance. USDT → currency only.
 	FromCurrency *string `json:"from_currency,omitempty"`
-	// Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает
-	// amount; false — получатель получает amount-fee; не передано — fee-config проекта.
+	// Who pays the network fee: true — amount+fee is debited from the balance, the recipient gets
+	// amount; false — the recipient gets amount-fee; omitted — the project's fee-config.
 	IsSubtract *bool `json:"is_subtract,omitempty"`
-	// Тег/мемо назначения (TON Jetton). Максимум 120 символов.
+	// Destination tag/memo (TON Jetton). At most 120 characters.
 	Memo *string `json:"memo,omitempty"`
-	// Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями.
+	// Network (tron, ethereum, …). Required for coins with several networks.
 	Network *string `json:"network,omitempty"`
-	// Ваш номер выплаты; ключ идемпотентности.
+	// Your payout number; the idempotency key.
 	OrderID *string `json:"order_id,omitempty"`
-	// Метка происхождения: api (по умолчанию) или manual.
+	// The origin label: api (default) or manual.
 	Source *string `json:"source,omitempty"`
-	// Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного
-	// эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.
+	// Your own webhook URL for this payout (passes the SSRF check). Requires a registered endpoint
+	// (POST /v1/webhooks): the delivery is signed with its secret.
 	URLCallback *string `json:"url_callback,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5053,24 +5271,23 @@ func (m PayoutValidateRequest) GoString() string { return m.String() }
 
 // PayoutValidateResult is a model of the API.
 type PayoutValidateResult struct {
-	// Сколько спишется с баланса.
+	// How much will be debited from the balance.
 	Amount Decimal `json:"amount"`
-	// Сетевая комиссия.
+	// Network fee.
 	Commission Decimal `json:"commission"`
-	// Валюта выплаты.
+	// Payout currency.
 	Currency string `json:"currency"`
-	// Кто платит сетевую комиссию.
+	// Who pays the network fee.
 	FeeBearer PayoutFeeBearer `json:"fee_bearer"`
-	// Валюта, конвертацией которой профинансируется выплата (from_currency); есть только у такой
-	// выплаты.
+	// The currency whose conversion funds the payout (from_currency); present only on such a payout.
 	FundedBy *string `json:"funded_by,omitempty"`
-	// Что именно проверено по балансу и что проверится при исполнении.
+	// What exactly was checked against the balance and what will be checked at execution.
 	MaturityNote string `json:"maturity_note"`
-	// Сеть выплаты в каноническом написании.
+	// The payout network in canonical spelling.
 	Network string `json:"network"`
-	// Сколько дойдёт получателю.
+	// How much will reach the recipient.
 	PayerAmount Decimal `json:"payer_amount"`
-	// Всегда true: не прошедшая проверка отвечает ошибкой с кодом причины.
+	// Always true: a failed check responds with an error carrying the reason code.
 	Valid bool `json:"valid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5100,56 +5317,56 @@ func (m PayoutValidateResult) GoString() string { return m.String() }
 
 // PayoutView is a model of the API.
 type PayoutView struct {
-	// Адрес получателя.
+	// Recipient address.
 	Address string `json:"address"`
-	// Сумма выплаты в валюте currency, списанная с вашего баланса.
+	// The payout amount in currency, debited from your balance.
 	Amount Decimal `json:"amount"`
-	// true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).
+	// true — the payout is awaiting approval (internal scenarios; always false with an API key).
 	ApprovalRequired bool `json:"approval_required"`
-	// Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.
+	// The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.
 	Commission Decimal `json:"commission"`
-	// Время создания (ISO 8601).
+	// Creation time (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Код валюты выплаты.
+	// Payout currency code.
 	Currency string `json:"currency"`
-	// Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо
-	// или отдать получателю. Пусто, если генерация документов не включена.
+	// A signed link to the PDF receipt of this operation — opens without an API key, can be attached
+	// to an email or given to the recipient. Empty if document generation is not enabled.
 	DocumentURL string `json:"document_url"`
-	// Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма
-	// списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true,
-	// выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю
-	// приходит меньше запрошенного.
+	// Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the
+	// debit amount was increased by the fee, the recipient gets the full requested amount
+	// (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld
+	// from the payout, the recipient gets less than requested.
 	FeeBearer PayoutFeeBearer `json:"fee_bearer"`
-	// true — статус финальный (confirmed / failed / cancelled).
+	// true — the status is final (confirmed / failed / cancelled).
 	IsFinal bool `json:"is_final"`
-	// true — это возврат платежа, а не обычная выплата.
+	// true — this is a payment refund, not a regular payout.
 	IsRefund bool `json:"is_refund"`
-	// Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.
+	// The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.
 	Memo string `json:"memo"`
-	// Сеть блокчейна.
+	// Blockchain network.
 	Network string `json:"network"`
-	// Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см.
+	// Your payout number (reference). null for a refund: a refund has no identifier of yours, see
 	// payment_order_id.
 	OrderID *string `json:"order_id"`
-	// Сколько реально уходит получателю на адрес: amount − commission.
+	// How much actually goes to the recipient's address: amount − commission.
 	PayerAmount Decimal `json:"payer_amount"`
-	// Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата
-	// собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.
+	// Your order_id of the payment that was refunded (null for a regular payout). A refund has no
+	// order_id of its own — it comes as null, so match a refund to an order by this field.
 	PaymentOrderID *string `json:"payment_order_id"`
-	// Идентификатор возвращаемого платежа (null, если это не возврат).
+	// The id of the payment being refunded (null if this is not a refund).
 	RefundFor *string `json:"refund_for"`
-	// api (через интеграцию) | manual (из кабинета).
+	// api (via the integration) | manual (from the dashboard).
 	Source PayoutSource `json:"source"`
-	// Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй
-	// подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed
-	// (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории
-	// как есть.
+	// Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for
+	// the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) |
+	// confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history
+	// filter as is.
 	Status PayoutStatus `json:"status"`
-	// Хеш транзакции в блокчейне (появляется после отправки).
+	// The blockchain transaction hash (appears after sending).
 	Txid string `json:"txid"`
-	// Время последнего изменения (ISO 8601).
+	// Time of the last change (ISO 8601).
 	UpdatedAt string `json:"updated_at"`
-	// Идентификатор выплаты.
+	// Payout id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5179,9 +5396,9 @@ func (m PayoutView) GoString() string { return m.String() }
 
 // PayoutViewList is a model of the API.
 type PayoutViewList struct {
-	// Записи этой страницы.
+	// The records of this page.
 	Items []PayoutView `json:"items"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5209,71 +5426,71 @@ func (m PayoutViewList) String() string { return describe("PayoutViewList", m) }
 // GoString is String, for %#v.
 func (m PayoutViewList) GoString() string { return m.String() }
 
-// PayoutWebhook — Приходит на каждом переходе выплаты. Тело — тот же объект, что отвечают ручки
-// выплат. Возврат платежа — это выплата с is_refund = true: его события тоже payout.*, сверять с
-// платежом по refund_for и payment_order_id.
+// PayoutWebhook — Sent on every payout transition. The body is the same object the payout endpoints
+// return. A payment refund is a payout with is_refund = true: its events are payout.* as well;
+// match it to the payment by refund_for and payment_order_id.
 type PayoutWebhook struct {
-	// Адрес получателя.
+	// Recipient address.
 	Address string `json:"address"`
-	// Сумма выплаты в валюте currency, списанная с вашего баланса.
+	// The payout amount in currency, debited from your balance.
 	Amount Decimal `json:"amount"`
-	// true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).
+	// true — the payout is awaiting approval (internal scenarios; always false with an API key).
 	ApprovalRequired bool `json:"approval_required"`
-	// Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.
+	// The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.
 	Commission Decimal `json:"commission"`
-	// Время создания (ISO 8601).
+	// Creation time (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Код валюты выплаты.
+	// Payout currency code.
 	Currency string `json:"currency"`
-	// Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо
-	// или отдать получателю. Пусто, если генерация документов не включена.
+	// A signed link to the PDF receipt of this operation — opens without an API key, can be attached
+	// to an email or given to the recipient. Empty if document generation is not enabled.
 	DocumentURL string `json:"document_url"`
-	// Когда событие произошло, UTC с миллисекундами (ISO 8601).
+	// When the event happened, UTC with milliseconds (ISO 8601).
 	EventAt string `json:"event_at"`
-	// Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма
-	// списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true,
-	// выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю
-	// приходит меньше запрошенного.
+	// Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the
+	// debit amount was increased by the fee, the recipient gets the full requested amount
+	// (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld
+	// from the payout, the recipient gets less than requested.
 	FeeBearer PayoutFeeBearer `json:"fee_bearer"`
-	// true — статус финальный (confirmed / failed / cancelled).
+	// true — the status is final (confirmed / failed / cancelled).
 	IsFinal bool `json:"is_final"`
-	// true — это возврат платежа, а не обычная выплата.
+	// true — this is a payment refund, not a regular payout.
 	IsRefund bool `json:"is_refund"`
-	// Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.
+	// The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.
 	Memo string `json:"memo"`
-	// Сеть блокчейна.
+	// Blockchain network.
 	Network string `json:"network"`
-	// Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см.
+	// Your payout number (reference). null for a refund: a refund has no identifier of yours, see
 	// payment_order_id.
 	OrderID *string `json:"order_id"`
-	// Сколько реально уходит получателю на адрес: amount − commission.
+	// How much actually goes to the recipient's address: amount − commission.
 	PayerAmount Decimal `json:"payer_amount"`
-	// Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата
-	// собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.
+	// Your order_id of the payment that was refunded (null for a regular payout). A refund has no
+	// order_id of its own — it comes as null, so match a refund to an order by this field.
 	PaymentOrderID *string `json:"payment_order_id"`
-	// Идентификатор возвращаемого платежа (null, если это не возврат).
+	// The id of the payment being refunded (null if this is not a refund).
 	RefundFor *string `json:"refund_for"`
-	// Глобальный номер события: в пределах одного объекта больший номер новее, меньший — опоздавшая
-	// доставка, её нужно отбросить. У репетиции (test: true) всегда 0.
+	// The global event number: within one object a higher number is newer, a lower one is a late
+	// delivery and must be discarded. Always 0 on a rehearsal (test: true).
 	Sequence int64 `json:"sequence"`
-	// api (через интеграцию) | manual (из кабинета).
+	// api (via the integration) | manual (from the dashboard).
 	Source PayoutSource `json:"source"`
-	// Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй
-	// подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed
-	// (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории
-	// как есть.
+	// Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for
+	// the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) |
+	// confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history
+	// filter as is.
 	Status PayoutStatus `json:"status"`
-	// Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true — внутри
-	// подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик обязан
-	// игнорировать, даже если подпись верна.
+	// Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true —
+	// inside the signature. A live event never carries this field: your handler must ignore a body
+	// with test: true even if the signature is valid.
 	Test *bool `json:"test,omitempty"`
-	// Хеш транзакции в блокчейне (появляется после отправки).
+	// The blockchain transaction hash (appears after sending).
 	Txid string `json:"txid"`
-	// Вид события: payment | payout | wallet | conversion — какое тело пришло.
+	// Event kind: payment | payout | wallet | conversion — which body arrived.
 	Type string `json:"type"`
-	// Время последнего изменения (ISO 8601).
+	// Time of the last change (ISO 8601).
 	UpdatedAt string `json:"updated_at"`
-	// Идентификатор выплаты.
+	// Payout id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5303,11 +5520,11 @@ func (m PayoutWebhook) GoString() string { return m.String() }
 
 // PricingCurrency is a model of the API.
 type PricingCurrency struct {
-	// Код для поля currency при создании счёта.
+	// The code for the currency field when creating an invoice.
 	Currency string `json:"currency"`
-	// Знаков после запятой.
+	// Decimal places.
 	Decimals int64 `json:"decimals"`
-	// Фиат: счёт в нём выставляется, но оплачивается монетой.
+	// Fiat: an invoice can be priced in it, but is paid with a coin.
 	Fiat bool `json:"fiat"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5337,93 +5554,98 @@ func (m PricingCurrency) GoString() string { return m.String() }
 
 // PublicPayResult is a model of the API.
 type PublicPayResult struct {
-	// Способы оплаты, из которых выбирает покупатель; есть только у счёта в статусе select.
+	// The payment methods the buyer chooses from; present only on an invoice in status select.
 	Accepted []AcceptedMethod `json:"accepted,omitempty"`
-	// Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька —
-	// платёж обязан нести destination_tag, иначе сеть его отклонит.
+	// The address the customer sends money to. On XRP this is the classic r-address of a SHARED wallet
+	// — the payment must carry destination_tag, otherwise the network rejects it.
 	Address string `json:"address"`
-	// Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же
-	// кодирует QR. Пусто на остальных сетях.
+	// XLM only: the same payment details in one string — a muxed M… address (SEP-23), address and memo
+	// together; the QR code encodes it as well. Empty on other networks.
 	AddressMuxed string `json:"address_muxed"`
-	// QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address (адрес+тег
-	// одной строкой).
+	// The address QR code as a PNG data: URI — can go straight into <img src>. On XRP it encodes the
+	// X-address (address + tag in one string).
 	AddressQRCode string `json:"address_qr_code"`
-	// Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его
-	// же кодирует QR. Пусто на остальных сетях.
+	// XRP only: the same payment details in one string in X-address format (XLS-5) — address and tag
+	// together; the QR code encodes it as well. Empty on other networks.
 	AddressXaddress string `json:"address_xaddress"`
-	// Сумма к оплате в валюте цены (например, в USD).
+	// The amount to pay in the price currency (e.g. USD).
 	Amount Decimal `json:"amount"`
-	// Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло).
-	// Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+	// How much has already been paid and confirmed, in the payment crypto; always a string (0 if
+	// nothing has arrived). Empty until the payment currency is chosen (an invoice without a
+	// currency).
 	AmountPaid string `json:"amount_paid"`
-	// Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает. Пусто, пока валюта оплаты
-	// не выбрана (счёт без валюты).
+	// How much is still left to pay (due − paid); 0 if enough has been paid. Empty until the payment
+	// currency is chosen (an invoice without a currency).
 	AmountRemaining string `json:"amount_remaining"`
-	// Текущее число подтверждений входящего платежа.
+	// The current number of confirmations of the incoming payment.
 	Confirmations int64 `json:"confirmations"`
-	// Время создания (ISO 8601).
+	// Creation time (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько
-	// счёт СТОИТ, а не чем за него платят (это payer_currency).
+	// The price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. It says how
+	// much the invoice COSTS, not what it is paid with (that is payer_currency).
 	Currency string `json:"currency"`
-	// Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo
-	// получателя» на бирже или в кошельке). Пусто на остальных сетях.
+	// XRP only: the numeric destination tag the customer MUST specify in the transfer (the "recipient
+	// tag/memo" field at the exchange or in the wallet). Empty on other networks.
 	DestinationTag string `json:"destination_tag"`
-	// Когда истекает счёт (ISO 8601, как и все временные поля).
+	// When the invoice expires (ISO 8601, like all time fields).
 	ExpiredAt string `json:"expired_at"`
-	// Можно ли сейчас оплатить картой через он-рамп.
+	// Whether paying by card via an on-ramp is possible right now.
 	FiatPurchaseAvailable bool `json:"fiat_purchase_available"`
-	// true — статус финальный, больше не изменится.
+	// true — the status is final and will not change again.
 	IsFinal bool `json:"is_final"`
-	// true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.
+	// true — this is a currency-agnostic link; the customer has not chosen the currency/network yet.
 	IsMulti bool `json:"is_multi"`
-	// Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле
-	// «memo» на бирже или в кошельке. Пусто на остальных сетях.
+	// XLM (Stellar) only: the numeric memo (ID type) the customer MUST specify in the transfer — the
+	// "memo" field at the exchange or in the wallet. Empty on other networks.
 	Memo string `json:"memo"`
-	// Ваша скидка или наценка для ВЫБРАННОГО способа оплаты, в валюте оплаты: на столько сдвинулась
-	// сумма плательщика из-за настройки по этой монете и сети. Положительное — плательщик платит
-	// МЕНЬШЕ (скидка), отрицательное — больше (наценка). Пусто, если настройки для метода нет.
+	// Your discount or surcharge for the CHOSEN payment method, in the payment currency: how much the
+	// payer's amount shifted because of the setting for this coin and network. Positive — the payer
+	// pays LESS (discount), negative — more (surcharge). Empty if there is no setting for the method.
 	MethodAdjustment string `json:"method_adjustment"`
-	// Та же скидка/наценка в базисных пунктах (так она переживает переоценку курса). Знак тот же, что
-	// в настройке скидок: ПЛЮС — скидка, МИНУС — наценка.
+	// The same discount/surcharge in basis points (this way it survives a rate re-quote). The sign is
+	// the same as in the discount setting: PLUS — a discount, MINUS — a surcharge.
 	MethodAdjustmentBps int64 `json:"method_adjustment_bps"`
-	// Сеть блокчейна (например, tron).
+	// Blockchain network (e.g. tron).
 	Network string `json:"network"`
-	// Сетевая надбавка плательщика в валюте оплаты: стоимость сбора депозита в выбранной сети
-	// (активация адреса, если адрес новый, плюс энергия/газ с запасом), зафиксированная при выборе
-	// сети. Пусто до выбора сети; 0, если надбавка выключена.
+	// The payer's network surcharge in the payment currency: the cost of sweeping the deposit on the
+	// chosen network (address activation, if the address is new, plus energy/gas with a margin),
+	// locked in when the network is chosen. Empty until the network is chosen; 0 if the surcharge is
+	// disabled.
 	NetworkSurcharge string `json:"network_surcharge"`
-	// Та же надбавка в базисных пунктах от суммы к оплате (так она переживает переоценку курса).
+	// The same surcharge in basis points of the amount due (this way it survives a rate re-quote).
 	NetworkSurchargeBps int64 `json:"network_surcharge_bps"`
-	// Ваш номер заказа, который вы передали при создании.
+	// Your order number that you passed at creation.
 	OrderID string `json:"order_id"`
-	// Сколько нужно отправить в крипте оплаты. Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+	// How much must be sent in the payment crypto. Empty until the payment currency is chosen (an
+	// invoice without a currency).
 	PayerAmount string `json:"payer_amount"`
-	// Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi),
-	// пока клиент не выбрал монету — валюты расчёта у него ещё нет.
+	// The currency the customer pays in (e.g. USDT). Empty for a currency-agnostic invoice (is_multi)
+	// until the customer picks a coin — it has no settlement currency yet.
 	PayerCurrency string `json:"payer_currency"`
-	// До какого момента действует зафиксированный payer_amount (ISO 8601; окно ~5 мин, после него
-	// страница оплаты перекотирует счёт). Пусто, когда перекотировки уже не будет: валюта не выбрана,
-	// депозит замечен, счёт вышел из created или истёк — сумма зафиксирована навсегда.
+	// Until when the locked payer_amount is valid (ISO 8601; a ~5 min window, after which the payment
+	// page re-quotes the invoice). Empty when there will be no more re-quotes: the currency has not
+	// been chosen, a deposit has been seen, the invoice has left created or expired — the amount is
+	// locked for good.
 	RateExpiresAt string `json:"rate_expires_at"`
-	// Сколько подтверждений нужно для зачисления (зависит от суммы и сети).
+	// How many confirmations are required for crediting (depends on the amount and the network).
 	RequiredConfirmations int64 `json:"required_confirmations"`
-	// Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату,
-	// ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid (оплачено) |
-	// paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled
-	// (отменён) | under_review (поступление задержано на проверке, разбирает оператор).
+	// Status: select (the customer is choosing a currency) | created (awaiting payment) |
+	// confirm_check (payment seen, awaiting confirmations; with amount_remaining > 0 — partial,
+	// awaiting the remainder) | paid (paid) | paid_over (overpaid) | wrong_amount (underpaid, expired)
+	// | expired (expired) | cancelled (cancelled) | under_review (the deposit is held for review, an
+	// operator is handling it).
 	Status PaymentStatus `json:"status"`
-	// Хеш входящей транзакции (когда замечена).
+	// The hash of the incoming transaction (once seen).
 	Txid string `json:"txid"`
-	// Время последнего изменения (ISO 8601).
+	// Time of the last change (ISO 8601).
 	UpdatedAt string `json:"updated_at"`
-	// Ссылка на готовую страницу оплаты.
+	// A link to the ready-made payment page.
 	URL string `json:"url"`
-	// Ссылка «вернуться в магазин» до оплаты.
+	// The "back to store" link before payment.
 	URLReturn string `json:"url_return"`
-	// Куда перенаправить после успешной оплаты.
+	// Where to redirect after a successful payment.
 	URLSuccess string `json:"url_success"`
-	// Наш идентификатор платежа (используйте его в info/refund).
+	// Our payment identifier (use it in info/refund).
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5453,89 +5675,94 @@ func (m PublicPayResult) GoString() string { return m.String() }
 
 // PublicPaymentView is a model of the API.
 type PublicPaymentView struct {
-	// Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька —
-	// платёж обязан нести destination_tag, иначе сеть его отклонит.
+	// The address the customer sends money to. On XRP this is the classic r-address of a SHARED wallet
+	// — the payment must carry destination_tag, otherwise the network rejects it.
 	Address string `json:"address"`
-	// Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же
-	// кодирует QR. Пусто на остальных сетях.
+	// XLM only: the same payment details in one string — a muxed M… address (SEP-23), address and memo
+	// together; the QR code encodes it as well. Empty on other networks.
 	AddressMuxed string `json:"address_muxed"`
-	// QR-код адреса как PNG data:-URI — можно сразу в <img src>. На XRP кодирует X-address (адрес+тег
-	// одной строкой).
+	// The address QR code as a PNG data: URI — can go straight into <img src>. On XRP it encodes the
+	// X-address (address + tag in one string).
 	AddressQRCode string `json:"address_qr_code"`
-	// Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его
-	// же кодирует QR. Пусто на остальных сетях.
+	// XRP only: the same payment details in one string in X-address format (XLS-5) — address and tag
+	// together; the QR code encodes it as well. Empty on other networks.
 	AddressXaddress string `json:"address_xaddress"`
-	// Сумма к оплате в валюте цены (например, в USD).
+	// The amount to pay in the price currency (e.g. USD).
 	Amount Decimal `json:"amount"`
-	// Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло).
-	// Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+	// How much has already been paid and confirmed, in the payment crypto; always a string (0 if
+	// nothing has arrived). Empty until the payment currency is chosen (an invoice without a
+	// currency).
 	AmountPaid string `json:"amount_paid"`
-	// Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает. Пусто, пока валюта оплаты
-	// не выбрана (счёт без валюты).
+	// How much is still left to pay (due − paid); 0 if enough has been paid. Empty until the payment
+	// currency is chosen (an invoice without a currency).
 	AmountRemaining string `json:"amount_remaining"`
-	// Текущее число подтверждений входящего платежа.
+	// The current number of confirmations of the incoming payment.
 	Confirmations int64 `json:"confirmations"`
-	// Время создания (ISO 8601).
+	// Creation time (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько
-	// счёт СТОИТ, а не чем за него платят (это payer_currency).
+	// The price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. It says how
+	// much the invoice COSTS, not what it is paid with (that is payer_currency).
 	Currency string `json:"currency"`
-	// Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo
-	// получателя» на бирже или в кошельке). Пусто на остальных сетях.
+	// XRP only: the numeric destination tag the customer MUST specify in the transfer (the "recipient
+	// tag/memo" field at the exchange or in the wallet). Empty on other networks.
 	DestinationTag string `json:"destination_tag"`
-	// Когда истекает счёт (ISO 8601, как и все временные поля).
+	// When the invoice expires (ISO 8601, like all time fields).
 	ExpiredAt string `json:"expired_at"`
-	// true — статус финальный, больше не изменится.
+	// true — the status is final and will not change again.
 	IsFinal bool `json:"is_final"`
-	// true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.
+	// true — this is a currency-agnostic link; the customer has not chosen the currency/network yet.
 	IsMulti bool `json:"is_multi"`
-	// Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле
-	// «memo» на бирже или в кошельке. Пусто на остальных сетях.
+	// XLM (Stellar) only: the numeric memo (ID type) the customer MUST specify in the transfer — the
+	// "memo" field at the exchange or in the wallet. Empty on other networks.
 	Memo string `json:"memo"`
-	// Ваша скидка или наценка для ВЫБРАННОГО способа оплаты, в валюте оплаты: на столько сдвинулась
-	// сумма плательщика из-за настройки по этой монете и сети. Положительное — плательщик платит
-	// МЕНЬШЕ (скидка), отрицательное — больше (наценка). Пусто, если настройки для метода нет.
+	// Your discount or surcharge for the CHOSEN payment method, in the payment currency: how much the
+	// payer's amount shifted because of the setting for this coin and network. Positive — the payer
+	// pays LESS (discount), negative — more (surcharge). Empty if there is no setting for the method.
 	MethodAdjustment string `json:"method_adjustment"`
-	// Та же скидка/наценка в базисных пунктах (так она переживает переоценку курса). Знак тот же, что
-	// в настройке скидок: ПЛЮС — скидка, МИНУС — наценка.
+	// The same discount/surcharge in basis points (this way it survives a rate re-quote). The sign is
+	// the same as in the discount setting: PLUS — a discount, MINUS — a surcharge.
 	MethodAdjustmentBps int64 `json:"method_adjustment_bps"`
-	// Сеть блокчейна (например, tron).
+	// Blockchain network (e.g. tron).
 	Network string `json:"network"`
-	// Сетевая надбавка плательщика в валюте оплаты: стоимость сбора депозита в выбранной сети
-	// (активация адреса, если адрес новый, плюс энергия/газ с запасом), зафиксированная при выборе
-	// сети. Пусто до выбора сети; 0, если надбавка выключена.
+	// The payer's network surcharge in the payment currency: the cost of sweeping the deposit on the
+	// chosen network (address activation, if the address is new, plus energy/gas with a margin),
+	// locked in when the network is chosen. Empty until the network is chosen; 0 if the surcharge is
+	// disabled.
 	NetworkSurcharge string `json:"network_surcharge"`
-	// Та же надбавка в базисных пунктах от суммы к оплате (так она переживает переоценку курса).
+	// The same surcharge in basis points of the amount due (this way it survives a rate re-quote).
 	NetworkSurchargeBps int64 `json:"network_surcharge_bps"`
-	// Ваш номер заказа, который вы передали при создании.
+	// Your order number that you passed at creation.
 	OrderID string `json:"order_id"`
-	// Сколько нужно отправить в крипте оплаты. Пусто, пока валюта оплаты не выбрана (счёт без валюты).
+	// How much must be sent in the payment crypto. Empty until the payment currency is chosen (an
+	// invoice without a currency).
 	PayerAmount string `json:"payer_amount"`
-	// Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi),
-	// пока клиент не выбрал монету — валюты расчёта у него ещё нет.
+	// The currency the customer pays in (e.g. USDT). Empty for a currency-agnostic invoice (is_multi)
+	// until the customer picks a coin — it has no settlement currency yet.
 	PayerCurrency string `json:"payer_currency"`
-	// До какого момента действует зафиксированный payer_amount (ISO 8601; окно ~5 мин, после него
-	// страница оплаты перекотирует счёт). Пусто, когда перекотировки уже не будет: валюта не выбрана,
-	// депозит замечен, счёт вышел из created или истёк — сумма зафиксирована навсегда.
+	// Until when the locked payer_amount is valid (ISO 8601; a ~5 min window, after which the payment
+	// page re-quotes the invoice). Empty when there will be no more re-quotes: the currency has not
+	// been chosen, a deposit has been seen, the invoice has left created or expired — the amount is
+	// locked for good.
 	RateExpiresAt string `json:"rate_expires_at"`
-	// Сколько подтверждений нужно для зачисления (зависит от суммы и сети).
+	// How many confirmations are required for crediting (depends on the amount and the network).
 	RequiredConfirmations int64 `json:"required_confirmations"`
-	// Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату,
-	// ждём подтверждений; при amount_remaining > 0 — частичная, ждём остаток) | paid (оплачено) |
-	// paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled
-	// (отменён) | under_review (поступление задержано на проверке, разбирает оператор).
+	// Status: select (the customer is choosing a currency) | created (awaiting payment) |
+	// confirm_check (payment seen, awaiting confirmations; with amount_remaining > 0 — partial,
+	// awaiting the remainder) | paid (paid) | paid_over (overpaid) | wrong_amount (underpaid, expired)
+	// | expired (expired) | cancelled (cancelled) | under_review (the deposit is held for review, an
+	// operator is handling it).
 	Status PaymentStatus `json:"status"`
-	// Хеш входящей транзакции (когда замечена).
+	// The hash of the incoming transaction (once seen).
 	Txid string `json:"txid"`
-	// Время последнего изменения (ISO 8601).
+	// Time of the last change (ISO 8601).
 	UpdatedAt string `json:"updated_at"`
-	// Ссылка на готовую страницу оплаты.
+	// A link to the ready-made payment page.
 	URL string `json:"url"`
-	// Ссылка «вернуться в магазин» до оплаты.
+	// The "back to store" link before payment.
 	URLReturn string `json:"url_return"`
-	// Куда перенаправить после успешной оплаты.
+	// Where to redirect after a successful payment.
 	URLSuccess string `json:"url_success"`
-	// Наш идентификатор платежа (используйте его в info/refund).
+	// Our payment identifier (use it in info/refund).
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5565,7 +5792,7 @@ func (m PublicPaymentView) GoString() string { return m.String() }
 
 // QrRequest is a model of the API.
 type QrRequest struct {
-	// Произвольный адрес для рендера в QR-код (PNG как data:-URI).
+	// An arbitrary address to render into a QR code (PNG as a data: URI).
 	Address string `json:"address"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5595,17 +5822,17 @@ func (m QrRequest) GoString() string { return m.String() }
 
 // ReferralInfoResult is a model of the API.
 type ReferralInfoResult struct {
-	// Реферальный код мерчанта.
+	// The merchant's referral code.
 	Code string `json:"code"`
-	// Заработано по активам, десятичными строками.
+	// Earned per asset, as decimal strings.
 	EarningsByAsset map[string]string `json:"earnings_by_asset"`
-	// Реферальная ссылка (или сам код, если публичный адрес не настроен).
+	// The referral link (or the code itself if the public address is not configured).
 	Link string `json:"link"`
-	// Сколько мерчантов приглашено.
+	// How many merchants have been invited.
 	ReferredCount int64 `json:"referred_count"`
-	// Доля нашей комиссии по месяцам, в базисных пунктах.
+	// The share of our fee by month, in basis points.
 	TierBps []int64 `json:"tier_bps"`
-	// То же за скользящие 7 дней.
+	// The same over a rolling 7 days.
 	Week ReferralWeek `json:"week"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5635,9 +5862,9 @@ func (m ReferralInfoResult) GoString() string { return m.String() }
 
 // ReferralWeek is a model of the API.
 type ReferralWeek struct {
-	// Заработано за 7 дней по активам, десятичными строками.
+	// Earned over 7 days per asset, as decimal strings.
 	EarningsByAsset map[string]string `json:"earnings_by_asset"`
-	// Приглашено за 7 дней.
+	// Invited over 7 days.
 	ReferredCount int64 `json:"referred_count"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5667,22 +5894,22 @@ func (m ReferralWeek) GoString() string { return m.String() }
 
 // RefundBatchItem is a model of the API.
 type RefundBatchItem struct {
-	// Адрес назначения возврата. По умолчанию — payer_address платежа; обязателен только для
+	// Refund destination address. Defaults to the payment's payer_address; required only for
 	// Bitcoin/UTXO.
 	Address *string `json:"address,omitempty"`
-	// Частичная сумма. По умолчанию — вся полученная.
+	// A partial amount. Defaults to the full received amount.
 	Amount *Decimal `json:"amount,omitempty"`
-	// Профинансировать возврат конвертацией баланса: только USDT → валюта платежа. Нужен, когда монета
-	// платежа уже сведена автообменом.
+	// Fund the refund by converting balance: USDT → the payment currency only. Needed when the payment
+	// coin has already been converted by auto-exchange.
 	FromCurrency *string `json:"from_currency,omitempty"`
-	// Сеть.
+	// Network.
 	Network *string `json:"network,omitempty"`
-	// Ваша ссылка на заказ платежа. Нужен uuid или order_id.
+	// Your order reference of the payment. Either uuid or order_id is required.
 	OrderID *string `json:"order_id,omitempty"`
-	// Необязательный ключ идемпотентности возврата: различает два разных возврата с одинаковыми
-	// (платёж, адрес, сумма); повтор с тем же значением дедуплицируется. Это не order_id.
+	// An optional refund idempotency key: distinguishes two different refunds with the same (payment,
+	// address, amount); a retry with the same value is deduplicated. This is not order_id.
 	Reference string `json:"reference"`
-	// Идентификатор платежа. Нужен uuid или order_id.
+	// Payment id. Either uuid or order_id is required.
 	UUID *string `json:"uuid,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5712,11 +5939,11 @@ func (m RefundBatchItem) GoString() string { return m.String() }
 
 // RefundBatchRequest is a model of the API.
 type RefundBatchRequest struct {
-	// Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop —
-	// прекратить обработку после первой ошибки.
+	// What to do when an item fails: continue (default) — process the rest; stop — stop processing
+	// after the first error.
 	OnError *BatchOnError `json:"on_error,omitempty"`
-	// Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payment/refund; у каждого элемента
-	// обязательны reference (ключ идемпотентности) и uuid либо order_id платежа.
+	// An array of 1 to 5000 items — the same fields as in POST /v1/payment/refund; each item requires
+	// reference (the idempotency key) and the payment's uuid or order_id.
 	Refunds []RefundBatchItem `json:"refunds"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5746,9 +5973,9 @@ func (m RefundBatchRequest) GoString() string { return m.String() }
 
 // RefundFeeResult is a model of the API.
 type RefundFeeResult struct {
-	// true — проект задал настройку сам; false — действует умолчание шлюза.
+	// true — the project set this setting itself; false — the gateway default applies.
 	Configured bool `json:"configured"`
-	// Действующее значение: настройка проекта, а без неё — умолчание шлюза.
+	// The effective value: the project setting, or the gateway default if there is none.
 	FeeOnCustomer bool `json:"fee_on_customer"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5778,22 +6005,22 @@ func (m RefundFeeResult) GoString() string { return m.String() }
 
 // RefundRequest is a model of the API.
 type RefundRequest struct {
-	// Адрес назначения возврата. По умолчанию — payer_address платежа; обязателен только для
+	// Refund destination address. Defaults to the payment's payer_address; required only for
 	// Bitcoin/UTXO.
 	Address *string `json:"address,omitempty"`
-	// Частичная сумма. По умолчанию — вся полученная.
+	// A partial amount. Defaults to the full received amount.
 	Amount *Decimal `json:"amount,omitempty"`
-	// Профинансировать возврат конвертацией баланса: только USDT → валюта платежа. Нужен, когда монета
-	// платежа уже сведена автообменом.
+	// Fund the refund by converting balance: USDT → the payment currency only. Needed when the payment
+	// coin has already been converted by auto-exchange.
 	FromCurrency *string `json:"from_currency,omitempty"`
-	// Сеть.
+	// Network.
 	Network *string `json:"network,omitempty"`
-	// Ваша ссылка на заказ платежа. Нужен uuid или order_id.
+	// Your order reference of the payment. Either uuid or order_id is required.
 	OrderID *string `json:"order_id,omitempty"`
-	// Необязательный ключ идемпотентности возврата: различает два разных возврата с одинаковыми
-	// (платёж, адрес, сумма); повтор с тем же значением дедуплицируется. Это не order_id.
+	// An optional refund idempotency key: distinguishes two different refunds with the same (payment,
+	// address, amount); a retry with the same value is deduplicated. This is not order_id.
 	Reference *string `json:"reference,omitempty"`
-	// Идентификатор платежа. Нужен uuid или order_id.
+	// Payment id. Either uuid or order_id is required.
 	UUID *string `json:"uuid,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5823,7 +6050,7 @@ func (m RefundRequest) GoString() string { return m.String() }
 
 // RegisterWebhookRequest is a model of the API.
 type RegisterWebhookRequest struct {
-	// HTTPS-URL коллбэка. SSRF-проверка: приватные и локальные адреса запрещены.
+	// HTTPS callback URL. SSRF check: private and local addresses are forbidden.
 	URL string `json:"url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5853,12 +6080,12 @@ func (m RegisterWebhookRequest) GoString() string { return m.String() }
 
 // RegisterWebhookResult is a model of the API.
 type RegisterWebhookResult struct {
-	// Идентификатор эндпоинта.
+	// Endpoint id.
 	EndpointID string `json:"endpoint_id"`
-	// Секрет подписи — только в ответе на ПЕРВУЮ регистрацию, показывается один раз; при смене URL его
-	// нет (потеряли — перевыпустите: /v1/webhooks/rotate-secret).
+	// The signing secret — only in the response to the FIRST registration, shown once; absent when the
+	// URL changes (lost it? reissue it: /v1/webhooks/rotate-secret).
 	Secret *string `json:"secret,omitempty"`
-	// Зарегистрированный URL коллбэка.
+	// The registered callback URL.
 	URL string `json:"url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5888,7 +6115,7 @@ func (m RegisterWebhookResult) GoString() string { return m.String() }
 
 // ReplayRequest is a model of the API.
 type ReplayRequest struct {
-	// Идентификатор доставки из GET /v1/sandbox/webhooks.
+	// The delivery id from GET /v1/sandbox/webhooks.
 	DeliveryID string `json:"delivery_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5918,9 +6145,9 @@ func (m ReplayRequest) GoString() string { return m.String() }
 
 // ReplayResult is a model of the API.
 type ReplayResult struct {
-	// Идентификатор доставки, как передан.
+	// The delivery id, as passed.
 	DeliveryID string `json:"delivery_id"`
-	// Всегда true: доставка поставлена в очередь; иначе — ошибка.
+	// Always true: the delivery has been queued; otherwise — an error.
 	Ok bool `json:"ok"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5950,7 +6177,7 @@ func (m ReplayResult) GoString() string { return m.String() }
 
 // RequeueWebhookDeliveryRequest is a model of the API.
 type RequeueWebhookDeliveryRequest struct {
-	// Идентификатор доставки из журнала (POST /v1/webhooks/deliveries).
+	// The delivery id from the log (POST /v1/webhooks/deliveries).
 	ID string `json:"id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5982,13 +6209,13 @@ func (m RequeueWebhookDeliveryRequest) GoString() string { return m.String() }
 
 // RequeueWebhookDeliveryResult is a model of the API.
 type RequeueWebhookDeliveryResult struct {
-	// Идентификатор доставки.
+	// Delivery id.
 	ID string `json:"id"`
-	// true — этот вызов вернул доставку в очередь; false — она уже была в очереди или доставлена
-	// (повтор вызова ничего не меняет).
+	// true — this call re-queued the delivery; false — it was already queued or delivered (repeating
+	// the call changes nothing).
 	Ok bool `json:"ok"`
-	// Статус доставки после вызова: pending — снова в очереди; delivered — уже доставлена, повторять
-	// нечего.
+	// The delivery status after the call: pending — queued again; delivered — already delivered,
+	// nothing to repeat.
 	Status WebhookDeliveryStatus `json:"status"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6020,13 +6247,13 @@ func (m RequeueWebhookDeliveryResult) GoString() string { return m.String() }
 
 // ResetResult is a model of the API.
 type ResetResult struct {
-	// Сколько балансов (по активам) обнулено компенсирующей проводкой.
+	// How many balances (per asset) were zeroed by a compensating posting.
 	BalancesZeroed int64 `json:"balances_zeroed"`
-	// Сколько открытых счетов отменено.
+	// How many open invoices were cancelled.
 	InvoicesCancelled int64 `json:"invoices_cancelled"`
-	// Сколько профинансированных выплатных ссылок отменено (резерв вернулся до обнуления).
+	// How many funded payout links were cancelled (the reserve was returned before zeroing).
 	PayoutLinksCancelled int64 `json:"payout_links_cancelled"`
-	// Сколько профинансированных ссылок отменить не удалось — их резерв остался.
+	// How many funded links could not be cancelled — their reserve remains.
 	PayoutLinksLeft int64 `json:"payout_links_left"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6056,15 +6283,15 @@ func (m ResetResult) GoString() string { return m.String() }
 
 // ResolveAcceptResult is a model of the API.
 type ResolveAcceptResult struct {
-	// Сколько оставлено мерчанту — всё, что пришло.
+	// How much was left to the merchant — everything that arrived.
 	AmountKept string `json:"amount_kept"`
-	// Валюта оплаты.
+	// Payment currency.
 	Currency string `json:"currency"`
-	// Номер заказа мерчанта.
+	// The merchant's order number.
 	OrderID string `json:"order_id"`
-	// Идентификатор платежа.
+	// Payment id.
 	PaymentUUID string `json:"payment_uuid"`
-	// Принятое решение: accepted.
+	// The decision taken: accepted.
 	Resolution string `json:"resolution"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6094,58 +6321,58 @@ func (m ResolveAcceptResult) GoString() string { return m.String() }
 
 // ResolveRefundResult is a model of the API.
 type ResolveRefundResult struct {
-	// Адрес получателя.
+	// Recipient address.
 	Address string `json:"address"`
-	// Сумма выплаты в валюте currency, списанная с вашего баланса.
+	// The payout amount in currency, debited from your balance.
 	Amount Decimal `json:"amount"`
-	// true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).
+	// true — the payout is awaiting approval (internal scenarios; always false with an API key).
 	ApprovalRequired bool `json:"approval_required"`
-	// Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.
+	// The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.
 	Commission Decimal `json:"commission"`
-	// Время создания (ISO 8601).
+	// Creation time (ISO 8601).
 	CreatedAt string `json:"created_at"`
-	// Код валюты выплаты.
+	// Payout currency code.
 	Currency string `json:"currency"`
-	// Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо
-	// или отдать получателю. Пусто, если генерация документов не включена.
+	// A signed link to the PDF receipt of this operation — opens without an API key, can be attached
+	// to an email or given to the recipient. Empty if document generation is not enabled.
 	DocumentURL string `json:"document_url"`
-	// Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма
-	// списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true,
-	// выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю
-	// приходит меньше запрошенного.
+	// Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the
+	// debit amount was increased by the fee, the recipient gets the full requested amount
+	// (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld
+	// from the payout, the recipient gets less than requested.
 	FeeBearer PayoutFeeBearer `json:"fee_bearer"`
-	// true — статус финальный (confirmed / failed / cancelled).
+	// true — the status is final (confirmed / failed / cancelled).
 	IsFinal bool `json:"is_final"`
-	// true — это возврат платежа, а не обычная выплата.
+	// true — this is a payment refund, not a regular payout.
 	IsRefund bool `json:"is_refund"`
-	// Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.
+	// The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.
 	Memo string `json:"memo"`
-	// Сеть блокчейна.
+	// Blockchain network.
 	Network string `json:"network"`
-	// Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см.
+	// Your payout number (reference). null for a refund: a refund has no identifier of yours, see
 	// payment_order_id.
 	OrderID *string `json:"order_id"`
-	// Сколько реально уходит получателю на адрес: amount − commission.
+	// How much actually goes to the recipient's address: amount − commission.
 	PayerAmount Decimal `json:"payer_amount"`
-	// Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата
-	// собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.
+	// Your order_id of the payment that was refunded (null for a regular payout). A refund has no
+	// order_id of its own — it comes as null, so match a refund to an order by this field.
 	PaymentOrderID *string `json:"payment_order_id"`
-	// Идентификатор возвращаемого платежа (null, если это не возврат).
+	// The id of the payment being refunded (null if this is not a refund).
 	RefundFor *string `json:"refund_for"`
-	// Принятое решение: refunded.
+	// The decision taken: refunded.
 	Resolution string `json:"resolution"`
-	// api (через интеграцию) | manual (из кабинета).
+	// api (via the integration) | manual (from the dashboard).
 	Source PayoutSource `json:"source"`
-	// Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй
-	// подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed
-	// (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории
-	// как есть.
+	// Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for
+	// the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) |
+	// confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history
+	// filter as is.
 	Status PayoutStatus `json:"status"`
-	// Хеш транзакции в блокчейне (появляется после отправки).
+	// The blockchain transaction hash (appears after sending).
 	Txid string `json:"txid"`
-	// Время последнего изменения (ISO 8601).
+	// Time of the last change (ISO 8601).
 	UpdatedAt string `json:"updated_at"`
-	// Идентификатор выплаты.
+	// Payout id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6175,18 +6402,18 @@ func (m ResolveRefundResult) GoString() string { return m.String() }
 
 // ResolveRequest is a model of the API.
 type ResolveRequest struct {
-	// accept — принять частичную оплату, refund — вернуть плательщику.
+	// accept — accept the partial payment, refund — return it to the payer.
 	Action string `json:"action"`
-	// Только для refund: адрес возврата. По умолчанию — записанный payer_address платежа; если он пуст
-	// (Bitcoin/UTXO), адрес обязателен, иначе refund.no_address.
+	// Only for refund: the refund address. Defaults to the payment's recorded payer_address; if that
+	// is empty (Bitcoin/UTXO), the address is required, otherwise refund.no_address.
 	Address *string `json:"address,omitempty"`
-	// Только для refund: сеть возврата, по умолчанию — сеть платежа.
+	// Only for refund: the refund network, defaults to the payment's network.
 	Network *string `json:"network,omitempty"`
-	// Ваш идентификатор платежа.
+	// Your payment identifier.
 	OrderID *string `json:"order_id,omitempty"`
-	// Только для refund: ваш ключ дедупликации возврата.
+	// Only for refund: your refund deduplication key.
 	Reference *string `json:"reference,omitempty"`
-	// UUID платежа. Нужен uuid или order_id.
+	// Payment UUID. Either uuid or order_id is required.
 	UUID *string `json:"uuid,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6216,14 +6443,14 @@ func (m ResolveRequest) GoString() string { return m.String() }
 
 // RotateWebhookSecretResult is a model of the API.
 type RotateWebhookSecretResult struct {
-	// Идентификатор эндпоинта.
+	// Endpoint id.
 	EndpointID string `json:"endpoint_id"`
-	// До этого момента доставки дополнительно подписываются старым секретом
+	// Until this moment deliveries are additionally signed with the old secret
 	// (X-Webhook-Signature-Prev), RFC 3339 UTC.
 	PreviousSecretValidUntil string `json:"previous_secret_valid_until"`
-	// Новый секрет подписи — показывается только здесь.
+	// The new signing secret — shown only here.
 	Secret string `json:"secret"`
-	// URL коллбэка.
+	// Callback URL.
 	URL string `json:"url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6253,23 +6480,23 @@ func (m RotateWebhookSecretResult) GoString() string { return m.String() }
 
 // SandboxDelivery is a model of the API.
 type SandboxDelivery struct {
-	// Сделано попыток.
+	// Attempts made.
 	Attempts int64 `json:"attempts"`
-	// Когда поставлена, RFC 3339 UTC.
+	// When queued, RFC 3339 UTC.
 	CreatedAt string `json:"created_at"`
-	// Событие в теле.
+	// The event in the body.
 	EventType string `json:"event_type"`
-	// Идентификатор доставки (для replay).
+	// Delivery id (for replay).
 	ID string `json:"id"`
-	// Ошибка последней попытки; пусто, если её не было.
+	// The error of the last attempt; empty if there was none.
 	LastError string `json:"last_error"`
-	// Тело вебхука ровно так, как оно подписано и отправлено.
+	// The webhook body exactly as it was signed and sent.
 	Payload any `json:"payload"`
-	// Состояние доставки.
+	// Delivery state.
 	Status WebhookDeliveryStatus `json:"status"`
-	// Последнее изменение, RFC 3339 UTC.
+	// Last change, RFC 3339 UTC.
 	UpdatedAt string `json:"updated_at"`
-	// Куда доставляется.
+	// Where it is delivered.
 	URL string `json:"url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6299,9 +6526,9 @@ func (m SandboxDelivery) GoString() string { return m.String() }
 
 // SandboxDeliveryList is a model of the API.
 type SandboxDeliveryList struct {
-	// Записи этой страницы.
+	// The records of this page.
 	Items []SandboxDelivery `json:"items"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6331,13 +6558,13 @@ func (m SandboxDeliveryList) GoString() string { return m.String() }
 
 // SandboxOnboardResult is a model of the API.
 type SandboxOnboardResult struct {
-	// Ключ API мерчанта.
+	// The merchant's API key.
 	APIKey OnboardKey `json:"api_key"`
-	// true — dev store создан сейчас; false — уже был, секрет ключа пуст.
+	// true — the dev store was created just now; false — it already existed, the key secret is empty.
 	Created bool `json:"created"`
-	// Мерчант.
+	// Merchant.
 	MerchantID string `json:"merchant_id"`
-	// Первый проект мерчанта.
+	// The merchant's first project.
 	ProjectID string `json:"project_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6367,11 +6594,11 @@ func (m SandboxOnboardResult) GoString() string { return m.String() }
 
 // SendEmailRequest is a model of the API.
 type SendEmailRequest struct {
-	// Кому отправить. По умолчанию — payer_email, заданный у платежа.
+	// Whom to send to. Defaults to the payer_email set on the payment.
 	Email *string `json:"email,omitempty"`
-	// Ваша ссылка на заказ.
+	// Your order reference.
 	OrderID *string `json:"order_id,omitempty"`
-	// Идентификатор платежа в Oblodai. Нужен uuid или order_id.
+	// The payment id in Oblodai. Either uuid or order_id is required.
 	UUID *string `json:"uuid,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6401,11 +6628,11 @@ func (m SendEmailRequest) GoString() string { return m.String() }
 
 // SendEmailResult is a model of the API.
 type SendEmailResult struct {
-	// Кому ушло письмо.
+	// Who the email was sent to.
 	Email string `json:"email"`
-	// Письмо поставлено в очередь отправки; неудача отвечает ошибкой.
+	// The email has been queued for sending; a failure responds with an error.
 	Ok bool `json:"ok"`
-	// Идентификатор платежа.
+	// Payment id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6435,10 +6662,10 @@ func (m SendEmailResult) GoString() string { return m.String() }
 
 // SetAccuracyRequest is a model of the API.
 type SetAccuracyRequest struct {
-	// Допуск в процентах, 1–5. Обязателен при enabled: true; при enabled: false игнорируется
-	// (сбрасывается в 0). Кэп 5 %
+	// Tolerance in percent, 1–5. Required when enabled: true; ignored (reset to 0) when enabled:
+	// false. Capped at 5 %
 	AccuracyPercent *int64 `json:"accuracy_percent,omitempty"`
-	// Включить/выключить допуск
+	// Enable/disable the tolerance
 	Enabled bool `json:"enabled"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6468,20 +6695,19 @@ func (m SetAccuracyRequest) GoString() string { return m.String() }
 
 // SetAutoConvertRequest is a model of the API.
 type SetAutoConvertRequest struct {
-	// Выключатель приказа целиком. Не передан — считается включённым.
+	// The master switch for the whole order. If omitted, it is considered enabled.
 	Enabled *bool `json:"enabled,omitempty"`
-	// Пол одной конвертации в долларах, десятичной строкой; пусто — умолчание процесса ($10). Ниже
-	// него спред съедает больше, чем сводит.
+	// The floor for a single conversion in dollars, as a decimal string; empty — the process default
+	// ($10). Below it the spread eats more than the conversion is worth.
 	MinAmount *string `json:"min_amount,omitempty"`
-	// Режим зачисления: "economy" — заявка в партию казначейской ликвидации, зачисляется факт
-	// исполнения (комиссия минимальная); "instant" — мгновенно по спред-курсу. Не передан — instant:
-	// автообмен включают ради мгновенного зачисления, а ждать партию — осознанный выбор. Иное значение
-	// — 400 request.invalid_mode.
+	// The crediting mode: "economy" — an order in a treasury liquidation batch, the actual execution
+	// is credited (minimal fee); "instant" — immediately at the spread rate. Omitted — instant:
+	// auto-exchange is enabled for instant crediting, and waiting for a batch is a deliberate choice.
+	// Any other value — 400 request.invalid_mode.
 	Mode *AutoConvertMode `json:"mode,omitempty"`
-	// Монеты, которые сводить. Пусто — приказ есть, но не включён ни для чего.
+	// The coins to convert. Empty — the order exists but is not enabled for anything.
 	Sources []string `json:"sources,omitempty"`
-	// Монета, в которую сводится выручка (стейбл). Проверяется на возможность ликвидации при
-	// сохранении.
+	// The coin revenue is converted into (a stablecoin). Checked for liquidity on save.
 	Target string `json:"target"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6511,9 +6737,9 @@ func (m SetAutoConvertRequest) GoString() string { return m.String() }
 
 // SetAutoRefundRequest is a model of the API.
 type SetAutoRefundRequest struct {
-	// Возвращать излишек при переплате (paid_over)
+	// Refund the excess of an overpayment (paid_over)
 	Overpay bool `json:"overpay"`
-	// Возвращать средства при истёкшей недоплате (wrong_amount)
+	// Refund the funds of an expired underpayment (wrong_amount)
 	Underpay bool `json:"underpay"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6543,11 +6769,11 @@ func (m SetAutoRefundRequest) GoString() string { return m.String() }
 
 // SetDiscountRequest is a model of the API.
 type SetDiscountRequest struct {
-	// Валюта. Пусто = глобальный дефолт для всех монет
+	// Currency. Empty = the global default for all coins
 	Currency *string `json:"currency,omitempty"`
-	// Процент, от -99 до 99. Плюс — скидка, минус — наценка
+	// Percent, from -99 to 99. Plus — a discount, minus — a surcharge
 	DiscountPercent int64 `json:"discount_percent"`
-	// Сеть. Пусто = любая сеть данной валюты
+	// Network. Empty = any network of the given currency
 	Network *string `json:"network,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6577,8 +6803,8 @@ func (m SetDiscountRequest) GoString() string { return m.String() }
 
 // SetPaymentFeeRequest is a model of the API.
 type SetPaymentFeeRequest struct {
-	// Доля НАШЕЙ комиссии, которую платит покупатель: 0 — платит мерчант (как сейчас), 100 — платит
-	// покупатель, счёт выставляется с наценкой. Действует на счета, созданные ПОСЛЕ изменения.
+	// The share of OUR fee paid by the buyer: 0 — the merchant pays (as now), 100 — the buyer pays,
+	// the invoice is issued with a markup. Applies to invoices created AFTER the change.
 	PayerPaysPercent int64 `json:"payer_pays_percent"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6608,7 +6834,8 @@ func (m SetPaymentFeeRequest) GoString() string { return m.String() }
 
 // SetPayoutFeeRequest is a model of the API.
 type SetPayoutFeeRequest struct {
-	// true — сетевую комиссию платит получатель (получает меньше); false — комиссию несёт мерчант
+	// true — the network fee is paid by the recipient (who receives less); false — the merchant bears
+	// the fee
 	FeeOnRecipient bool `json:"fee_on_recipient"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6638,8 +6865,8 @@ func (m SetPayoutFeeRequest) GoString() string { return m.String() }
 
 // SetRefundFeeRequest is a model of the API.
 type SetRefundFeeRequest struct {
-	// true — клиент получает net (комиссию платит клиент); false — мерчант платит комиссию, клиент
-	// получает gross
+	// true — the customer receives net (the customer pays the fee); false — the merchant pays the fee,
+	// the customer receives gross
 	FeeOnCustomer bool `json:"fee_on_customer"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6669,8 +6896,7 @@ func (m SetRefundFeeRequest) GoString() string { return m.String() }
 
 // SetWebhookActiveRequest is a model of the API.
 type SetWebhookActiveRequest struct {
-	// true — доставка возобновляется, false — прекращается (очередь по этому проекту больше не
-	// наполняется).
+	// true — delivery resumes, false — it stops (the queue for this project is no longer filled).
 	Active *bool `json:"active"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6700,7 +6926,7 @@ func (m SetWebhookActiveRequest) GoString() string { return m.String() }
 
 // SetWebhookActiveResult is a model of the API.
 type SetWebhookActiveResult struct {
-	// Включена ли теперь доставка.
+	// Whether delivery is now enabled.
 	Active bool `json:"active"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6730,15 +6956,15 @@ func (m SetWebhookActiveResult) GoString() string { return m.String() }
 
 // SimulateDepositRequest is a model of the API.
 type SimulateDepositRequest struct {
-	// Сумма в валюте счёта; пусто — оплатить ровно сколько нужно, иное — способ получить
-	// недо/переплату.
+	// The amount in the invoice currency; empty — pay exactly the amount due, anything else — a way to
+	// produce an under/overpayment.
 	Amount *string `json:"amount,omitempty"`
-	// С каким числом подтверждений пришёл депозит; 0 — полностью подтверждён; меньше требуемого —
-	// способ проверить переход pending→confirmed (повторите тот же txid с большим числом).
+	// The number of confirmations the deposit arrived with; 0 — fully confirmed; fewer than required —
+	// a way to test the pending→confirmed transition (repeat the same txid with a higher number).
 	Confirmations *int64 `json:"confirmations,omitempty"`
-	// UUID тестового счёта, который «оплачивается».
+	// The UUID of the test invoice being "paid".
 	InvoiceID string `json:"invoice_id"`
-	// Повтор того же txid проверяет вашу идемпотентность; пусто — новый txid.
+	// Repeating the same txid tests your idempotency; empty — a new txid.
 	Txid *string `json:"txid,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6768,13 +6994,13 @@ func (m SimulateDepositRequest) GoString() string { return m.String() }
 
 // SimulateDepositResult is a model of the API.
 type SimulateDepositResult struct {
-	// Сумма депозита в валюте счёта.
+	// The deposit amount in the invoice currency.
 	Amount Decimal `json:"amount"`
-	// С каким числом подтверждений депозит отдан конвейеру.
+	// The number of confirmations with which the deposit was handed to the pipeline.
 	Confirmations int64 `json:"confirmations"`
-	// Оплачиваемый тестовый счёт.
+	// The test invoice being paid.
 	InvoiceID string `json:"invoice_id"`
-	// Транзакция депозита (с префиксом песочницы); повтор того же txid проверяет вашу идемпотентность.
+	// The deposit transaction (with a sandbox prefix); repeating the same txid tests your idempotency.
 	Txid string `json:"txid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6804,11 +7030,11 @@ func (m SimulateDepositResult) GoString() string { return m.String() }
 
 // SoFSubmitRequest is a model of the API.
 type SoFSubmitRequest struct {
-	// Как связаться для уточнений.
+	// How to get in touch for clarifications.
 	Contact *string `json:"contact,omitempty"`
-	// Чем подтверждается: ссылки на выписки, идентификаторы транзакций.
+	// What supports it: links to statements, transaction ids.
 	Evidence *string `json:"evidence,omitempty"`
-	// Откуда средства.
+	// Where the funds come from.
 	Origin string `json:"origin"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6838,9 +7064,9 @@ func (m SoFSubmitRequest) GoString() string { return m.String() }
 
 // SoFSubmitted is a model of the API.
 type SoFSubmitted struct {
-	// Анкета принята к рассмотрению; это не решение о разблокировке.
+	// The questionnaire has been accepted for review; this is not a decision to unblock.
 	Accepted bool `json:"accepted"`
-	// Статус анкеты после приёма — completed.
+	// The questionnaire status after acceptance — completed.
 	Status SoFStatus `json:"status"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6870,9 +7096,9 @@ func (m SoFSubmitted) GoString() string { return m.String() }
 
 // SoFView is a model of the API.
 type SoFView struct {
-	// Срок ссылки вышел — анкету уже не принять.
+	// The link has expired — the questionnaire can no longer be accepted.
 	Expired bool `json:"expired"`
-	// Статус анкеты.
+	// Questionnaire status.
 	Status SoFStatus `json:"status"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6902,8 +7128,8 @@ func (m SoFView) GoString() string { return m.String() }
 
 // SplitConfigRequest is a model of the API.
 type SplitConfigRequest struct {
-	// На сколько секунд откладывать расчёт по сплитам; диапазон 0–7776000 (до 90 суток). 0 —
-	// отправлять доли сразу: риск невозможности возврата берёте на себя.
+	// How many seconds to defer split settlement; range 0–7776000 (up to 90 days). 0 — send shares
+	// immediately: you bear the risk of being unable to refund.
 	RefundHoldSeconds *int64 `json:"refund_hold_seconds"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6933,7 +7159,7 @@ func (m SplitConfigRequest) GoString() string { return m.String() }
 
 // SplitConfigView is a model of the API.
 type SplitConfigView struct {
-	// На сколько секунд откладывается расчёт по сплитам после оплаты; 0 — доли уходят сразу.
+	// How many seconds split settlement is deferred after payment; 0 — shares are sent immediately.
 	RefundHoldSeconds int64 `json:"refund_hold_seconds"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6963,8 +7189,8 @@ func (m SplitConfigView) GoString() string { return m.String() }
 
 // SplitRecipientOptInRequest is a model of the API.
 type SplitRecipientOptInRequest struct {
-	// Разрешить другим мерчантам направлять доли сплитов на ваш баланс. true — включить приём, false —
-	// выключить (новые правила на вас перестанут создаваться; уже созданные продолжают исполняться).
+	// Allow other merchants to route split shares to your balance. true — enable receiving, false —
+	// disable (new rules targeting you can no longer be created; existing ones keep executing).
 	Enabled *bool `json:"enabled"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -6994,7 +7220,7 @@ func (m SplitRecipientOptInRequest) GoString() string { return m.String() }
 
 // SplitRecipientOptInView is a model of the API.
 type SplitRecipientOptInView struct {
-	// true — другие мерчанты могут направлять доли на ваш баланс.
+	// true — other merchants may route shares to your balance.
 	Enabled bool `json:"enabled"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7024,9 +7250,9 @@ func (m SplitRecipientOptInView) GoString() string { return m.String() }
 
 // SplitRuleCreated is a model of the API.
 type SplitRuleCreated struct {
-	// Сохранённая доля в процентах, два знака после точки.
+	// The saved share in percent, two digits after the point.
 	Percent Decimal `json:"percent"`
-	// Идентификатор правила.
+	// Rule id.
 	RuleID string `json:"rule_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7056,7 +7282,7 @@ func (m SplitRuleCreated) GoString() string { return m.String() }
 
 // SplitRuleDeleteRequest is a model of the API.
 type SplitRuleDeleteRequest struct {
-	// Идентификатор правила из POST /v1/split/rule или списка.
+	// The rule id from POST /v1/split/rule or the list.
 	RuleID string `json:"rule_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7086,7 +7312,7 @@ func (m SplitRuleDeleteRequest) GoString() string { return m.String() }
 
 // SplitRuleDeleted is a model of the API.
 type SplitRuleDeleted struct {
-	// Правило удалено; неудача отвечает ошибкой.
+	// The rule has been deleted; a failure responds with an error.
 	Ok bool `json:"ok"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7116,18 +7342,18 @@ func (m SplitRuleDeleted) GoString() string { return m.String() }
 
 // SplitRuleRequest is a model of the API.
 type SplitRuleRequest struct {
-	// Внешний криптоадрес партнёра; доля уходит реальной транзакцией в блокчейне — необратимо. Ровно
-	// один вариант получателя: либо address+network, либо merchant_id.
+	// The partner's external crypto address; the share is sent as a real on-chain transaction —
+	// irreversibly. Exactly one recipient option: either address+network or merchant_id.
 	Address *string `json:"address,omitempty"`
-	// Идентификатор мерчанта-партнёра внутри Oblodai; доля движется по внутреннему учёту и при
-	// возврате отзывается обратно.
+	// The id of the partner merchant within Oblodai; the share moves within internal accounting and is
+	// clawed back on refund.
 	MerchantID *string `json:"merchant_id,omitempty"`
-	// Сеть адреса. Обязательна вместе с address.
+	// The address network. Required together with address.
 	Network *string `json:"network,omitempty"`
-	// Комментарий для себя (виден в списке правил).
+	// A note for yourself (visible in the rule list).
 	Note *string `json:"note,omitempty"`
-	// Доля от каждого платежа, строкой: "10" = 10 %, "2.5" = 2.5 %. Больше 0 и не больше 100, шаг 0.01
-	// %; сумма всех правил не может превышать 100 %.
+	// The share of each payment, as a string: "10" = 10 %, "2.5" = 2.5 %. Greater than 0 and at most
+	// 100, in steps of 0.01 %; the sum of all rules cannot exceed 100 %.
 	Percent string `json:"percent"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7157,22 +7383,22 @@ func (m SplitRuleRequest) GoString() string { return m.String() }
 
 // SplitRuleView is a model of the API.
 type SplitRuleView struct {
-	// Правило действует.
+	// The rule is active.
 	Active bool `json:"active"`
-	// Внешний адрес партнёра; есть у внешнего получателя.
+	// The partner's external address; present for an external recipient.
 	Address *string `json:"address,omitempty"`
-	// Мерчант-партнёр внутри Oblodai; есть у внутреннего получателя.
+	// A partner merchant within Oblodai; present for an internal recipient.
 	MerchantID *string `json:"merchant_id,omitempty"`
-	// Сеть внешнего адреса; есть у внешнего получателя.
+	// The external address's network; present for an external recipient.
 	Network *string `json:"network,omitempty"`
-	// Комментарий из создания.
+	// The note from creation.
 	Note string `json:"note"`
-	// Доля от каждого платежа в процентах.
+	// The share of each payment, in percent.
 	Percent Decimal `json:"percent"`
-	// true — доля движется по внутреннему учёту и отзывается при возврате; false — уходит в блокчейн
-	// необратимо.
+	// true — the share moves within internal accounting and is clawed back on refund; false — it goes
+	// on-chain irreversibly.
 	Reversible bool `json:"reversible"`
-	// Идентификатор правила.
+	// Rule id.
 	RuleID string `json:"rule_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7202,9 +7428,9 @@ func (m SplitRuleView) GoString() string { return m.String() }
 
 // SplitRuleViewList is a model of the API.
 type SplitRuleViewList struct {
-	// Записи этой страницы.
+	// The records of this page.
 	Items []SplitRuleView `json:"items"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7234,34 +7460,33 @@ func (m SplitRuleViewList) GoString() string { return m.String() }
 
 // StaticWalletView is a model of the API.
 type StaticWalletView struct {
-	// Постоянный адрес для пополнений. На XRP — классический r-адрес ОБЩЕГО кошелька; пополнение
-	// обязано нести destination_tag. На XLM — G-адрес; пополнение обязано нести memo.
+	// A permanent deposit address. On XRP — the classic r-address of a SHARED wallet; a deposit must
+	// carry destination_tag. On XLM — a G-address; a deposit must carry memo.
 	Address string `json:"address"`
-	// Только XLM: адрес и memo одной строкой (muxed M…, SEP-23).
+	// XLM only: address and memo in one string (muxed M…, SEP-23).
 	AddressMuxed *string `json:"address_muxed,omitempty"`
-	// Только XRP: адрес и тег одной строкой (X-address, XLS-5).
+	// XRP only: address and tag in one string (X-address, XLS-5).
 	AddressXaddress *string `json:"address_xaddress,omitempty"`
-	// true — кошелёк заблокирован: пополнения на этот адрес НЕ зачисляются (уходят в карантин
-	// оператору, без вебхука и без автовозврата). Публиковать такой адрес нельзя.
+	// true — the wallet is blocked: deposits to this address are NOT credited (they go to operator
+	// quarantine, with no webhook and no auto-refund). Do not publish such an address.
 	Blocked bool `json:"blocked"`
-	// Валюта пополнений.
+	// Deposit currency.
 	Currency string `json:"currency"`
-	// Только XRP: числовой destination tag этого кошелька — клиент обязан указывать его в каждом
-	// переводе.
+	// XRP only: this wallet's numeric destination tag — the customer must specify it in every
+	// transfer.
 	DestinationTag *string `json:"destination_tag,omitempty"`
-	// Подписанная ссылка на PDF-справку о реквизитах. Пусто, когда рендер документов выключен.
+	// A signed link to the PDF payment details certificate. Empty when document rendering is disabled.
 	DocumentURL string `json:"document_url"`
-	// Только XLM: числовой memo (тип ID) этого кошелька — клиент обязан указывать его в каждом
-	// переводе.
+	// XLM only: this wallet's numeric memo (ID type) — the customer must specify it in every transfer.
 	Memo *string `json:"memo,omitempty"`
-	// Сеть блокчейна.
+	// Blockchain network.
 	Network string `json:"network"`
-	// Ваш идентификатор клиента, за которым закреплён адрес (часть тройки идемпотентности
-	// currency+network+order_id).
+	// Your customer identifier the address is assigned to (part of the currency+network+order_id
+	// idempotency triple).
 	OrderID string `json:"order_id"`
-	// Зарезервировано (обычно пусто).
+	// Reserved (usually empty).
 	URL string `json:"url"`
-	// Идентификатор статического кошелька.
+	// Static wallet id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7291,9 +7516,9 @@ func (m StaticWalletView) GoString() string { return m.String() }
 
 // SummaryAmount is a model of the API.
 type SummaryAmount struct {
-	// Сумма в единицах монеты.
+	// The amount in coin units.
 	Amount Decimal `json:"amount"`
-	// Монета оплаты.
+	// Payment coin.
 	Asset string `json:"asset"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7323,9 +7548,9 @@ func (m SummaryAmount) GoString() string { return m.String() }
 
 // SummaryRequest is a model of the API.
 type SummaryRequest struct {
-	// Начало окна, включительно (RFC 3339).
+	// Start of the window, inclusive (RFC 3339).
 	From string `json:"from"`
-	// Конец окна, не включительно (RFC 3339).
+	// End of the window, exclusive (RFC 3339).
 	To string `json:"to"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7355,10 +7580,10 @@ func (m SummaryRequest) GoString() string { return m.String() }
 
 // SummaryResult is a model of the API.
 type SummaryResult struct {
-	// Выплат в работе прямо сейчас (статус не финальный), без возвратов; от окна не зависит.
+	// Payouts in progress right now (non-final status), excluding refunds; independent of the window.
 	PendingPayouts int64 `json:"pending_payouts"`
-	// Оборот окна: оплаченное по оплаченным счетам (paid, paid_over), созданным в окне, — по монете
-	// оплаты, по алфавиту. Пусто — оплат не было.
+	// Turnover for the window: amounts paid on paid invoices (paid, paid_over) created within the
+	// window — per payment coin, alphabetically. Empty — there were no payments.
 	Turnover []SummaryAmount `json:"turnover"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7388,19 +7613,19 @@ func (m SummaryResult) GoString() string { return m.String() }
 
 // TestWebhookKindRequest is a model of the API.
 type TestWebhookKindRequest struct {
-	// Валюта в теле
+	// Currency in the body
 	Currency *string `json:"currency,omitempty"`
-	// Сеть в теле
+	// Network in the body
 	Network *string `json:"network,omitempty"`
-	// Ваш order_id, который попадёт в пробное тело события
+	// Your order_id placed in the sample event body
 	OrderID *string `json:"order_id,omitempty"`
-	// Статус в теле — только те, с которыми боевой вебхук этого вида действительно приходит (кошелёк —
-	// только paid); иначе 400 webhook.bad_status. По умолчанию paid (для выплаты — confirmed, для
-	// конвертации — completed)
+	// The status in the body — only those with which a live webhook of this kind actually arrives
+	// (wallet — paid only); otherwise 400 webhook.bad_status. Default paid (for a payout — confirmed,
+	// for a conversion — completed)
 	Status *string `json:"status,omitempty"`
-	// Куда отправить пробное тело
+	// Where to send the sample body
 	URLCallback string `json:"url_callback"`
-	// UUID объекта (платежа, кошелька или выплаты), который попадёт в пробное тело события
+	// The UUID of the object (payment, wallet or payout) placed in the sample event body
 	UUID *string `json:"uuid,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7430,11 +7655,11 @@ func (m TestWebhookKindRequest) GoString() string { return m.String() }
 
 // TestWebhookKindResult is a model of the API.
 type TestWebhookKindResult struct {
-	// Всегда true: тело доставлено.
+	// Always true: the body was delivered.
 	Ok bool `json:"ok"`
-	// Тело подписано секретом endpoint'а проекта.
+	// The body is signed with the project endpoint's secret.
 	Signed bool `json:"signed"`
-	// HTTP-статус, которым ответил ваш endpoint.
+	// The HTTP status your endpoint responded with.
 	StatusCode int64 `json:"status_code"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7464,11 +7689,11 @@ func (m TestWebhookKindResult) GoString() string { return m.String() }
 
 // TestWebhookRequest is a model of the API.
 type TestWebhookRequest struct {
-	// Статус в теле. По умолчанию paid
+	// The status in the body. Default paid
 	Status *string `json:"status,omitempty"`
-	// Куда отправить пробное тело. Не передан — доставка уходит на зарегистрированный endpoint
-	// проекта; без endpoint — ошибка webhook.no_endpoint. Подпись — секретом endpoint'а проекта, в том
-	// числе при явном url
+	// Where to send the sample body. If omitted, the delivery goes to the project's registered
+	// endpoint; without an endpoint — the webhook.no_endpoint error. Signed with the project
+	// endpoint's secret, including when url is given explicitly
 	URL *string `json:"url,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7498,17 +7723,17 @@ func (m TestWebhookRequest) GoString() string { return m.String() }
 
 // TestWebhookResult is a model of the API.
 type TestWebhookResult struct {
-	// Сколько длилась доставка, мс.
+	// How long the delivery took, ms.
 	DurationMs int64 `json:"duration_ms"`
-	// Почему доставка не состоялась; только при ok=false.
+	// Why the delivery did not take place; only when ok=false.
 	Error *string `json:"error,omitempty"`
-	// Доставка состоялась (endpoint ответил, любым статусом).
+	// The delivery took place (the endpoint responded, with any status).
 	Ok bool `json:"ok"`
-	// Тело подписано секретом endpoint'а проекта.
+	// The body is signed with the project endpoint's secret.
 	Signed bool `json:"signed"`
-	// HTTP-статус ответа endpoint'а; только при ok=true.
+	// The HTTP status returned by the endpoint; only when ok=true.
 	StatusCode *int64 `json:"status_code,omitempty"`
-	// Куда ушло пробное тело.
+	// Where the sample body was sent.
 	URL string `json:"url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7538,14 +7763,14 @@ func (m TestWebhookResult) GoString() string { return m.String() }
 
 // TransferBatchItem is a model of the API.
 type TransferBatchItem struct {
-	// Сумма перевода в currency.
+	// The transfer amount in currency.
 	Amount Decimal `json:"amount"`
-	// Код валюты (криптовалюта).
+	// Currency code (cryptocurrency).
 	Currency string `json:"currency"`
-	// Ключ идемпотентности: повтор с тем же order_id — no-op; в батче переводов обязателен.
+	// Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.
 	OrderID string `json:"order_id"`
-	// Платформенный user id получателя (UUID, не username); username резолвится в id через публичный
-	// профиль кабинета /public/users/{username}.
+	// The recipient's platform user id (a UUID, not a username); a username is resolved to an id via
+	// the dashboard's public profile /public/users/{username}.
 	ToUserID string `json:"to_user_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7575,11 +7800,11 @@ func (m TransferBatchItem) GoString() string { return m.String() }
 
 // TransferBatchRequest is a model of the API.
 type TransferBatchRequest struct {
-	// Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop —
-	// прекратить обработку после первой ошибки.
+	// What to do when an item fails: continue (default) — process the rest; stop — stop processing
+	// after the first error.
 	OnError *BatchOnError `json:"on_error,omitempty"`
-	// Массив от 1 до 5000 элементов — те же поля, что у POST /v1/transfer/to-user; у каждого элемента
-	// обязательны order_id (ключ идемпотентности) и to_user_id (UUID пользователя).
+	// An array of 1 to 5000 items — the same fields as in POST /v1/transfer/to-user; each item
+	// requires order_id (the idempotency key) and to_user_id (the user's UUID).
 	Transfers []TransferBatchItem `json:"transfers"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7609,12 +7834,12 @@ func (m TransferBatchRequest) GoString() string { return m.String() }
 
 // TransferRequest is a model of the API.
 type TransferRequest struct {
-	// Сумма перевода в currency.
+	// The transfer amount in currency.
 	Amount Decimal `json:"amount"`
-	// Код валюты (криптовалюта).
+	// Currency code (cryptocurrency).
 	Currency string `json:"currency"`
-	// Ключ идемпотентности: повтор с тем же order_id — no-op. Настоятельно передавайте всегда, иначе
-	// повтор запроса при сетевом таймауте создаст второй перевод.
+	// Idempotency key: a retry with the same order_id is a no-op. Always pass it, otherwise retrying
+	// the request after a network timeout creates a second transfer.
 	OrderID *string `json:"order_id,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7644,15 +7869,15 @@ func (m TransferRequest) GoString() string { return m.String() }
 
 // TransferResult is a model of the API.
 type TransferResult struct {
-	// Сумма перевода.
+	// Transfer amount.
 	Amount Decimal `json:"amount"`
-	// Актив перевода.
+	// Transfer asset.
 	Currency string `json:"currency"`
-	// Ссылка на PDF-документ перевода; пусто, если документы выключены.
+	// A link to the transfer PDF document; empty if documents are disabled.
 	DocumentURL string `json:"document_url"`
-	// Получатель — пользователь личного кошелька.
+	// The recipient is a personal wallet user.
 	ToUserID string `json:"to_user_id"`
-	// Идентификатор проводки перевода.
+	// The transfer posting id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7682,17 +7907,17 @@ func (m TransferResult) GoString() string { return m.String() }
 
 // TransferToPersonalResult is a model of the API.
 type TransferToPersonalResult struct {
-	// Сумма перевода.
+	// Transfer amount.
 	Amount Decimal `json:"amount"`
-	// Актив перевода.
+	// Transfer asset.
 	Currency string `json:"currency"`
-	// Направление: to_personal.
+	// Direction: to_personal.
 	Direction string `json:"direction"`
-	// Ссылка на PDF-документ перевода; пусто, если документы выключены.
+	// A link to the transfer PDF document; empty if documents are disabled.
 	DocumentURL string `json:"document_url"`
-	// Баланс личного кошелька владельца после перевода.
+	// The balance of the owner's personal wallet after the transfer.
 	PersonalBalance string `json:"personal_balance"`
-	// Идентификатор проводки перевода.
+	// The transfer posting id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7722,14 +7947,14 @@ func (m TransferToPersonalResult) GoString() string { return m.String() }
 
 // TransferToUserRequest is a model of the API.
 type TransferToUserRequest struct {
-	// Сумма перевода в currency.
+	// The transfer amount in currency.
 	Amount Decimal `json:"amount"`
-	// Код валюты (криптовалюта).
+	// Currency code (cryptocurrency).
 	Currency string `json:"currency"`
-	// Ключ идемпотентности: повтор с тем же order_id — no-op; в батче переводов обязателен.
+	// Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.
 	OrderID *string `json:"order_id,omitempty"`
-	// Платформенный user id получателя (UUID, не username); username резолвится в id через публичный
-	// профиль кабинета /public/users/{username}.
+	// The recipient's platform user id (a UUID, not a username); a username is resolved to an id via
+	// the dashboard's public profile /public/users/{username}.
 	ToUserID string `json:"to_user_id"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7759,8 +7984,8 @@ func (m TransferToUserRequest) GoString() string { return m.String() }
 
 // VRCSRequest is a model of the API.
 type VRCSRequest struct {
-	// true — включить автоконвертацию волатильных поступлений в USDT, false — выключить; без поля —
-	// только прочитать текущее состояние.
+	// true — enable auto-conversion of volatile incoming funds to USDT, false — disable it; without
+	// the field — only read the current state.
 	Enabled *bool `json:"enabled,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7790,7 +8015,7 @@ func (m VRCSRequest) GoString() string { return m.String() }
 
 // VRCSResult is a model of the API.
 type VRCSResult struct {
-	// Включена ли автоконвертация волатильных поступлений в USDT.
+	// Whether auto-conversion of volatile incoming funds to USDT is enabled.
 	Enabled bool `json:"enabled"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7820,7 +8045,7 @@ func (m VRCSResult) GoString() string { return m.String() }
 
 // WalletQRResult is a model of the API.
 type WalletQRResult struct {
-	// PNG QR-кода как data:-URI; "" — не удалось отрисовать.
+	// The QR code PNG as a data: URI; "" — rendering failed.
 	Image string `json:"image"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7848,38 +8073,38 @@ func (m WalletQRResult) String() string { return describe("WalletQRResult", m) }
 // GoString is String, for %#v.
 func (m WalletQRResult) GoString() string { return m.String() }
 
-// WalletWebhook — Приходит, когда депозит на статический кошелёк зачислен.
+// WalletWebhook — Sent when a deposit to a static wallet is credited.
 type WalletWebhook struct {
-	// Адрес кошелька, на который пришёл платёж.
+	// The wallet address the payment arrived at.
 	Address string `json:"address"`
-	// Код валюты зачисления.
+	// Credit currency code.
 	Currency string `json:"currency"`
-	// Когда событие произошло, UTC с миллисекундами (ISO 8601).
+	// When the event happened, UTC with milliseconds (ISO 8601).
 	EventAt string `json:"event_at"`
-	// true — статус финальный.
+	// true — the status is final.
 	IsFinal bool `json:"is_final"`
-	// Сеть блокчейна.
+	// Blockchain network.
 	Network string `json:"network"`
-	// Ваш order_id кошелька.
+	// Your order_id for the wallet.
 	OrderID string `json:"order_id"`
-	// Валюта, в которой заплатил плательщик (совпадает с currency).
+	// The currency the payer paid in (matches currency).
 	PayerCurrency string `json:"payer_currency"`
-	// Зачисленная сумма депозита (десятичное число строкой).
+	// The credited deposit amount (a decimal number as a string).
 	PaymentAmount string `json:"payment_amount"`
-	// Глобальный номер события: в пределах одного объекта больший номер новее, меньший — опоздавшая
-	// доставка, её нужно отбросить. У репетиции (test: true) всегда 0.
+	// The global event number: within one object a higher number is newer, a lower one is a late
+	// delivery and must be discarded. Always 0 on a rehearsal (test: true).
 	Sequence int64 `json:"sequence"`
-	// Статус в словаре платежа; живой поток шлёт только paid.
+	// A status from the payment vocabulary; the live flow sends only paid.
 	Status string `json:"status"`
-	// Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true — внутри
-	// подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик обязан
-	// игнорировать, даже если подпись верна.
+	// Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true —
+	// inside the signature. A live event never carries this field: your handler must ignore a body
+	// with test: true even if the signature is valid.
 	Test *bool `json:"test,omitempty"`
-	// Хеш транзакции депозита.
+	// The deposit transaction hash.
 	Txid string `json:"txid"`
-	// Вид события: payment | payout | wallet | conversion — какое тело пришло.
+	// Event kind: payment | payout | wallet | conversion — which body arrived.
 	Type string `json:"type"`
-	// Идентификатор статического кошелька.
+	// Static wallet id.
 	UUID string `json:"uuid"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7909,25 +8134,25 @@ func (m WalletWebhook) GoString() string { return m.String() }
 
 // WebhookDeliveryLogItem is a model of the API.
 type WebhookDeliveryLogItem struct {
-	// Сделано попыток.
+	// Attempts made.
 	Attempts int64 `json:"attempts"`
-	// Почему доставка cancelled не будет отправлена; пусто у остальных статусов.
+	// Why a cancelled delivery will not be sent; empty for other statuses.
 	CancelReason string `json:"cancel_reason"`
-	// Когда поставлена, RFC 3339 UTC.
+	// When queued, RFC 3339 UTC.
 	CreatedAt string `json:"created_at"`
-	// Событие в теле.
+	// The event in the body.
 	EventType string `json:"event_type"`
-	// Идентификатор доставки.
+	// Delivery id.
 	ID string `json:"id"`
-	// Ошибка последней попытки; пусто, если её не было.
+	// The error of the last attempt; empty if there was none.
 	LastError string `json:"last_error"`
-	// Глобальный номер события (тот же, что в теле).
+	// The global event number (the same as in the body).
 	Sequence int64 `json:"sequence"`
-	// Состояние доставки.
+	// Delivery state.
 	Status WebhookDeliveryStatus `json:"status"`
-	// Последнее изменение, RFC 3339 UTC.
+	// Last change, RFC 3339 UTC.
 	UpdatedAt string `json:"updated_at"`
-	// Куда доставляется.
+	// Where it is delivered.
 	URL string `json:"url"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7957,9 +8182,9 @@ func (m WebhookDeliveryLogItem) GoString() string { return m.String() }
 
 // WebhookDeliveryLogItemList is a model of the API.
 type WebhookDeliveryLogItemList struct {
-	// Записи этой страницы.
+	// The records of this page.
 	Items []WebhookDeliveryLogItem `json:"items"`
-	// Блок пагинации.
+	// Pagination block.
 	Paginate Pagination `json:"paginate"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7989,7 +8214,7 @@ func (m WebhookDeliveryLogItemList) GoString() string { return m.String() }
 
 // WebhookResendResult is a model of the API.
 type WebhookResendResult struct {
-	// Всегда true: вебхук поставлен в очередь; неудача отвечает ошибкой.
+	// Always true: the webhook has been queued; a failure responds with an error.
 	Ok bool `json:"ok"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
