@@ -522,7 +522,7 @@ func (s *PaymentsService) GetQR(ctx context.Context, params *LookupRequest, opts
 // merchant.unknown_key, onramp.suppressed_in, payment.bad_status, payment.not_found,
 // request.bad_json, request.body_read, request.control_char, request.duplicate_field,
 // request.nul_byte, request.overloaded, request.rate_limited, request.too_deep.
-func (s *PaymentsService) ListHistory(ctx context.Context, params *HistoryRequest, opts ...RequestOption) *List[PaymentView] {
+func (s *PaymentsService) ListHistory(ctx context.Context, params *PaymentHistoryRequest, opts ...RequestOption) *List[PaymentView] {
 	return doPaged[PaymentView](ctx, s.r, Call{
 		Route: Routes["listPaymentHistory"],
 		Body:  genBody(params),

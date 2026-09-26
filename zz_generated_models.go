@@ -2352,17 +2352,18 @@ func (m FaucetResult) GoString() string { return m.String() }
 
 // HistoryRequest is a model of the API.
 type HistoryRequest struct {
-	// Only for /v1/payout/history: true — return refunds together with payouts (the former behavior of
-	// the feed without kind). Default false: refunds are separate, kind=refund.
+	// true — return refunds together with payouts (the former behavior of the feed without kind).
+	// Default false: refunds are separate, kind=refund.
 	IncludeRefunds *bool `json:"include_refunds,omitempty"`
-	// Only for /v1/payout/history: payout — regular payouts, refund — refunds; empty — regular payouts
-	// (with include_refunds=true — everything together).
+	// payout — regular payouts, refund — refunds; empty — regular payouts (with include_refunds=true —
+	// everything together).
 	Kind *PayoutKind `json:"kind,omitempty"`
 	// Page size, 1–100; out of range — 25.
 	Limit *int64 `json:"limit,omitempty"`
 	// Offset from the start of the list (newest first).
 	Offset *int64 `json:"offset,omitempty"`
-	// Filter by status (an exact value from the status vocabulary); empty — all.
+	// Filter by payout status (an exact value from the payout status vocabulary: pending, approved,
+	// awaiting_cosign, broadcasting, sent, confirmed, failed, cancelled); empty — all.
 	Status *string `json:"status,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -2433,9 +2434,12 @@ func (m LinkCheckoutRequest) GoString() string { return m.String() }
 
 // LookupRequest is a model of the API.
 type LookupRequest struct {
-	// Your order reference.
+	// Your order_id of the object: the payment's for /v1/payment/info, the payout's for
+	// /v1/payout/info.
 	OrderID *string `json:"order_id,omitempty"`
-	// The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.
+	// The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info, the
+	// payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes
+	// precedence.
 	UUID *string `json:"uuid,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3221,6 +3225,41 @@ func (m PaymentFeeResult) String() string { return describe("PaymentFeeResult", 
 
 // GoString is String, for %#v.
 func (m PaymentFeeResult) GoString() string { return m.String() }
+
+// PaymentHistoryRequest is a model of the API.
+type PaymentHistoryRequest struct {
+	// Page size, 1–100; out of range — 25.
+	Limit *int64 `json:"limit,omitempty"`
+	// Offset from the start of the list (newest first).
+	Offset *int64 `json:"offset,omitempty"`
+	// Filter by payment status (an exact value from the payment status vocabulary: select, created,
+	// confirm_check, paid, paid_over, wrong_amount, expired, cancelled); empty — all.
+	Status *string `json:"status,omitempty"`
+	// Extra holds the fields this SDK version does not know, as received.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON decodes the known fields and keeps the rest in Extra.
+func (m *PaymentHistoryRequest) UnmarshalJSON(data []byte) error {
+	type plain PaymentHistoryRequest
+	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
+		return err
+	}
+	m.Extra = genExtra(data, "limit", "offset", "status")
+	return nil
+}
+
+// MarshalJSON encodes the known fields and the ones in Extra.
+func (m PaymentHistoryRequest) MarshalJSON() ([]byte, error) {
+	type plain PaymentHistoryRequest
+	return genMarshal(plain(m), m.Extra)
+}
+
+// String renders the model for logs and debugging, the way the runtime describes models.
+func (m PaymentHistoryRequest) String() string { return describe("PaymentHistoryRequest", m) }
+
+// GoString is String, for %#v.
+func (m PaymentHistoryRequest) GoString() string { return m.String() }
 
 // PaymentInfoResult is a model of the API.
 type PaymentInfoResult struct {
@@ -5899,7 +5938,10 @@ type RefundBatchItem struct {
 	// Refund destination address. Defaults to the payment's payer_address; required only for
 	// Bitcoin/UTXO.
 	Address *string `json:"address,omitempty"`
-	// A partial amount. Defaults to the full received amount.
+	// The amount to refund, in the payment coin; overrides the default. Without it the refund is the
+	// amount paid minus the payer's network surcharge and — when the store's refund fee setting
+	// (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too,
+	// never more than was credited to your balance for this payment.
 	Amount *Decimal `json:"amount,omitempty"`
 	// Fund the refund by converting balance: USDT → the payment currency only. Needed when the payment
 	// coin has already been converted by auto-exchange.
@@ -6010,7 +6052,10 @@ type RefundRequest struct {
 	// Refund destination address. Defaults to the payment's payer_address; required only for
 	// Bitcoin/UTXO.
 	Address *string `json:"address,omitempty"`
-	// A partial amount. Defaults to the full received amount.
+	// The amount to refund, in the payment coin; overrides the default. Without it the refund is the
+	// amount paid minus the payer's network surcharge and — when the store's refund fee setting
+	// (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too,
+	// never more than was credited to your balance for this payment.
 	Amount *Decimal `json:"amount,omitempty"`
 	// Fund the refund by converting balance: USDT → the payment currency only. Needed when the payment
 	// coin has already been converted by auto-exchange.
@@ -7657,11 +7702,14 @@ func (m TestWebhookKindRequest) GoString() string { return m.String() }
 
 // TestWebhookKindResult is a model of the API.
 type TestWebhookKindResult struct {
-	// Always true: the body was delivered.
+	// Always true: your endpoint received the body and answered, with any HTTP status — ok does not
+	// mean it was accepted; check status_code. If the endpoint cannot be reached, the call fails with
+	// webhook.test_failed.
 	Ok bool `json:"ok"`
 	// The body is signed with the project endpoint's secret.
 	Signed bool `json:"signed"`
-	// The HTTP status your endpoint responded with.
+	// The HTTP status your endpoint responded with. Only 2xx counts as accepted: a live delivery
+	// answered with anything else is retried and eventually marked dead.
 	StatusCode int64 `json:"status_code"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7729,11 +7777,13 @@ type TestWebhookResult struct {
 	DurationMs int64 `json:"duration_ms"`
 	// Why the delivery did not take place; only when ok=false.
 	Error *string `json:"error,omitempty"`
-	// The delivery took place (the endpoint responded, with any status).
+	// The delivery took place: the endpoint answered, with any HTTP status — ok does not mean it was
+	// accepted; check status_code.
 	Ok bool `json:"ok"`
 	// The body is signed with the project endpoint's secret.
 	Signed bool `json:"signed"`
-	// The HTTP status returned by the endpoint; only when ok=true.
+	// The HTTP status returned by the endpoint; only when ok=true. Only 2xx counts as accepted: a live
+	// delivery answered with anything else is retried.
 	StatusCode *int64 `json:"status_code,omitempty"`
 	// Where the sample body was sent.
 	URL string `json:"url"`
