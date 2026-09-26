@@ -17,9 +17,19 @@ Notable changes to this package. The format follows
   store owner's own CLI key.
 - `Client.Invoke` / `InvokeList` / `InvokeFile` — call an operation by operationId (used by the
   oblodai CLI).
+- `Refunds.Calculate` (POST /v1/payment/refund/calculate): dry-run a refund and get back
+  `*RefundCalculation` — `Amount`, `Currency`, `Network`, `Address`, `AmountPaid`, `Surcharge`,
+  `Commission`/`CommissionBearer`, `Credited`, `Refundable`, `Refunded`, `Remaining`, and, with
+  `FromCurrency` set, the estimated `FromAmount`. Runs the same checks as `Refunds.Payment` and
+  reserves/sends nothing.
 
 ### Changed
 
+- `PayoutValidateResult` (`Payouts.Validate`) gains `Address` (the destination), and, for a
+  `from_currency` payout, `FromAmount` and `Rate` alongside the existing `FundedBy`.
+- `PayoutRequest.Memo` / `PayoutValidateRequest.Memo` docs are now network-specific: the XRP
+  destination tag, the Stellar memo id, a TON comment (at most 64 bytes), and at most 120 bytes on
+  every other network.
 - **Breaking:** `Payments.ListHistory` takes its own request model `*PaymentHistoryRequest`
   (`limit`, `offset`, `status`) instead of the shared `*HistoryRequest`; `*HistoryRequest` now
   serves `Payouts.ListHistory` only. The payment feed never honoured `Kind`/`IncludeRefunds`, so the
