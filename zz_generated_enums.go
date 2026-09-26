@@ -910,6 +910,24 @@ func (v PayoutStatus) IsKnown() bool {
 	return false
 }
 
+// RefundCommissionBearer is an enumeration of the API.
+type RefundCommissionBearer string
+
+// Values of RefundCommissionBearer.
+const (
+	RefundCommissionBearerCustomer RefundCommissionBearer = "customer"
+	RefundCommissionBearerMerchant RefundCommissionBearer = "merchant"
+)
+
+// IsKnown reports whether v is one of the values this SDK version knows.
+func (v RefundCommissionBearer) IsKnown() bool {
+	switch v {
+	case RefundCommissionBearerCustomer, RefundCommissionBearerMerchant:
+		return true
+	}
+	return false
+}
+
 // RefundRollup is an enumeration of the API.
 type RefundRollup string
 

@@ -72,6 +72,7 @@ payouts.transfer_to_user
 payouts.validate
 referrals.get_info
 refunds.blocked_wallet
+refunds.calculate
 refunds.payment
 sandbox.faucet
 sandbox.list_webhooks

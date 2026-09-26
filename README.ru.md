@@ -146,13 +146,13 @@ fmt.Println(deposit.Txid, deposit.Confirmations)
 Вся поверхность мерчанта, `client.<Сервис>.<Метод>` (таблица генерируется из контракта):
 
 <!-- sdkgen:methods -->
-17 ресурсов, 123 метода.
+17 ресурсов, 124 метода.
 
 | Ресурс | Методы |
 | --- | --- |
 | `Payments` | `Create` · `GetInfo` · `GetQR` · `ListHistory` · `ListServices` · `Cancel` · `SendEmail` · `SetCheckoutConfig` · `GetCheckoutConfig` · `GetAmlLinks` · `Resolve` |
 | `PaymentLinks` | `Create` · `List` · `Get` · `Toggle` |
-| `Refunds` | `Payment` · `BlockedWallet` |
+| `Refunds` | `Payment` · `Calculate` · `BlockedWallet` |
 | `Payouts` | `Create` · `CreateMass` · `GetInfo` · `ListHistory` · `Calculate` · `Validate` · `Cancel` · `Approve` · `ListServices` · `TransferToPersonal` · `TransferToUser` · `CreateTransferBatch` |
 | `PayoutLinks` | `Create` · `CreateBatch` · `List` · `Get` · `Cancel` · `GetPayoutClaim` · `ClaimPayout` |
 | `Batches` | `CreatePayment` · `CreateRefund` · `CreatePayout` · `GetInfo` |

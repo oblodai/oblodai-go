@@ -2434,12 +2434,12 @@ func (m LinkCheckoutRequest) GoString() string { return m.String() }
 
 // LookupRequest is a model of the API.
 type LookupRequest struct {
-	// Your order_id of the object: the payment's for /v1/payment/info, the payout's for
-	// /v1/payout/info.
+	// Your order_id of that object: the payment's in payment operations, the payout's in payout
+	// operations. Used only when uuid is empty.
 	OrderID *string `json:"order_id,omitempty"`
-	// The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info, the
-	// payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes
-	// precedence.
+	// Our id (a UUID) of the object the operation acts on: the payment (invoice) in payment
+	// operations, the payout or refund in payout operations. Either uuid or order_id is required; when
+	// both are passed, uuid is used and order_id is ignored.
 	UUID *string `json:"uuid,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -3024,7 +3024,10 @@ type PaymentBatchItem struct {
 	AccuracyPaymentPercent *float64 `json:"accuracy_payment_percent,omitempty"`
 	// The merchant's private data, echoed in webhooks (not visible to the buyer).
 	AdditionalData *string `json:"additional_data,omitempty"`
-	// The amount to pay in currency.
+	// The price in currency — what you are paid for the order. The payer can be asked for more: the
+	// invoice's payer_amount adds the network surcharge (the cost of accepting the deposit on the
+	// chosen network, see network_surcharge) and any per-method discount or surcharge; your credit is
+	// amount minus the commission.
 	Amount Decimal `json:"amount"`
 	// The price currency code: any of the 23 fiat currencies (USD, EUR, RUB, …) or any coin (USDT,
 	// BTC, …). JPY and KRW have zero decimal places.
@@ -3938,7 +3941,10 @@ type PaymentRequest struct {
 	AccuracyPaymentPercent *float64 `json:"accuracy_payment_percent,omitempty"`
 	// The merchant's private data, echoed in webhooks (not visible to the buyer).
 	AdditionalData *string `json:"additional_data,omitempty"`
-	// The amount to pay in currency.
+	// The price in currency — what you are paid for the order. The payer can be asked for more: the
+	// invoice's payer_amount adds the network surcharge (the cost of accepting the deposit on the
+	// chosen network, see network_surcharge) and any per-method discount or surcharge; your credit is
+	// amount minus the commission.
 	Amount Decimal `json:"amount"`
 	// The price currency code: any of the 23 fiat currencies (USD, EUR, RUB, …) or any coin (USDT,
 	// BTC, …). JPY and KRW have zero decimal places.
@@ -4377,19 +4383,23 @@ func (m PayoutCalculateRequest) GoString() string { return m.String() }
 
 // PayoutCalculation is a model of the API.
 type PayoutCalculation struct {
-	// How much will be debited from the balance; null — unknown (the fee cannot be estimated).
+	// How much will be debited from YOUR balance, in currency (the fee included when you bear it);
+	// null — cannot be estimated right now (the fee is unknown and you bear it).
 	Amount *Decimal `json:"amount"`
-	// Network fee; null — cannot be estimated right now.
+	// The network fee of the payout, in currency; who bears it is fee_bearer. null — cannot be
+	// estimated right now (the fee oracle or the rate is unavailable), not zero: retry later.
 	Commission *Decimal `json:"commission"`
 	// Payout asset.
 	Currency string `json:"currency"`
-	// Who pays the fee: gateway, merchant or recipient.
+	// Who pays the network fee: gateway (Oblodai absorbs it, commission is 0), merchant (added to
+	// amount, the recipient gets the full sum) or recipient (deducted from payer_amount).
 	FeeBearer PayoutFeeBearer `json:"fee_bearer"`
 	// exact — the fee is contractual (the gateway absorbs it); estimated — an oracle estimate.
 	FeeType FeeType `json:"fee_type"`
 	// The network — as it came in the request.
 	Network string `json:"network"`
-	// How much the address will receive; null — unknown.
+	// How much the RECIPIENT receives at the address, in currency (not what you pay — that is amount).
+	// null — cannot be estimated right now (the fee is unknown and the recipient bears it).
 	PayerAmount *Decimal `json:"payer_amount"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -5223,7 +5233,11 @@ type PayoutRequest struct {
 	// Who pays the network fee: true — amount+fee is debited from the balance, the recipient gets
 	// amount; false — the recipient gets amount-fee; omitted — the project's fee-config.
 	IsSubtract *bool `json:"is_subtract,omitempty"`
-	// Destination tag/memo (TON Jetton). At most 120 characters.
+	// Destination tag / memo / comment, by network: XRP — the destination tag, a uint32 (required
+	// unless the X-address carries one; 0 for a wallet without a tag); Stellar — the memo id, a uint64
+	// (required unless the muxed M… address carries one); TON — a comment of at most 64 bytes (it must
+	// fit the transfer's message cell); other networks — at most 120 bytes. Omit it where the network
+	// has none.
 	Memo *string `json:"memo,omitempty"`
 	// Network (tron, ethereum, …). Required for coins with several networks.
 	Network *string `json:"network,omitempty"`
@@ -5273,7 +5287,11 @@ type PayoutValidateRequest struct {
 	// Who pays the network fee: true — amount+fee is debited from the balance, the recipient gets
 	// amount; false — the recipient gets amount-fee; omitted — the project's fee-config.
 	IsSubtract *bool `json:"is_subtract,omitempty"`
-	// Destination tag/memo (TON Jetton). At most 120 characters.
+	// Destination tag / memo / comment, by network: XRP — the destination tag, a uint32 (required
+	// unless the X-address carries one; 0 for a wallet without a tag); Stellar — the memo id, a uint64
+	// (required unless the muxed M… address carries one); TON — a comment of at most 64 bytes (it must
+	// fit the transfer's message cell); other networks — at most 120 bytes. Omit it where the network
+	// has none.
 	Memo *string `json:"memo,omitempty"`
 	// Network (tron, ethereum, …). Required for coins with several networks.
 	Network *string `json:"network,omitempty"`
@@ -5312,22 +5330,32 @@ func (m PayoutValidateRequest) GoString() string { return m.String() }
 
 // PayoutValidateResult is a model of the API.
 type PayoutValidateResult struct {
-	// How much will be debited from the balance.
+	// The destination address the payout will be sent to.
+	Address string `json:"address"`
+	// How much will be debited from the balance, in currency (for a from_currency payout the currency
+	// balance is first funded with it by the conversion, see from_amount).
 	Amount Decimal `json:"amount"`
-	// Network fee.
+	// Network fee, in currency; who bears it is fee_bearer.
 	Commission Decimal `json:"commission"`
 	// Payout currency.
 	Currency string `json:"currency"`
 	// Who pays the network fee.
 	FeeBearer PayoutFeeBearer `json:"fee_bearer"`
+	// How much funded_by (USDT) the conversion will debit to fund amount, at the current rate plus the
+	// conversion spread; the conversion re-prices at execution, so the final figure can differ
+	// slightly. Present only on a from_currency payout.
+	FromAmount *Decimal `json:"from_amount,omitempty"`
 	// The currency whose conversion funds the payout (from_currency); present only on such a payout.
 	FundedBy *string `json:"funded_by,omitempty"`
 	// What exactly was checked against the balance and what will be checked at execution.
 	MaturityNote string `json:"maturity_note"`
 	// The payout network in canonical spelling.
 	Network string `json:"network"`
-	// How much will reach the recipient.
+	// How much the recipient will receive at address, in currency.
 	PayerAmount Decimal `json:"payer_amount"`
+	// The rate the from_amount estimate used: USDT per 1 unit of currency. Present only on a
+	// from_currency payout.
+	Rate *Decimal `json:"rate,omitempty"`
 	// Always true: a failed check responds with an error carrying the reason code.
 	Valid bool `json:"valid"`
 	// Extra holds the fields this SDK version does not know, as received.
@@ -5340,7 +5368,7 @@ func (m *PayoutValidateResult) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
 		return err
 	}
-	m.Extra = genExtra(data, "amount", "commission", "currency", "fee_bearer", "funded_by", "maturity_note", "network", "payer_amount", "valid")
+	m.Extra = genExtra(data, "address", "amount", "commission", "currency", "fee_bearer", "from_amount", "funded_by", "maturity_note", "network", "payer_amount", "rate", "valid")
 	return nil
 }
 
@@ -5938,10 +5966,12 @@ type RefundBatchItem struct {
 	// Refund destination address. Defaults to the payment's payer_address; required only for
 	// Bitcoin/UTXO.
 	Address *string `json:"address,omitempty"`
-	// The amount to refund, in the payment coin; overrides the default. Without it the refund is the
-	// amount paid minus the payer's network surcharge and — when the store's refund fee setting
+	// The amount to refund, in the payment coin. Without it the refund is what is still refundable:
+	// the amount paid minus the payer's network surcharge and — when the store's refund fee setting
 	// (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too,
-	// never more than was credited to your balance for this payment.
+	// never more than was credited to your balance for this payment, less the refunds already made.
+	// All refunds of a payment together cannot exceed that refundable amount
+	// (refund.exceeds_refundable); POST /v1/payment/refund/calculate shows it.
 	Amount *Decimal `json:"amount,omitempty"`
 	// Fund the refund by converting balance: USDT → the payment currency only. Needed when the payment
 	// coin has already been converted by auto-exchange.
@@ -6015,6 +6045,77 @@ func (m RefundBatchRequest) String() string { return describe("RefundBatchReques
 // GoString is String, for %#v.
 func (m RefundBatchRequest) GoString() string { return m.String() }
 
+// RefundCalculation is a model of the API.
+type RefundCalculation struct {
+	// Where the refund would go.
+	Address string `json:"address"`
+	// true — address was omitted and the refund goes to the recorded payer_address (allowed only when
+	// payer_address_is_refundable = true); false — the address you passed.
+	AddressIsPayer bool `json:"address_is_payer"`
+	// What this refund would send: the amount you passed, or by default the remaining refundable
+	// amount.
+	Amount Decimal `json:"amount"`
+	// What the buyer paid in total, including the network surcharge.
+	AmountPaid Decimal `json:"amount_paid"`
+	// The Oblodai commission withheld from the refund: the payment's commission when commission_bearer
+	// is customer, 0 when it is merchant.
+	Commission Decimal `json:"commission"`
+	// Who bears the Oblodai commission on this refund (the store's refund fee setting,
+	// getRefundFeeConfig): customer — it is deducted from the refund; merchant — it is not.
+	CommissionBearer RefundCommissionBearer `json:"commission_bearer"`
+	// What this payment credited to your balance; null — cannot be reconstructed (a legacy payment).
+	Credited *Decimal `json:"credited"`
+	// The refund coin — the one the buyer paid with.
+	Currency string `json:"currency"`
+	// How much USDT the funding conversion would debit, at the current rate plus the conversion
+	// spread; it re-prices at execution. Present only with from_currency.
+	FromAmount *Decimal `json:"from_amount,omitempty"`
+	// The currency whose conversion would fund the refund (from_currency); present only then.
+	FundedBy *string `json:"funded_by,omitempty"`
+	// The network the refund would be sent on (canonical).
+	Network string `json:"network"`
+	// Your order_id of the payment; null if it has none.
+	OrderID *string `json:"order_id"`
+	// USDT per 1 unit of currency used for from_amount. Present only with from_currency.
+	Rate *Decimal `json:"rate,omitempty"`
+	// The most that all refunds of this payment together may send: amount_paid minus surcharge (minus
+	// commission when commission_bearer is customer), never more than credited.
+	Refundable Decimal `json:"refundable"`
+	// Already refunded (live and completed refunds; failed and cancelled ones do not count).
+	Refunded Decimal `json:"refunded"`
+	// refundable minus refunded: what can still be refunded before this refund.
+	Remaining Decimal `json:"remaining"`
+	// The payer's network surcharge inside amount_paid: the cost of accepting the deposit, never
+	// refunded from your balance.
+	Surcharge Decimal `json:"surcharge"`
+	// The payment id.
+	UUID string `json:"uuid"`
+	// Extra holds the fields this SDK version does not know, as received.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON decodes the known fields and keeps the rest in Extra.
+func (m *RefundCalculation) UnmarshalJSON(data []byte) error {
+	type plain RefundCalculation
+	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
+		return err
+	}
+	m.Extra = genExtra(data, "address", "address_is_payer", "amount", "amount_paid", "commission", "commission_bearer", "credited", "currency", "from_amount", "funded_by", "network", "order_id", "rate", "refundable", "refunded", "remaining", "surcharge", "uuid")
+	return nil
+}
+
+// MarshalJSON encodes the known fields and the ones in Extra.
+func (m RefundCalculation) MarshalJSON() ([]byte, error) {
+	type plain RefundCalculation
+	return genMarshal(plain(m), m.Extra)
+}
+
+// String renders the model for logs and debugging, the way the runtime describes models.
+func (m RefundCalculation) String() string { return describe("RefundCalculation", m) }
+
+// GoString is String, for %#v.
+func (m RefundCalculation) GoString() string { return m.String() }
+
 // RefundFeeResult is a model of the API.
 type RefundFeeResult struct {
 	// true — the project set this setting itself; false — the gateway default applies.
@@ -6052,10 +6153,12 @@ type RefundRequest struct {
 	// Refund destination address. Defaults to the payment's payer_address; required only for
 	// Bitcoin/UTXO.
 	Address *string `json:"address,omitempty"`
-	// The amount to refund, in the payment coin; overrides the default. Without it the refund is the
-	// amount paid minus the payer's network surcharge and — when the store's refund fee setting
+	// The amount to refund, in the payment coin. Without it the refund is what is still refundable:
+	// the amount paid minus the payer's network surcharge and — when the store's refund fee setting
 	// (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too,
-	// never more than was credited to your balance for this payment.
+	// never more than was credited to your balance for this payment, less the refunds already made.
+	// All refunds of a payment together cannot exceed that refundable amount
+	// (refund.exceeds_refundable); POST /v1/payment/refund/calculate shows it.
 	Amount *Decimal `json:"amount,omitempty"`
 	// Fund the refund by converting balance: USDT → the payment currency only. Needed when the payment
 	// coin has already been converted by auto-exchange.
@@ -7597,7 +7700,7 @@ func (m SummaryAmount) GoString() string { return m.String() }
 type SummaryRequest struct {
 	// Start of the window, inclusive (RFC 3339).
 	From string `json:"from"`
-	// End of the window, exclusive (RFC 3339).
+	// End of the window, exclusive (RFC 3339); must be after from, otherwise summary.bad_window.
 	To string `json:"to"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -7819,7 +7922,9 @@ type TransferBatchItem struct {
 	Amount Decimal `json:"amount"`
 	// Currency code (cryptocurrency).
 	Currency string `json:"currency"`
-	// Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.
+	// Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch. Always
+	// pass it (or an Idempotency-Key header, which the SDKs send for you): without either, retrying
+	// the request after a network timeout creates a second transfer.
 	OrderID string `json:"order_id"`
 	// The recipient's platform user id (a UUID, not a username); a username is resolved to an id via
 	// the dashboard's public profile /public/users/{username}.
@@ -7890,8 +7995,9 @@ type TransferRequest struct {
 	Amount Decimal `json:"amount"`
 	// Currency code (cryptocurrency).
 	Currency string `json:"currency"`
-	// Idempotency key: a retry with the same order_id is a no-op. Always pass it, otherwise retrying
-	// the request after a network timeout creates a second transfer.
+	// Idempotency key: a retry with the same order_id is a no-op. Always pass it (or an
+	// Idempotency-Key header, which the SDKs send for you): without either, retrying the request after
+	// a network timeout creates a second transfer.
 	OrderID *string `json:"order_id,omitempty"`
 	// Extra holds the fields this SDK version does not know, as received.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -8003,7 +8109,9 @@ type TransferToUserRequest struct {
 	Amount Decimal `json:"amount"`
 	// Currency code (cryptocurrency).
 	Currency string `json:"currency"`
-	// Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.
+	// Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch. Always
+	// pass it (or an Idempotency-Key header, which the SDKs send for you): without either, retrying
+	// the request after a network timeout creates a second transfer.
 	OrderID *string `json:"order_id,omitempty"`
 	// The recipient's platform user id (a UUID, not a username); a username is resolved to an id via
 	// the dashboard's public profile /public/users/{username}.

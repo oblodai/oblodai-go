@@ -146,13 +146,13 @@ fmt.Println(deposit.Txid, deposit.Confirmations)
 The whole merchant surface, `client.<Service>.<Method>` (the table is generated from the contract):
 
 <!-- sdkgen:methods -->
-17 resources, 123 methods.
+17 resources, 124 methods.
 
 | Resource | Methods |
 | --- | --- |
 | `Payments` | `Create` · `GetInfo` · `GetQR` · `ListHistory` · `ListServices` · `Cancel` · `SendEmail` · `SetCheckoutConfig` · `GetCheckoutConfig` · `GetAmlLinks` · `Resolve` |
 | `PaymentLinks` | `Create` · `List` · `Get` · `Toggle` |
-| `Refunds` | `Payment` · `BlockedWallet` |
+| `Refunds` | `Payment` · `Calculate` · `BlockedWallet` |
 | `Payouts` | `Create` · `CreateMass` · `GetInfo` · `ListHistory` · `Calculate` · `Validate` · `Cancel` · `Approve` · `ListServices` · `TransferToPersonal` · `TransferToUser` · `CreateTransferBatch` |
 | `PayoutLinks` | `Create` · `CreateBatch` · `List` · `Get` · `Cancel` · `GetPayoutClaim` · `ClaimPayout` |
 | `Batches` | `CreatePayment` · `CreateRefund` · `CreatePayout` · `GetInfo` |
