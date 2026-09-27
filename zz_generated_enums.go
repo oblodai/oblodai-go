@@ -1021,6 +1021,7 @@ const (
 	WebhookEventNameInvoiceExpired       WebhookEventName = "invoice.expired"
 	WebhookEventNameInvoiceCancelled     WebhookEventName = "invoice.cancelled"
 	WebhookEventNameInvoiceUnderReview   WebhookEventName = "invoice.under_review"
+	WebhookEventNameInvoiceReversed      WebhookEventName = "invoice.reversed"
 	WebhookEventNamePayoutApproved       WebhookEventName = "payout.approved"
 	WebhookEventNamePayoutAwaitingCosign WebhookEventName = "payout.awaiting_cosign"
 	WebhookEventNamePayoutBroadcasting   WebhookEventName = "payout.broadcasting"
@@ -1037,7 +1038,7 @@ const (
 // IsKnown reports whether v is one of the values this SDK version knows.
 func (v WebhookEventName) IsKnown() bool {
 	switch v {
-	case WebhookEventNameInvoiceSelect, WebhookEventNameInvoiceCreated, WebhookEventNameInvoiceConfirmCheck, WebhookEventNameInvoicePaid, WebhookEventNameInvoicePaidOver, WebhookEventNameInvoiceWrongAmount, WebhookEventNameInvoiceExpired, WebhookEventNameInvoiceCancelled, WebhookEventNameInvoiceUnderReview, WebhookEventNamePayoutApproved, WebhookEventNamePayoutAwaitingCosign, WebhookEventNamePayoutBroadcasting, WebhookEventNamePayoutCancelled, WebhookEventNamePayoutConfirmed, WebhookEventNamePayoutFailed, WebhookEventNamePayoutPending, WebhookEventNamePayoutSent, WebhookEventNameWalletPaid, WebhookEventNameConversionCompleted, WebhookEventNameConversionRefunded:
+	case WebhookEventNameInvoiceSelect, WebhookEventNameInvoiceCreated, WebhookEventNameInvoiceConfirmCheck, WebhookEventNameInvoicePaid, WebhookEventNameInvoicePaidOver, WebhookEventNameInvoiceWrongAmount, WebhookEventNameInvoiceExpired, WebhookEventNameInvoiceCancelled, WebhookEventNameInvoiceUnderReview, WebhookEventNameInvoiceReversed, WebhookEventNamePayoutApproved, WebhookEventNamePayoutAwaitingCosign, WebhookEventNamePayoutBroadcasting, WebhookEventNamePayoutCancelled, WebhookEventNamePayoutConfirmed, WebhookEventNamePayoutFailed, WebhookEventNamePayoutPending, WebhookEventNamePayoutSent, WebhookEventNameWalletPaid, WebhookEventNameConversionCompleted, WebhookEventNameConversionRefunded:
 		return true
 	}
 	return false

@@ -557,7 +557,7 @@ func (s *PaymentsService) ListServices(ctx context.Context, params *PageRequest,
 // (`invoice.already_paid` / `invoice.deposit_pending`): such an invoice must be settled or
 // refunded, not cancelled.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, invoice.already_paid, invoice.corrupt_pay_asset, invoice.deposit_pending,
@@ -581,7 +581,7 @@ func (s *PaymentsService) Cancel(ctx context.Context, params *LookupRequest, opt
 // one address per hour, counted across all your payments (otherwise `email.rate_limited`, 429). A
 // payment receipt is sent automatically to `payer_email` once the payment is received.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // email.bad_recipient, email.disabled, email.no_recipient, email.rate_limited, internal,
@@ -611,7 +611,7 @@ func (s *PaymentsService) SendEmail(ctx context.Context, params *SendEmailReques
 // in a redirect means "do not redirect". The URL must be http(s); it is validated on write, not on
 // display.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, checkoutcfg.bad_url,
 // checkoutcfg.disabled, checkoutcfg.url_too_long, cli.permission_denied, internal,
@@ -651,7 +651,7 @@ func (s *PaymentsService) GetCheckoutConfig(ctx context.Context, opts ...Request
 // (hand it to the payer), `expired_at`, `status` (`init|pending|completed|expired`). The
 // questionnaire contents are not shown to you: they are your customer's data, not yours.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: aml.sof_race, auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed,
 // cli.permission_denied, internal, invoice.corrupt_pay_asset, merchant.bad_signature,
@@ -678,8 +678,7 @@ func (s *PaymentsService) GetAmlLinks(ctx context.Context, params *AMLLinksReque
 // `refund.exceeds_refundable` if the payment was already partly refunded. It moves money — it is
 // signed with your API key like everything else: a merchant has one key and it has full access.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
@@ -734,7 +733,7 @@ type PaymentLinksService struct{ r Requester }
 // seconds (0 = **never expires**; the invoices themselves still have the usual short lifetime). The
 // response contains `link_id` and the `url` for the customer.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.acceptance_blocked, merchant.bad_signature, merchant.key_expired,
@@ -793,7 +792,7 @@ func (s *PaymentLinksService) Get(ctx context.Context, params *PaymentLinkLookup
 //
 // `{link_id, active}`. A disabled link does not accept new payments.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
@@ -833,10 +832,12 @@ type RefundsService struct{ r Requester }
 // `payout.insufficient_funds`. POST /v1/payment/refund/calculate shows these numbers without
 // refunding.
 //
-// Idempotent on `(payment, address, amount)`. Refunds to any address are approved automatically.
-// The only exception is a card payment via an on-ramp: a refund TO THE RECORDED PAYER ADDRESS of
-// such an invoice is rejected (`refund.omnibus_destination`), because that address belongs to the
-// provider, not the buyer — send the buyer's address explicitly.
+// Idempotent on `(payment, address, amount)`, and on `reference` when you pass it: a retry with the
+// same `reference` returns the refund already made — also when `amount` is omitted, where the
+// retry's own default would otherwise be the (now zero) remainder. Refunds to any address are
+// approved automatically. The only exception is a card payment via an on-ramp: a refund TO THE
+// RECORDED PAYER ADDRESS of such an invoice is rejected (`refund.omnibus_destination`), because
+// that address belongs to the provider, not the buyer — send the buyer's address explicitly.
 //
 // A refund is paid in THE SAME coin the buyer paid with. If it has already been converted into a
 // stablecoin by auto-conversion, pass `from_currency: "USDT"` — the refund is funded by converting
@@ -844,8 +845,7 @@ type RefundsService struct{ r Requester }
 // reversed. You can also send the money as a regular payout, but reports will show it as a payout,
 // not a refund.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
@@ -897,10 +897,14 @@ func (s *RefundsService) Payment(ctx context.Context, params *RefundRequest, opt
 // Runs the same checks as the refund itself and fails with the same error the refund would
 // (`refund.exceeds_refundable`, `refund.dust`, `refund.no_address`, `refund.nothing_to_refund`, …),
 // including `payout.insufficient_funds` when your available balance does not cover the refund —
-// which, when you bear the commission, can be more than the payment credited. Not checked: the
-// destination address screening, which runs when the refund is made, and deposits that are not yet
-// final, which the refund holds back (`payout.funds_maturing`). Reserves and sends nothing; safe to
-// retry.
+// which, when you bear the commission, can be more than the payment credited — and the payout
+// controls the refund's payout meets: the payout freeze, your freeze, daily limit and per-payout
+// limit, and whether the destination can receive this amount (`payout.destination_not_activated`).
+// Not checked: the paid screening of the destination address, which runs when the refund is made;
+// deposits that are not yet final, which the refund holds back (`payout.funds_maturing`); and, for
+// a key that may not make refunds itself (a CLI key without the right to move money out), whether
+// the address belongs to the gateway (`refund.destination_internal`) — the refund always checks it.
+// Reserves and sends nothing; safe to retry.
 //
 // Requires role: Viewer when called with a CLI key.
 //
@@ -908,15 +912,16 @@ func (s *RefundsService) Payment(ctx context.Context, params *RefundRequest, opt
 // internal, invoice.corrupt_pay_asset, merchant.bad_signature, merchant.key_expired,
 // merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
 // merchant.unknown_key, onramp.suppresses, payment.bad_uuid, payment.no_lookup, payment.not_found,
-// payout.above_limit, payout.address_network_mismatch, payout.bad_address, payout.bad_memo,
-// payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_insufficient,
+// payout.above_limit, payout.address_network_mismatch, payout.amount_below_fee, payout.bad_address,
+// payout.bad_memo, payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_insufficient,
 // payout.convert_no_rate, payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap,
-// payout.freeze_unknown, payout.frozen, payout.insufficient_funds, payout.memo_conflict,
-// payout.memo_required, payout.memo_too_long, payout.merchant_frozen, rates.deviation,
-// rates.no_source, rates.non_positive, rates.stale_rate, refund.bad_amount, refund.chain_ambiguous,
-// refund.destination_internal, refund.dust, refund.exceeds_refundable, refund.fence_check,
-// refund.from_currency_personal_account, refund.from_currency_unsupported, refund.network_required,
-// refund.no_address, refund.nothing_to_refund, refund.omnibus_destination, refund.paid_internally,
+// payout.destination_not_activated, payout.freeze_unknown, payout.frozen,
+// payout.insufficient_funds, payout.memo_conflict, payout.memo_required, payout.memo_too_long,
+// payout.merchant_frozen, rates.deviation, rates.no_source, rates.non_positive, rates.stale_rate,
+// refund.bad_amount, refund.chain_ambiguous, refund.destination_internal, refund.dust,
+// refund.exceeds_refundable, refund.fence_check, refund.from_currency_personal_account,
+// refund.from_currency_unsupported, refund.network_required, refund.no_address,
+// refund.nothing_to_refund, refund.omnibus_destination, refund.paid_internally,
 // refund.unsupported_network, request.bad_json, request.body_read, request.control_char,
 // request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
 // request.too_deep, sandbox.convert_not_available, treasury.no_ccy_map, wallet.static_not_found.
@@ -940,8 +945,7 @@ func (s *RefundsService) Calculate(ctx context.Context, params *RefundRequest, o
 // and waits for an operator's decision; you can refund it with this endpoint once the operator has
 // reviewed it. Until then it is not yours yet, and the response will be "nothing to refund".
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
@@ -988,8 +992,7 @@ type PayoutsService struct{ r Requester }
 //
 // Also: `memo` (tag/memo for TON), `url_callback` (your own webhook URL for this payout).
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
@@ -1029,8 +1032,7 @@ func (s *PayoutsService) Create(ctx context.Context, params *PayoutRequest, opts
 // Many payouts in one request (up to 100). Each one is independent: an error in one does not stop
 // the rest, and a result is returned for each. Idempotent on `order_id`, like a regular payout.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.duplicate_order_id,
 // cli.permission_denied, compliance.blocked, compliance.blocked_address,
@@ -1135,27 +1137,31 @@ func (s *PayoutsService) Calculate(ctx context.Context, params *PayoutCalculateR
 
 // Validate — Validate a payout without creating it (dry run) (POST /v1/payout/validate).
 //
-// Runs all payout-creation checks — currency, amount, network, address, memo, address screening,
-// fee, freeze/daily limit and balance sufficiency — but reserves and sends nothing. The response is
-// `valid: true` with the amounts (`amount`, `commission`, `payer_amount`, `fee_bearer`), the
-// destination `address`, and for a `from_currency` payout the USDT the funding conversion would
-// spend (`from_amount`, at the current rate), or the same error that creation would return. The
-// body is the same as for POST /v1/payout (order_id is optional for validation).
+// Runs the payout-creation checks — currency, amount, network, address, memo, sanctions lists and
+// blocklist, fee, payout freeze, destination activation, your freeze/daily limit/per-payout limit
+// and balance sufficiency — but reserves and sends nothing, and costs nothing: the paid AML
+// screening of the address runs only when the payout is created, so `compliance.blocked` is the one
+// refusal validation cannot foresee. The response is `valid: true` with the amounts (`amount`,
+// `commission`, `payer_amount`, `fee_bearer`), the destination `address`, and for a `from_currency`
+// payout the USDT the funding conversion would spend (`from_amount`, at the current rate), or the
+// same error that creation would return. The body is the same as for POST /v1/payout (order_id is
+// optional for validation).
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
-// compliance.blocked, compliance.blocked_address, compliance.blocklist_unavailable,
-// compliance.no_destination, compliance.no_network, compliance.sanctioned_address,
-// compliance.sanctions_unavailable, internal, merchant.bad_signature, merchant.key_expired,
-// merchant.key_mode_mismatch, merchant.rate_limited, merchant.secret_decrypt, merchant.suspended,
-// merchant.unknown_key, payout.above_limit, payout.address_network_mismatch,
-// payout.amount_below_fee, payout.bad_address, payout.bad_amount, payout.bad_memo,
-// payout.bad_url_callback, payout.cap_unpriceable, payout.convert_bad_amount,
-// payout.convert_insufficient, payout.convert_no_rate, payout.convert_same_asset,
-// payout.convert_unsupported, payout.daily_cap, payout.destination_internal,
-// payout.from_currency_unsupported, payout.insufficient_funds, payout.memo_conflict,
-// payout.memo_required, payout.memo_too_long, payout.merchant_frozen, payout.network_required,
+// compliance.blocked_address, compliance.blocklist_unavailable, compliance.no_destination,
+// compliance.no_network, compliance.sanctioned_address, compliance.sanctions_unavailable, internal,
+// merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch, merchant.rate_limited,
+// merchant.secret_decrypt, merchant.suspended, merchant.unknown_key, payout.above_limit,
+// payout.address_network_mismatch, payout.amount_below_fee, payout.asset_mismatch,
+// payout.bad_address, payout.bad_amount, payout.bad_memo, payout.bad_url_callback,
+// payout.cap_unpriceable, payout.convert_bad_amount, payout.convert_insufficient,
+// payout.convert_no_rate, payout.convert_same_asset, payout.convert_unsupported, payout.daily_cap,
+// payout.destination_internal, payout.destination_not_activated, payout.fee_asset_mismatch,
+// payout.freeze_unknown, payout.from_currency_unsupported, payout.frozen,
+// payout.insufficient_funds, payout.memo_conflict, payout.memo_required, payout.memo_too_long,
+// payout.merchant_frozen, payout.network_required, payout.no_destination,
 // payout.reserved_reference, payout.unsupported_network, rates.deviation, rates.no_source,
 // rates.non_positive, request.bad_json, request.body_read, request.control_char,
 // request.duplicate_field, request.nul_byte, request.overloaded, request.rate_limited,
@@ -1175,7 +1181,7 @@ func (s *PayoutsService) Validate(ctx context.Context, params *PayoutValidateReq
 // network (statuses pending / approved / awaiting_cosign); after broadcast — 409. A refund is also
 // a payout, so this same method rejects a refund that has not been sent yet. Only your own payout.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
@@ -1268,8 +1274,7 @@ func (s *PayoutsService) TransferToPersonal(ctx context.Context, params *Transfe
 // instant, off-chain). The recipient is addressed by user id; a username is resolved by the
 // dashboard's public endpoint /public/users/{username}.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
@@ -1298,8 +1303,7 @@ func (s *PayoutsService) TransferToUser(ctx context.Context, params *TransferToU
 // An asynchronous batch of internal transfers: {"transfers":[<as in /v1/transfer/to-user>...],
 // "on_error":"continue"}. Status and per-row results — POST /v1/batch/info.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.bad_on_error,
 // batch.bad_recipient, batch.disabled, batch.duplicate_order_id, batch.duplicate_reference,
@@ -1329,8 +1333,7 @@ type PayoutLinksService struct{ r Requester }
 // to 30 days). ⚠ If the field is omitted or `0`, the link lives ONE HOUR, not the maximum — set the
 // lifetime explicitly. Idempotency: `reference` (or the `Idempotency-Key` header).
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // email.bad_recipient, idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
@@ -1359,8 +1362,7 @@ func (s *PayoutLinksService) Create(ctx context.Context, params *PayoutLinkItem,
 // Up to 500 links per call; each succeeds or fails independently, the response is aligned with the
 // request indices. Retrying with the same `reference` values is safe.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // email.bad_recipient, idempotency.bad_key, idempotency.in_progress, idempotency.key_reused,
@@ -1423,7 +1425,7 @@ func (s *PayoutLinksService) Get(ctx context.Context, params *PayoutLinkIDReques
 //
 // An unclaimed link is cancelled and the reserve is returned to the balance.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, ledger.account_not_found, ledger.asset_mismatch, ledger.bad_direction,
@@ -1510,7 +1512,7 @@ type BatchesService struct{ r Requester }
 // with `batch.bad_on_error`. Each item is idempotent on its own `order_id`; the whole batch — on
 // the `Idempotency-Key` header.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.bad_on_error,
 // batch.bad_recipient, batch.disabled, batch.duplicate_order_id, batch.duplicate_reference,
@@ -1537,8 +1539,7 @@ func (s *BatchesService) CreatePayment(ctx context.Context, params *PaymentBatch
 // into one. Returns `batch_id`; per-item status via `/v1/batch/info`. `on_error`:
 // `continue`/`stop`.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.bad_on_error,
 // batch.bad_recipient, batch.disabled, batch.duplicate_order_id, batch.duplicate_reference,
@@ -1562,8 +1563,7 @@ func (s *BatchesService) CreateRefund(ctx context.Context, params *RefundBatchRe
 // processed in the background, status via `/v1/batch/info`. Each item is a regular `/v1/payout`
 // object, idempotent on `order_id`.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, batch.bad_on_error,
 // batch.bad_recipient, batch.disabled, batch.duplicate_order_id, batch.duplicate_reference,
@@ -1623,8 +1623,7 @@ type SplitsService struct{ r Requester }
 // refund. A refund AFTER sending: an external share cannot be recovered (top up your balance); an
 // on-platform partner's share is clawed back automatically.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // idempotency.bad_key, idempotency.in_progress, idempotency.key_reused, idempotency.unavailable,
@@ -1667,7 +1666,7 @@ func (s *SplitsService) ListRules(ctx context.Context, params *PageRequest, opts
 //
 // `{rule_id}`. Does not affect shares already sent.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
@@ -1692,7 +1691,7 @@ func (s *SplitsService) DeleteRule(ctx context.Context, params *SplitRuleDeleteR
 // sending. Range 0–7776000 (up to 90 days); the field is required — send `0` explicitly if shares
 // should be sent immediately.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
@@ -1730,7 +1729,7 @@ func (s *SplitsService) GetConfig(ctx context.Context, opts ...RequestOption) (*
 // disabled, nobody can create an internal split rule with you as the recipient. Disabling does not
 // revoke rules already created (money keeps arriving under them), but blocks new ones.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
@@ -2100,7 +2099,7 @@ func (s *WebhooksService) SendTestConversion(ctx context.Context, params *TestWe
 // additionally carry `X-Webhook-Signature-Prev` signed with the old secret — time to roll out the
 // change without losing verification.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
@@ -2124,7 +2123,7 @@ func (s *WebhooksService) RotateSecret(ctx context.Context, opts ...RequestOptio
 // for 3 days in a row is disabled automatically — its queue is cancelled and the store owner gets
 // an email; after fixing the receiver, enable it with this endpoint.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
@@ -2184,7 +2183,7 @@ func (s *SettingsService) GetAccuracy(ctx context.Context, opts ...RequestOption
 // underpayment. Both are ON by default. The refund goes to the payer's address
 // (EVM/Tron/TON/Solana; on Bitcoin/UTXO — manually).
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
@@ -2363,7 +2362,7 @@ func (s *SettingsService) ListAcceptedCurrencies(ctx context.Context, params *Pa
 // `fee_on_recipient: true` — the network fee is paid by the recipient (they receive the amount
 // minus the fee).
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
@@ -2403,7 +2402,7 @@ func (s *SettingsService) GetPayoutFeeConfig(ctx context.Context, opts ...Reques
 // your refunds follow the gateway default (the get method shows it), while the automatic refunds
 // deduct the commission.
 //
-// Requires role: Finance when called with a CLI key.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
@@ -2482,8 +2481,7 @@ func (s *SettingsService) GetPaymentFeeConfig(ctx context.Context, opts ...Reque
 //
 // Automatically withdraw incoming funds to a given address.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, autowithdraw.bad_min,
 // autowithdraw.missing, autowithdraw.network_required, autowithdraw.unsupported_network,
@@ -2517,8 +2515,7 @@ func (s *SettingsService) ListAutoWithdrawRules(ctx context.Context, opts ...Req
 
 // DeleteAutoWithdrawRule — Delete an auto-withdrawal rule (POST /v1/auto-withdraw/delete).
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cli.permission_denied,
 // internal, merchant.bad_signature, merchant.key_expired, merchant.key_mode_mismatch,
@@ -2779,8 +2776,7 @@ func (s *DocumentsService) GetSplit(ctx context.Context, params *GetSplitDocumen
 // again, so the cheque can only be printed while you still have the token. ⚠ The document is money:
 // anyone who has it can claim the funds. The response is `application/pdf`.
 //
-// With a CLI key: only the store owner's own key (role Owner); other team members use the
-// dashboard, where each such operation is confirmed with 2FA.
+// Not available to CLI keys: call it with the integration key.
 //
 // Errors: auth.bad_timestamp, auth.body_too_large, auth.ip_not_allowed, cheque.token_required,
 // cli.permission_denied, document.disabled, document.encode_failed, document.render_failed,

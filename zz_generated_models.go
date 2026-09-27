@@ -4246,8 +4246,9 @@ func (m PaymentViewList) String() string { return describe("PaymentViewList", m)
 // GoString is String, for %#v.
 func (m PaymentViewList) GoString() string { return m.String() }
 
-// PaymentWebhook — Sent when a payment moves to paid, paid_over, wrong_amount, expired or
-// under_review, and when it rolls back from them (a chain reorganization). The current status — any
+// PaymentWebhook — Sent when a payment moves to paid, paid_over, wrong_amount, expired, cancelled
+// or under_review. A chain reorganization that removes a counted deposit is sent as
+// invoice.reversed (reversal = true, txid empty) with the status after it. The current status — any
 // value from the vocabulary — can be requested again: POST /v1/payment/resend. Match it to the
 // order by order_id/uuid and to the blockchain by txid and network.
 type PaymentWebhook struct {
@@ -4284,6 +4285,10 @@ type PaymentWebhook struct {
 	PayerCurrency string `json:"payer_currency"`
 	// How much was actually received (confirmed), in payer_currency.
 	PaymentAmount Decimal `json:"payment_amount"`
+	// true — a chain reorganization removed a previously counted deposit (event invoice.reversed);
+	// status and payment_amount are the state after it, txid is empty. Absent = false: cores before
+	// this version do not send the field; newer cores always send it.
+	Reversal *bool `json:"reversal,omitempty"`
 	// The global event number: within one object a higher number is newer, a lower one is a late
 	// delivery and must be discarded. Always 0 on a rehearsal (test: true).
 	Sequence int64 `json:"sequence"`
@@ -4310,7 +4315,7 @@ func (m *PaymentWebhook) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
 		return err
 	}
-	m.Extra = genExtra(data, "additional_data", "amount", "currency", "event_at", "event_id", "is_final", "network", "order_id", "payer_address", "payer_address_is_refundable", "payer_amount", "payer_currency", "payment_amount", "sequence", "status", "test", "txid", "type", "uuid")
+	m.Extra = genExtra(data, "additional_data", "amount", "currency", "event_at", "event_id", "is_final", "network", "order_id", "payer_address", "payer_address_is_refundable", "payer_amount", "payer_currency", "payment_amount", "reversal", "sequence", "status", "test", "txid", "type", "uuid")
 	return nil
 }
 
@@ -6008,7 +6013,8 @@ type RefundBatchItem struct {
 	// Your order reference of the payment. Either uuid or order_id is required.
 	OrderID *string `json:"order_id,omitempty"`
 	// An optional refund idempotency key: distinguishes two different refunds with the same (payment,
-	// address, amount); a retry with the same value is deduplicated. This is not order_id.
+	// address, amount); a retry with the same value returns the refund already made, also when amount
+	// is omitted. This is not order_id.
 	Reference string `json:"reference"`
 	// Payment id. Either uuid or order_id is required.
 	UUID *string `json:"uuid,omitempty"`
@@ -6084,8 +6090,11 @@ type RefundCalculation struct {
 	Amount Decimal `json:"amount"`
 	// What the buyer paid in total, including the network surcharge.
 	AmountPaid Decimal `json:"amount_paid"`
-	// The Oblodai commission withheld from the refund: the payment's commission when commission_bearer
-	// is customer, 0 when it is merchant (you then pay it from your balance).
+	// What is withheld from the refund besides the surcharge: with commission_bearer customer, the
+	// Oblodai commission as it was taken from each deposit (rounded up on each), plus the cost of
+	// collecting a swept deposit when there was one — together, what the payment did not credit you; 0
+	// with merchant (you then pay the commission from your balance). amount_paid − surcharge −
+	// commission = refundable.
 	Commission Decimal `json:"commission"`
 	// Who bears the Oblodai commission on this refund — the store's refund fee setting
 	// (getRefundFeeConfig): customer — it is deducted from the refund, and the refunds return at most
@@ -6117,7 +6126,8 @@ type RefundCalculation struct {
 	// refundable minus refunded: what can still be refunded before this refund.
 	Remaining Decimal `json:"remaining"`
 	// The payer's network surcharge inside amount_paid: the cost of accepting the deposit, never
-	// refunded from your balance.
+	// refunded from your balance. Counted per deposit, as the deposits were credited (rounded up on
+	// each), so amount_paid − surcharge − commission = refundable.
 	Surcharge Decimal `json:"surcharge"`
 	// The payment id.
 	UUID string `json:"uuid"`
@@ -6203,7 +6213,8 @@ type RefundRequest struct {
 	// Your order reference of the payment. Either uuid or order_id is required.
 	OrderID *string `json:"order_id,omitempty"`
 	// An optional refund idempotency key: distinguishes two different refunds with the same (payment,
-	// address, amount); a retry with the same value is deduplicated. This is not order_id.
+	// address, amount); a retry with the same value returns the refund already made, also when amount
+	// is omitted. This is not order_id.
 	Reference *string `json:"reference,omitempty"`
 	// Payment id. Either uuid or order_id is required.
 	UUID *string `json:"uuid,omitempty"`

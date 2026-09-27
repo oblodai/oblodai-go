@@ -28,6 +28,7 @@ var EventKinds = map[string]string{
 	"invoice.expired":        KindPayment,
 	"invoice.paid":           KindPayment,
 	"invoice.paid_over":      KindPayment,
+	"invoice.reversed":       KindPayment,
 	"invoice.select":         KindPayment,
 	"invoice.under_review":   KindPayment,
 	"invoice.wrong_amount":   KindPayment,
@@ -56,7 +57,7 @@ var IDFields = map[string]string{
 type Bodies struct {
 	// Conversion is the body of a "conversion" event (conversion.completed, conversion.refunded).
 	Conversion *oblodai.ConversionWebhook
-	// Payment is the body of a "payment" event (invoice.cancelled, invoice.confirm_check, invoice.created, invoice.expired, invoice.paid, invoice.paid_over, invoice.select, invoice.under_review, invoice.wrong_amount).
+	// Payment is the body of a "payment" event (invoice.cancelled, invoice.confirm_check, invoice.created, invoice.expired, invoice.paid, invoice.paid_over, invoice.reversed, invoice.select, invoice.under_review, invoice.wrong_amount).
 	Payment *oblodai.PaymentWebhook
 	// Payout is the body of a "payout" event (payout.approved, payout.awaiting_cosign, payout.broadcasting, payout.cancelled, payout.confirmed, payout.failed, payout.pending, payout.sent).
 	Payout *oblodai.PayoutWebhook

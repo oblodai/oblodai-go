@@ -559,3 +559,22 @@ func TestDedupeKeyIsTheSignedEventIDWithFallback(t *testing.T) {
 		}
 	}
 }
+
+// invoice.reversed (a chain reorganization removed a counted deposit) is a payment event, and
+// reversal is optional: a core before it does not send the field, which then reads as false.
+func TestReversedEventAndOptionalReversal(t *testing.T) {
+	if webhooks.EventKinds["invoice.reversed"] != webhooks.KindPayment {
+		t.Fatalf("invoice.reversed kind = %q", webhooks.EventKinds["invoice.reversed"])
+	}
+	if !oblodai.WebhookEventNameInvoiceReversed.IsKnown() {
+		t.Fatal("invoice.reversed is not a known WebhookEventName")
+	}
+	older, err := webhooks.Parse([]byte(sampleBody))
+	if err != nil || older.Payment == nil || older.Payment.Reversal != nil {
+		t.Fatalf("a body without reversal: %v %+v", err, older.Payment)
+	}
+	reversed, err := webhooks.Parse([]byte(`{"type":"payment","uuid":"u1","status":"expired","reversal":true,"txid":"","sequence":8}`))
+	if err != nil || reversed.Payment == nil || reversed.Payment.Reversal == nil || !*reversed.Payment.Reversal {
+		t.Fatalf("a reversal body: %v %+v", err, reversed.Payment)
+	}
+}
