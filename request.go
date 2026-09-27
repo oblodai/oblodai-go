@@ -266,6 +266,11 @@ func serializeBody(body any, method string) ([]byte, *Error) {
 	if string(encoded) == "null" {
 		return []byte("{}"), nil
 	}
+	// The core refuses a larger body anyway; refusing it here names the cause and signs nothing.
+	if len(encoded) > MaxBody {
+		return nil, newConfigError(CodeBadConfig, fmt.Sprintf(
+			"the request body is %d bytes; the API accepts at most %d (x-oblodai-signing.max_body)", len(encoded), MaxBody), "")
+	}
 	if err := refuseFloats(encoded); err != nil {
 		return nil, err
 	}

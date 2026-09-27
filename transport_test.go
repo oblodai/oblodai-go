@@ -350,3 +350,16 @@ func TestDownloadFilenameIsABasename(t *testing.T) {
 		t.Fatalf("GetSigned: %v, filename %q", err, file.Filename)
 	}
 }
+
+// R10: a body over the contract's max_body is refused before anything is signed or sent.
+func TestOversizedBodyIsRefusedBeforeSending(t *testing.T) {
+	api := newFakeAPI(t)
+	huge := Decimal("1" + strings.Repeat("0", MaxBody))
+	_, err := api.client().Payments.Create(context.Background(), &PaymentRequest{Amount: huge, Currency: "USDT"})
+	if !IsConfig(err) || !strings.Contains(err.Error(), "at most") {
+		t.Fatalf("err = %v, want a config error naming the limit", err)
+	}
+	if api.count() != 0 {
+		t.Fatalf("%d requests went out", api.count())
+	}
+}
