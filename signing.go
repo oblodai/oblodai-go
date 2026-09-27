@@ -32,8 +32,8 @@ import (
 // core lets a request timestamp drift from its own clock.
 const SignatureSkewSeconds = SkewSeconds
 
-// HeaderAdminToken gates merchant provisioning on a self-hosted gateway. It is not part of request
-// signing and not in the contract's x-oblodai-signing.
+// HeaderAdminToken is the header an old self-hosted gateway read a raw admin token from. The SDK
+// never sends it — a caller header of this name is dropped too — and the core no longer accepts it.
 const HeaderAdminToken = "X-Admin-Token"
 
 // SignInput is everything the request signature binds.

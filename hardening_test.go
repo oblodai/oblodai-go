@@ -148,22 +148,22 @@ func TestDeadlineErrorCarriesTheLastAPIError(t *testing.T) {
 // Headers the client owns cannot be set by a caller, and a header it cannot send verbatim is
 // refused before anything reaches the wire.
 func TestCallerHeadersCannotClaimWhatTheClientOwns(t *testing.T) {
-	api := newFakeAPI(t, ok(map[string]any{"merchant_id": "m1", "project_id": "p1"}))
+	api := newFakeAPI(t, ok(map[string]any{"uuid": "p1"}))
 	client := api.client(
 		WithAdminToken("real-admin"),
 		WithHeader("User-Agent", "not-the-sdk"),
 		WithHeader("X-Admin-Token", "stolen"),
 		WithHeader("X-Trace", "keep-me"),
 	)
-	if _, err := client.Sandbox.OnboardStore(context.Background(), "m1"); err != nil {
-		t.Fatalf("Sandbox.OnboardStore: %v", err)
+	if _, err := client.Payments.GetInfo(context.Background(), &LookupRequest{UUID: Ptr("p1")}); err != nil {
+		t.Fatalf("Payments.GetInfo: %v", err)
 	}
 	got := api.last()
 	if agent := got.header.Get("User-Agent"); !strings.HasPrefix(agent, "oblodai-go/") {
 		t.Errorf("User-Agent = %q, the client owns it", agent)
 	}
-	if token := got.header.Get(HeaderAdminToken); token != "real-admin" {
-		t.Errorf("X-Admin-Token = %q, want the configured one", token)
+	if token := got.header.Get(HeaderAdminToken); token != "" {
+		t.Errorf("X-Admin-Token = %q, the SDK never sends one", token)
 	}
 	if got.header.Get("X-Trace") != "keep-me" {
 		t.Error("an ordinary caller header must survive")
@@ -310,20 +310,22 @@ func TestClientAndCredentialsNeverPrintTheirKeys(t *testing.T) {
 
 // recordingLogger is a caller's own logger: it must never receive a secret value.
 type recordingLogger struct {
-	mu     sync.Mutex
-	fields []LogFields
+	mu       sync.Mutex
+	fields   []LogFields
+	messages []string
 }
 
-func (l *recordingLogger) record(fields LogFields) {
+func (l *recordingLogger) record(message string, fields LogFields) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.fields = append(l.fields, fields)
+	l.messages = append(l.messages, message)
 }
 
-func (l *recordingLogger) Debug(_ string, fields LogFields) { l.record(fields) }
-func (l *recordingLogger) Info(_ string, fields LogFields)  { l.record(fields) }
-func (l *recordingLogger) Warn(_ string, fields LogFields)  { l.record(fields) }
-func (l *recordingLogger) Error(_ string, fields LogFields) { l.record(fields) }
+func (l *recordingLogger) Debug(message string, fields LogFields) { l.record(message, fields) }
+func (l *recordingLogger) Info(message string, fields LogFields)  { l.record(message, fields) }
+func (l *recordingLogger) Warn(message string, fields LogFields)  { l.record(message, fields) }
+func (l *recordingLogger) Error(message string, fields LogFields) { l.record(message, fields) }
 
 func TestAnInjectedLoggerNeverReceivesASecret(t *testing.T) {
 	recorder := &recordingLogger{}

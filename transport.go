@@ -29,7 +29,6 @@ type transport struct {
 	clock      *skewClock
 	logger     Logger
 	headers    map[string]string
-	adminToken string
 	userAgent  string
 	random     func() float64
 	hooks      Hooks
@@ -114,6 +113,11 @@ func (t *transport) execute(ctx context.Context, call Call, o callOptions, reque
 	if r.Method == "" || r.Path == "" {
 		return nil, newConfigError(CodeBadConfig, "the call names no route (operation "+r.OperationID+")", "")
 	}
+	if r.Auth == AuthOnboard {
+		// Merchant provisioning is gated by the operator HMAC channel, which the SDK does not
+		// implement; a raw admin token is never sent. Refused before anything leaves the process.
+		return nil, newConfigError(CodeBadConfig, OperatorChannelUnsupported, "")
+	}
 	idempotencyKey := o.idempotencyKey
 	callBody := call.Body
 	if idempotencyKey != "" {
@@ -173,14 +177,6 @@ func (t *transport) execute(ctx context.Context, call Call, o callOptions, reque
 			}
 		}
 	}
-	// The admin token gates merchant provisioning on a self-hosted gateway and goes nowhere else.
-	// It is not merged into the caller's headers: X-Admin-Token is a reserved name, so a caller
-	// cannot send one, and the client sends it on onboarding routes only.
-	adminToken := ""
-	if r.Auth == AuthOnboard {
-		adminToken = t.adminToken
-	}
-
 	limit := int64(maxJSONResponseBytes)
 	if r.Bare {
 		limit = maxBareResponseBytes
@@ -202,7 +198,6 @@ func (t *transport) execute(ctx context.Context, call Call, o callOptions, reque
 			ts:             ts,
 			userAgent:      t.userAgent,
 			extraHeaders:   extra,
-			adminToken:     adminToken,
 			requestID:      requestID,
 		})
 		if err != nil {

@@ -136,17 +136,13 @@ func (c *credentials) String() string {
 // GoString renders a key pair without its secret (%#v).
 func (c *credentials) GoString() string { return c.String() }
 
-// String renders the resolved configuration without its keys or admin token.
+// String renders the resolved configuration without its keys.
 func (c *config) String() string {
 	if c == nil {
 		return "oblodai.config{}"
 	}
-	admin := "<none>"
-	if c.adminToken != "" {
-		admin = redactedPlaceholder
-	}
-	return fmt.Sprintf("oblodai.config{baseURL: %q, publicID: %q, secret: %s, adminToken: %s}",
-		c.baseURL, c.publicID, redactedPlaceholder, admin)
+	return fmt.Sprintf("oblodai.config{baseURL: %q, publicID: %q, secret: %s}",
+		c.baseURL, c.publicID, redactedPlaceholder)
 }
 
 // GoString renders the resolved configuration without its keys (%#v).

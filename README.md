@@ -58,8 +58,10 @@ client, err := oblodai.New(oblodai.WithCredentials(publicID, secret))
 
 The environment fallback is `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET`. A sandbox pair (public id
 `test_oblodai_<hex>`, secret `oblodai_test_<hex>`) drives a chainless copy of the gateway. Sandbox
-store onboarding (`Sandbox.OnboardStore`) is unsigned; a self-hosted gateway gates it with an
-**onboarding admin token** (`WithAdminToken`, or `OBLODAI_ADMIN_TOKEN`).
+store onboarding (`Sandbox.OnboardStore`) and other merchant provisioning go through the operator
+channel, which the SDK does not implement: such a call fails with `sdk.bad_config` ("operator
+channel is not supported by the SDK; use the dashboard") before any request is made. The SDK never
+sends an admin token; `WithAdminToken` and `OBLODAI_ADMIN_TOKEN` are deprecated and ignored.
 
 ## Quick start
 
@@ -357,7 +359,7 @@ reports, err := client.WithOptions(oblodai.WithTimeout(2*time.Minute), oblodai.W
 | `WithCredentials(id, secret)`   | the merchant's API key pair — it signs every gated route                          |
 | `WithBaseURL(url)`              | the API origin; a path prefix is kept                                             |
 | `WithInsecureBaseURL(true)`     | permit plain `http://` for a non-loopback host                                    |
-| `WithAdminToken(token)`         | onboarding admin token of a self-hosted gateway (onboarding routes only)          |
+| `WithAdminToken(token)`         | deprecated and ignored: the SDK never sends an admin token                        |
 | `WithHTTPClient(client)`        | your own `*http.Client`: proxy, custom transport, mutual TLS, a recording stub    |
 | `WithTimeout(d)`                | per-attempt timeout (default 30 s)                                                |
 | `WithCallBudget(d)`             | budget for one call including retries and pauses (default 90 s)                   |
@@ -370,7 +372,7 @@ reports, err := client.WithOptions(oblodai.WithTimeout(2*time.Minute), oblodai.W
 | -------------------------- | ---------------------------------------------------------------- |
 | `OBLODAI_PUBLIC_ID`        | API key public id                                                |
 | `OBLODAI_SECRET`           | API key secret                                                   |
-| `OBLODAI_ADMIN_TOKEN`      | onboarding admin token of a self-hosted gateway                  |
+| `OBLODAI_ADMIN_TOKEN`      | deprecated and ignored                                           |
 | `OBLODAI_BASE_URL`         | API origin (default `https://api.oblodai.com`)                   |
 | `OBLODAI_LOG`              | `debug` \| `info` \| `warn` \| `error` — enables the text logger |
 | `OBLODAI_ALLOW_INSECURE`   | `1` permits a plain `http://` base URL                           |

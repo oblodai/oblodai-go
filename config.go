@@ -14,7 +14,7 @@ import (
 //
 //	OBLODAI_PUBLIC_ID / OBLODAI_SECRET  the merchant's API key pair
 //	OBLODAI_BASE_URL                    API origin
-//	OBLODAI_ADMIN_TOKEN                 admin token of a self-hosted gateway
+//	OBLODAI_ADMIN_TOKEN                 deprecated and ignored (see WithAdminToken)
 //	OBLODAI_LOG                         debug | info | warn | error
 //	OBLODAI_ALLOW_INSECURE=1            permit a plain http:// base URL
 
@@ -22,16 +22,18 @@ import (
 type Option func(*config)
 
 type config struct {
-	baseURL       string
-	publicID      string
-	secret        string
-	httpClient    *http.Client
-	timeout       time.Duration
-	budget        time.Duration
-	retry         RetryOptions
-	logger        Logger
-	headers       map[string]string
-	adminToken    string
+	baseURL    string
+	publicID   string
+	secret     string
+	httpClient *http.Client
+	timeout    time.Duration
+	budget     time.Duration
+	retry      RetryOptions
+	logger     Logger
+	headers    map[string]string
+	// adminTokenSet records that WithAdminToken or OBLODAI_ADMIN_TOKEN was given. The token itself
+	// is not kept: the client never sends it (see WithAdminToken).
+	adminTokenSet bool
 	allowInsecure bool
 	now           func() time.Time
 	random        func() float64
@@ -85,7 +87,7 @@ func WithHooks(hooks Hooks) Option {
 
 // WithHeader adds a header to every request. Headers the client signs or owns are ignored,
 // compared case-insensitively: HeaderPublicID, HeaderSignature, HeaderTimestamp,
-// HeaderIdempotencyKey, HeaderAdminToken (sent by the client on onboarding routes only), Accept, User-Agent, Content-Type,
+// HeaderIdempotencyKey, HeaderAdminToken (never sent at all), Accept, User-Agent, Content-Type,
 // Content-Length and Host — ReservedHeaders lists them. A name or value carrying a line break or
 // a non-ASCII byte is refused with sdk.bad_header on the first call that would send it.
 func WithHeader(name, value string) Option {
@@ -97,10 +99,19 @@ func WithHeader(name, value string) Option {
 	}
 }
 
-// WithAdminToken supplies the admin token of a self-hosted gateway. Only the merchant
-// provisioning routes send it.
+// WithAdminToken is ignored.
+//
+// Deprecated: the core no longer accepts a raw admin token; merchant provisioning is gated by the
+// operator HMAC channel, which this SDK does not implement. The token is dropped without being
+// stored or sent, the client logs a one-time warning when a logger is installed, and onboarding
+// operations (RouteSpec.Auth == AuthOnboard) fail with sdk.bad_config before any request is made.
+// Provision merchants from the dashboard.
 func WithAdminToken(token string) Option {
-	return func(c *config) { c.adminToken = token }
+	return func(c *config) {
+		if token != "" {
+			c.adminTokenSet = true
+		}
+	}
 }
 
 // WithInsecureBaseURL permits a plain http:// base URL for a host that is not loopback. Loopback
@@ -129,7 +140,7 @@ func resolve(opts []Option) (*config, *Error) {
 	c.allowInsecure = c.allowInsecure || os.Getenv("OBLODAI_ALLOW_INSECURE") == "1"
 	c.publicID = firstNonEmpty(c.publicID, os.Getenv("OBLODAI_PUBLIC_ID"))
 	c.secret = firstNonEmpty(c.secret, os.Getenv("OBLODAI_SECRET"))
-	c.adminToken = firstNonEmpty(c.adminToken, os.Getenv("OBLODAI_ADMIN_TOKEN"))
+	c.adminTokenSet = c.adminTokenSet || os.Getenv("OBLODAI_ADMIN_TOKEN") != ""
 	if c.logger == nil {
 		if level := strings.ToLower(os.Getenv("OBLODAI_LOG")); level != "" {
 			if _, ok := logOrder[LogLevel(level)]; ok {

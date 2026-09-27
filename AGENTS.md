@@ -25,7 +25,7 @@ no fact of the API itself.
   amount is `sdk.float_amount`. Never compare amounts with `<`; use `CompareAmounts`, `AmountsEqual`,
   `AddAmounts`, `SubtractAmounts`, `IsZeroAmount` (they take a `Decimal` or a plain string).
 - **One API key** signs every gated route (`WithCredentials`, or `OBLODAI_PUBLIC_ID`/`OBLODAI_SECRET`).
-  `RouteSpec.Auth` is `public` (unsigned), `key`, or `onboard` (`WithAdminToken`).
+  `RouteSpec.Auth` is `public` (unsigned), `key`, or `onboard` (refused by the SDK before the network: operator channel only).
 - Retry safety is `RouteSpec.Safe` (the contract's `x-retry-safe`) or a deduplicated write with a
   key; the SDK never infers it from a path or a verb. Idempotency keys are generated on
   deduplicated routes and reused across retries; a key on any other route is refused with

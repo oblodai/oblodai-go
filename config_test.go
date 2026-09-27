@@ -1,6 +1,8 @@
 package oblodai
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -21,8 +23,8 @@ func TestConfigReadsCredentialsAndBaseURLFromTheEnvironment(t *testing.T) {
 	if client.transport.creds.publicID != "pk" || client.transport.creds.secret != "s" {
 		t.Fatalf("credentials = %+v", client.transport.creds)
 	}
-	if client.transport.adminToken != "adm" {
-		t.Fatalf("admin token = %q", client.transport.adminToken)
+	if !client.cfg.adminTokenSet || strings.Contains(fmt.Sprintf("%#v %+v", client.cfg, client.transport), "adm\"") {
+		t.Fatalf("OBLODAI_ADMIN_TOKEN must be noted as given (for the warning) and not kept")
 	}
 }
 

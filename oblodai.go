@@ -20,8 +20,8 @@
 //     CompareAmounts instead of parsing them.
 //   - Errors are always *Error: check Code (a stable family.reason string) and Retryable, not the
 //     message. The client has already retried whatever was safe to retry.
-//   - One API key signs everything: payments, payouts, settings, documents. Only merchant
-//     provisioning is different — it takes an admin token (WithAdminToken).
+//   - One API key signs everything: payments, payouts, settings, documents. Merchant
+//     provisioning (AuthOnboard routes) is not available through the SDK: use the dashboard.
 package oblodai
 
 // Version is the SDK release, sent in User-Agent.
@@ -37,9 +37,13 @@ const (
 	// AuthKey routes are signed with the merchant's API key — every route that touches merchant
 	// money or configuration.
 	AuthKey = "key"
-	// AuthOnboard routes are unsigned merchant provisioning; a self-hosted gateway gates them with
-	// an admin token.
+	// AuthOnboard routes are merchant provisioning, gated by the operator HMAC channel the SDK
+	// does not implement: calling one fails with sdk.bad_config (OperatorChannelUnsupported) before any
+	// request is made.
 	AuthOnboard = "onboard"
+
+	// OperatorChannelUnsupported is the message of the error an AuthOnboard operation fails with.
+	OperatorChannelUnsupported = "operator channel is not supported by the SDK; use the dashboard"
 )
 
 // ListPaged is RouteSpec.ListKind of a route that returns {items, paginate}.

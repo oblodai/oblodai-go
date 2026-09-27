@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -265,18 +267,35 @@ func TestCredentialsAreOnlyRequiredWhereTheRouteNeedsThem(t *testing.T) {
 	}
 }
 
-func TestOnboardRoutesCarryTheAdminTokenAndNoSignature(t *testing.T) {
-	api := newFakeAPI(t, ok(map[string]any{"merchant_id": "m1"}))
-	client := api.client(WithAdminToken("adm"))
-	if _, err := client.Sandbox.OnboardStore(context.Background(), "m1"); err != nil {
-		t.Fatalf("Sandbox.OnboardStore: %v", err)
+// R4: the SDK never sends a raw admin token. An onboarding operation is refused before any
+// request leaves the process, with or without WithAdminToken, and the option only warns once.
+func TestOnboardRoutesAreRefusedBeforeTheNetwork(t *testing.T) {
+	for _, opts := range [][]Option{nil, {WithAdminToken("adm")}} {
+		api := newFakeAPI(t, ok(map[string]any{"merchant_id": "m1"}))
+		client := api.client(opts...)
+		_, err := client.Sandbox.OnboardStore(context.Background(), "m1")
+		if !IsConfig(err) || !IsCode(err, CodeBadConfig) || !strings.Contains(err.Error(), OperatorChannelUnsupported) {
+			t.Fatalf("Sandbox.OnboardStore: %v, want the operator-channel config error", err)
+		}
+		if api.count() != 0 {
+			t.Fatalf("%d requests went out; an onboarding call must not reach the network", api.count())
+		}
+		if _, err := client.Invoke(context.Background(), "onboardSandboxStore", InvokeInput{PathParams: map[string]string{"id": "m1"}}); !IsConfig(err) || api.count() != 0 {
+			t.Fatalf("Invoke(onboardSandboxStore): %v, %d requests", err, api.count())
+		}
 	}
-	req := api.last()
-	if got := req.header.Get(HeaderAdminToken); got != "adm" {
-		t.Fatalf("X-Admin-Token = %q", got)
-	}
-	if got := req.header.Get(HeaderSignature); got != "" {
-		t.Fatalf("an onboarding route is unsigned, got X-Signature = %q", got)
+}
+
+func TestAdminTokenOptionWarnsOnce(t *testing.T) {
+	adminTokenWarning = sync.Once{}
+	logger := &recordingLogger{}
+	api := newFakeAPI(t)
+	api.client(WithAdminToken("adm"), WithLogger(logger))
+	api.client(WithAdminToken("adm"), WithLogger(logger))
+	logger.mu.Lock()
+	defer logger.mu.Unlock()
+	if len(logger.messages) != 1 || !strings.Contains(logger.messages[0], "deprecated and ignored") {
+		t.Fatalf("warnings = %q, want exactly one deprecation warning", logger.messages)
 	}
 }
 

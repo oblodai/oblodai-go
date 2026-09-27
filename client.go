@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
+	"sync"
 	"time"
 )
+
+// adminTokenWarning makes the deprecation warning for WithAdminToken a one-time message per process.
+var adminTokenWarning sync.Once
 
 // Client is the Oblodai API client. One instance per API key; it is safe to share across
 // goroutines and should be created once and reused, so connections and the learned clock offset
@@ -77,11 +81,16 @@ func newClient(cfg *config, clock *skewClock) *Client {
 		clock:      clock,
 		logger:     logger,
 		headers:    cfg.headers,
-		adminToken: cfg.adminToken,
 		random:     cfg.random,
 		hooks:      cfg.hooks,
 		sleep:      cfg.sleep,
 		userAgent:  fmt.Sprintf("oblodai-go/%s (%s)", Version, runtime.Version()),
+	}
+	if cfg.adminTokenSet {
+		adminTokenWarning.Do(func() {
+			logger.Warn("the admin token option is deprecated and ignored: the SDK never sends it; "+
+				"provision merchants from the dashboard", nil)
+		})
 	}
 	if cfg.publicID != "" {
 		t.creds = &credentials{publicID: cfg.publicID, secret: cfg.secret}

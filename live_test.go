@@ -32,7 +32,8 @@ func liveURL(t *testing.T) string {
 
 // onboardSandbox provisions a merchant and returns a client holding its sandbox key. Creating the
 // merchant is dev-stand provisioning, not part of the merchant API contract, so it is a plain
-// HTTP call; minting the sandbox store is Sandbox.OnboardStore.
+// HTTP call, and so is minting the sandbox store: the SDK refuses onboarding operations (the
+// operator channel is not implemented by it).
 func onboardSandbox(ctx context.Context, t *testing.T, base string) *Client {
 	t.Helper()
 	body, _ := json.Marshal(map[string]string{
@@ -57,16 +58,25 @@ func onboardSandbox(ctx context.Context, t *testing.T, base string) *Client {
 		t.Fatalf("POST /v1/merchants: HTTP %d, %v", res.StatusCode, err)
 	}
 
-	anonymous, err := New(WithBaseURL(base), WithInsecureBaseURL(true))
+	storeReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		base+"/v1/merchants/"+merchant.Result.MerchantID+"/sandbox", bytes.NewReader([]byte("{}")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := anonymous.Sandbox.OnboardStore(ctx, merchant.Result.MerchantID)
+	storeReq.Header.Set("Content-Type", "application/json")
+	storeRes, err := http.DefaultClient.Do(storeReq)
 	if err != nil {
-		t.Fatalf("Sandbox.OnboardStore: %v", err)
+		t.Fatalf("POST /v1/merchants/{id}/sandbox: %v", err)
+	}
+	defer func() { _ = storeRes.Body.Close() }()
+	var store struct {
+		Result SandboxOnboardResult `json:"result"`
+	}
+	if err := json.NewDecoder(storeRes.Body).Decode(&store); err != nil || store.Result.APIKey.PublicID == "" {
+		t.Fatalf("POST /v1/merchants/{id}/sandbox: HTTP %d, %v", storeRes.StatusCode, err)
 	}
 	client, err := New(WithBaseURL(base), WithInsecureBaseURL(true),
-		WithCredentials(store.APIKey.PublicID, store.APIKey.Secret))
+		WithCredentials(store.Result.APIKey.PublicID, store.Result.APIKey.Secret))
 	if err != nil {
 		t.Fatal(err)
 	}

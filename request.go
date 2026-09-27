@@ -34,9 +34,6 @@ type buildInput struct {
 	ts             int64
 	userAgent      string
 	extraHeaders   map[string]string
-	// adminToken is set only on onboarding routes. It travels in its own field, never through
-	// extraHeaders, so a caller header named X-Admin-Token can be dropped without dropping this.
-	adminToken string
 	// requestID is sent as X-Request-ID on every attempt of the call.
 	requestID string
 }
@@ -52,8 +49,8 @@ type builtRequest struct {
 }
 
 // Headers the client owns; a caller-supplied header with one of these names is dropped rather
-// than allowed to break the signature, impersonate another merchant or claim admin rights on a
-// route that is not an onboarding route. The comparison is case-insensitive.
+// than allowed to break the signature, impersonate another merchant or send an admin token (the
+// SDK never sends one). The comparison is case-insensitive.
 var reservedHeaders = map[string]bool{
 	strings.ToLower(HeaderPublicID):       true,
 	strings.ToLower(HeaderSignature):      true,
@@ -138,9 +135,6 @@ func buildRequest(in buildInput) (*builtRequest, *Error) {
 	}
 	if in.idempotencyKey != "" {
 		headers[HeaderIdempotencyKey] = in.idempotencyKey
-	}
-	if in.adminToken != "" && in.route.Auth == AuthOnboard {
-		headers[HeaderAdminToken] = in.adminToken
 	}
 
 	if in.route.Auth == AuthKey {

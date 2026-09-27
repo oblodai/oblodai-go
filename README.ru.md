@@ -58,8 +58,10 @@ client, err := oblodai.New(oblodai.WithCredentials(publicID, secret))
 
 Из окружения берутся `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET`. Пара песочницы (публичный id
 `test_oblodai_<hex>`, секрет `oblodai_test_<hex>`) работает с копией шлюза без блокчейна.
-Подключение магазина песочницы (`Sandbox.OnboardStore`) не подписывается; свой шлюз закрывает его
-**токеном администратора** (`WithAdminToken` или `OBLODAI_ADMIN_TOKEN`).
+Подключение магазина песочницы (`Sandbox.OnboardStore`) и прочее заведение мерчантов идут через
+канал оператора, которого в SDK нет: такой вызов завершается ошибкой `sdk.bad_config` («operator
+channel is not supported by the SDK; use the dashboard») до отправки запроса. Токен администратора
+SDK не отправляет никогда; `WithAdminToken` и `OBLODAI_ADMIN_TOKEN` устарели и игнорируются.
 
 ## Быстрый старт
 
@@ -356,7 +358,7 @@ reports, err := client.WithOptions(oblodai.WithTimeout(2*time.Minute), oblodai.W
 | `WithCredentials(id, secret)`   | пара API-ключа мерчанта — подписывает все закрытые маршруты                       |
 | `WithBaseURL(url)`              | адрес API; префикс пути сохраняется                                               |
 | `WithInsecureBaseURL(true)`     | разрешить обычный `http://` не для loopback                                       |
-| `WithAdminToken(token)`         | токен администратора своего шлюза (только маршруты подключения)                   |
+| `WithAdminToken(token)`         | устарел и игнорируется: токен администратора SDK не отправляет                    |
 | `WithHTTPClient(client)`        | свой `*http.Client`: прокси, транспорт, mTLS, записывающая заглушка               |
 | `WithTimeout(d)`                | таймаут попытки (по умолчанию 30 с)                                               |
 | `WithCallBudget(d)`             | бюджет вызова вместе с повторами и паузами (по умолчанию 90 с)                    |
@@ -369,7 +371,7 @@ reports, err := client.WithOptions(oblodai.WithTimeout(2*time.Minute), oblodai.W
 | -------------------------- | ---------------------------------------------------------------- |
 | `OBLODAI_PUBLIC_ID`        | публичный id API-ключа                                           |
 | `OBLODAI_SECRET`           | секрет API-ключа                                                 |
-| `OBLODAI_ADMIN_TOKEN`      | токен администратора своего шлюза                                |
+| `OBLODAI_ADMIN_TOKEN`      | устарел и игнорируется                                           |
 | `OBLODAI_BASE_URL`         | адрес API (по умолчанию `https://api.oblodai.com`)               |
 | `OBLODAI_LOG`              | `debug` \| `info` \| `warn` \| `error` — включает текстовый логгер |
 | `OBLODAI_ALLOW_INSECURE`   | `1` разрешает обычный `http://`                                  |
