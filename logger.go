@@ -123,7 +123,10 @@ func (l *textLogger) emit(level LogLevel, message string, fields LogFields) {
 const redactedPlaceholder = "[redacted]"
 
 // sensitive keys never reach a log line with their value intact.
-var sensitiveWords = []string{"secret", "signature", "passcode", "token", "authorization", "password"}
+var sensitiveWords = []string{
+	"secret", "signature", "passcode", "token", "authorization", "password", "device_code", "claim_url",
+	"api-key", "api_key", "cookie",
+}
 
 // redact replaces the value of a sensitive-looking key, and of the signed header by the contract's
 // name for it (HeaderSignature), whatever words that name holds.

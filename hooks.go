@@ -15,8 +15,9 @@ import (
 //	}))
 //
 // They run synchronously on the calling goroutine, once per attempt (a retried call reports each
-// attempt), so keep them cheap. The headers they see have the signature and the admin token
-// redacted.
+// attempt), so keep them cheap. Secrets never reach them: the headers they see have the signature,
+// Authorization, API keys, cookies and passcodes redacted, and the URL has bearer path parameters
+// (a claim token) and signed-link query parameters (sig, exp, token) replaced by [redacted].
 type Hooks struct {
 	// OnRequest runs just before an attempt is sent.
 	OnRequest func(RequestInfo)
@@ -29,8 +30,9 @@ type RequestInfo struct {
 	// OperationID is the route's OpenAPI operationId.
 	OperationID string
 	Method      string
-	URL         string
-	// Header is the request headers as sent, with the signature and the admin token redacted.
+	// URL is the request URL with secret path and query parameters redacted.
+	URL string
+	// Header is the request headers as sent, with secret values redacted.
 	Header http.Header
 	// Attempt is 1 for the first attempt, 2 for the first retry, and so on.
 	Attempt int
@@ -54,11 +56,36 @@ type ResponseInfo struct {
 func hookHeaders(headers map[string]string) http.Header {
 	out := http.Header{}
 	for name, value := range headers {
-		switch strings.ToLower(name) {
-		case strings.ToLower(HeaderSignature), strings.ToLower(HeaderAdminToken):
+		if isSecretHeader(name) {
 			value = redactedPlaceholder
 		}
 		out.Set(name, value)
 	}
 	return out
+}
+
+// redactHeaders copies a response's headers for a hook, with secrets redacted.
+func redactHeaders(headers http.Header) http.Header {
+	out := headers.Clone()
+	for name := range out {
+		if isSecretHeader(name) {
+			out[name] = []string{redactedPlaceholder}
+		}
+	}
+	return out
+}
+
+// isSecretHeader reports a header whose value must not reach a hook: the signature, an admin
+// token, Authorization, an API key, a cookie, a claim passcode — compared case-insensitively.
+func isSecretHeader(name string) bool {
+	lower := strings.ToLower(name)
+	if lower == strings.ToLower(HeaderSignature) || lower == strings.ToLower(HeaderAdminToken) {
+		return true
+	}
+	for _, word := range sensitiveWords {
+		if strings.Contains(lower, word) {
+			return true
+		}
+	}
+	return false
 }

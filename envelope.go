@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -39,8 +40,9 @@ func decodeEnvelope(httpStatus int, body []byte, ctx decodeContext) (json.RawMes
 
 	if httpStatus >= 300 && httpStatus < 400 {
 		where := ""
-		if ctx.location != "" {
-			where = " to " + ctx.location
+		// Only the target's origin is named: its path and query may carry a secret.
+		if target, err := url.Parse(ctx.location); err == nil && target.Host != "" {
+			where = " to " + target.Scheme + "://" + target.Host
 		}
 		detail := errorDetail{
 			Code:    "internal",

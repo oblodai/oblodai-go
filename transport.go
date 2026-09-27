@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -206,7 +207,7 @@ func (t *transport) execute(ctx context.Context, call Call, o callOptions, reque
 		t.logger.Debug("request", LogFields{"route": label, "attempt": attempt, "idempotencyKey": idempotencyKey, "requestId": requestID})
 
 		info := RequestInfo{
-			OperationID: r.OperationID, Method: req.method, URL: req.url, Header: hookHeaders(req.headers),
+			OperationID: r.OperationID, Method: req.method, URL: req.displayURL, Header: hookHeaders(req.headers),
 			Attempt: attempt + 1, RequestID: requestID,
 		}
 		if t.hooks.OnRequest != nil {
@@ -280,7 +281,7 @@ func (t *transport) report(info RequestInfo, raw *rawResponse, started time.Time
 	}
 	out := ResponseInfo{Request: info, Elapsed: time.Since(started)}
 	if raw != nil {
-		out.StatusCode, out.Header = raw.status, raw.header.Clone()
+		out.StatusCode, out.Header = raw.status, redactHeaders(raw.header)
 	}
 	if failure != nil {
 		out.Err = failure
@@ -377,7 +378,7 @@ func (t *transport) send(ctx context.Context, req *builtRequest, o callOptions, 
 	}
 	httpReq, err := http.NewRequestWithContext(attemptCtx, req.method, req.url, reader)
 	if err != nil {
-		return nil, newConfigError(CodeBadConfig, "the request could not be built: "+err.Error(), "")
+		return nil, newConfigError(CodeBadConfig, "the request could not be built: "+scrubURLError(err, req.displayURL).Error(), "")
 	}
 	for k, v := range req.headers {
 		httpReq.Header.Set(k, v)
@@ -388,21 +389,22 @@ func (t *transport) send(ctx context.Context, req *builtRequest, o callOptions, 
 
 	res, err := t.httpClient.Do(httpReq)
 	if err != nil {
-		return nil, transportErrorFor(ctx, attemptCtx, timeout, err)
+		return nil, transportErrorFor(ctx, attemptCtx, timeout, scrubURLError(err, req.displayURL))
 	}
 	defer func() { _ = res.Body.Close() }()
 	// A signed request must never be replayed against another origin. The client's own redirect
 	// policy refuses to follow one, but an injected http.Client may carry a transport that does:
 	// compare the URL the answer came from with the one that was signed.
 	if res.Request != nil && res.Request.URL != nil && res.Request.URL.String() != req.url {
+		// Only the origin is named: the path and query of the target may carry a secret.
 		return nil, apiErrorFrom(res.StatusCode, errorDetail{
 			Code:    "internal",
-			Message: fmt.Sprintf("unexpected redirect to %s; check the base URL", res.Request.URL.Redacted()),
+			Message: fmt.Sprintf("unexpected redirect to %s://%s; check the base URL", res.Request.URL.Scheme, res.Request.URL.Host),
 		}, nil, true, nil)
 	}
 	body, err := io.ReadAll(io.LimitReader(res.Body, limit+1))
 	if err != nil {
-		return nil, transportErrorFor(ctx, attemptCtx, timeout, err)
+		return nil, transportErrorFor(ctx, attemptCtx, timeout, scrubURLError(err, req.displayURL))
 	}
 	if int64(len(body)) > limit {
 		return nil, newResponseTooLargeError(res.StatusCode, limit)
@@ -423,6 +425,17 @@ func transportErrorFor(parent, attempt context.Context, timeout time.Duration, c
 	default:
 		return newTransportError(CodeTransportNetwork, "network error: "+cause.Error(), cause)
 	}
+}
+
+// scrubURLError replaces the URL net/http puts into a *url.Error — the full request URL, claim
+// token and signed-link query included — with the redacted one, keeping the rest of the chain for
+// errors.Is/As. The error text, and so Error.Message, then never carries a secret.
+func scrubURLError(err error, display string) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return &url.Error{Op: urlErr.Op, URL: display, Err: urlErr.Err}
+	}
+	return err
 }
 
 // filenameFrom reads the download name out of a Content-Disposition header. mime.ParseMediaType

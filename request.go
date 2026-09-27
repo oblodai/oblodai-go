@@ -46,6 +46,9 @@ type builtRequest struct {
 	body    []byte
 	// requestURI is what was signed (path plus query); kept for debugging signature mismatches.
 	requestURI string
+	// displayURL is url with bearer path parameters (a claim token) and signed-link query values
+	// redacted: the only form of the URL a hook, a log line or an error message gets.
+	displayURL string
 }
 
 // Headers the client owns; a caller-supplied header with one of these names is dropped rather
@@ -162,7 +165,38 @@ func buildRequest(in buildInput) (*builtRequest, *Error) {
 	if !hasBody {
 		sent = nil
 	}
-	return &builtRequest{url: full.String(), method: in.route.Method, headers: headers, body: sent, requestURI: requestURI}, nil
+	display, err := displayURL(in)
+	if err != nil {
+		return nil, err
+	}
+	return &builtRequest{
+		url: full.String(), method: in.route.Method, headers: headers, body: sent, requestURI: requestURI, displayURL: display,
+	}, nil
+}
+
+// displayURL is the request URL with every secret path parameter and query value replaced by
+// [redacted].
+func displayURL(in buildInput) (string, *Error) {
+	params := make(map[string]string, len(in.pathParams))
+	for name, value := range in.pathParams {
+		if isSecretParam(name) {
+			value = redactedPlaceholder
+		}
+		params[name] = value
+	}
+	path, err := fillPath(in.route.Path, params)
+	if err != nil {
+		return "", err
+	}
+	full, err := joinURL(in.baseURL, path)
+	if err != nil {
+		return "", err
+	}
+	full.User = nil
+	if len(in.query) > 0 {
+		full.RawQuery = redactQuery(in.query).Encode()
+	}
+	return redactedEscaped.Replace(full.String()), nil
 }
 
 // joinURL appends a route path to the base URL, keeping any path prefix the base carries
@@ -170,7 +204,7 @@ func buildRequest(in buildInput) (*builtRequest, *Error) {
 func joinURL(baseURL, routePath string) (*url.URL, *Error) {
 	base, err := url.Parse(baseURL)
 	if err != nil {
-		return nil, newConfigError(CodeBadConfig, "the base URL is not a valid URL: "+baseURL, "baseURL")
+		return nil, newConfigError(CodeBadConfig, "the base URL is not a valid URL", "baseURL")
 	}
 	prefix := strings.TrimRight(base.Path, "/")
 	base.Path = prefix + routePath
@@ -203,8 +237,12 @@ func fillPath(template string, params map[string]string) (string, *Error) {
 		name := rest[open+1 : close]
 		value := params[name]
 		if value == "" || value == "." || value == ".." || strings.Contains(value, "/") {
+			shown := fmt.Sprintf("%q", value)
+			if isSecretParam(name) && value != "" {
+				shown = redactedPlaceholder
+			}
 			return "", newConfigError(CodeBadPathParam, fmt.Sprintf(
-				"path parameter %q for %s must be a non-empty single segment (got %q)", name, template, value), name)
+				"path parameter %q for %s must be a non-empty single segment (got %s)", name, template, shown), name)
 		}
 		out.WriteString(rest[:open])
 		out.WriteString(value)

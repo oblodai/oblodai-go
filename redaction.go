@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 )
@@ -58,7 +59,7 @@ func describe(name string, model any) string {
 }
 
 // secretFields are words that make a model field's string value a secret when printed.
-var secretFields = append([]string{"claim_url"}, sensitiveWords...)
+var secretFields = sensitiveWords
 
 // redactTree replaces the string value of a secret-looking key, looking into objects and arrays.
 func redactTree(key string, value any) any {
@@ -70,7 +71,7 @@ func redactTree(key string, value any) any {
 				return redactedPlaceholder
 			}
 		}
-		return typed
+		return redactLinkString(typed)
 	case map[string]any:
 		out := make(map[string]any, len(typed))
 		for k, v := range typed {
@@ -85,6 +86,76 @@ func redactTree(key string, value any) any {
 		return out
 	}
 	return value
+}
+
+// secretQueryKeys are the query parameters of a signed link (a presigned document, a receipt):
+// whoever holds the link with them opens the document, so they are redacted wherever a URL is
+// printed — a hook, an error, a model's String.
+var secretQueryKeys = map[string]bool{"sig": true, "exp": true, "token": true, "signature": true}
+
+// isSecretParam reports a path or query parameter whose value is a bearer secret: a claim or AML
+// token, a code, a passcode, a signed link's sig/exp.
+func isSecretParam(name string) bool {
+	lower := strings.ToLower(name)
+	if secretQueryKeys[lower] || lower == "code" || strings.HasSuffix(lower, "_code") {
+		return true
+	}
+	for _, word := range sensitiveWords {
+		if strings.Contains(lower, word) {
+			return true
+		}
+	}
+	return false
+}
+
+// redactQuery returns a copy of query with the values of secret parameters redacted.
+func redactQuery(query url.Values) url.Values {
+	out := make(url.Values, len(query))
+	for k, v := range query {
+		if isSecretParam(k) {
+			out[k] = []string{redactedPlaceholder}
+			continue
+		}
+		out[k] = append([]string(nil), v...)
+	}
+	return out
+}
+
+// redactedEscaped undoes the escaping url.URL applies to the placeholder, so a printed URL reads
+// [redacted] rather than %5Bredacted%5D.
+var redactedEscaped = strings.NewReplacer(url.PathEscape(redactedPlaceholder), redactedPlaceholder,
+	url.QueryEscape(redactedPlaceholder), redactedPlaceholder)
+
+// redactLinkString scrubs the userinfo and the secret query parameters out of a string that is an
+// absolute URL; any other string is returned as it is.
+func redactLinkString(s string) string {
+	if !strings.Contains(s, "://") {
+		return s
+	}
+	parsed, err := url.Parse(s)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return s
+	}
+	changed := false
+	if parsed.User != nil {
+		parsed.User = nil
+		changed = true
+	}
+	if parsed.RawQuery != "" {
+		query := parsed.Query()
+		for k := range query {
+			if isSecretParam(k) {
+				changed = true
+			}
+		}
+		if changed {
+			parsed.RawQuery = redactQuery(query).Encode()
+		}
+	}
+	if !changed {
+		return s
+	}
+	return redactedEscaped.Replace(parsed.String())
 }
 
 // unset reports a value not worth printing: null, "", [] or {}. false and 0 are values.
