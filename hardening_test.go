@@ -371,3 +371,30 @@ func mustJSON(t *testing.T, value any) string {
 	}
 	return string(encoded)
 }
+
+// R9: a trailing line feed is never accepted — not in an amount, not in a request id, an
+// idempotency key or a header value.
+func TestTrailingNewlineIsRefusedEverywhere(t *testing.T) {
+	if _, err := CompareAmounts("25\n", "25"); !IsCode(err, CodeBadAmount) {
+		t.Fatalf("amount with a trailing LF: %v", err)
+	}
+	if _, err := AddAmounts("1", "2\n"); !IsCode(err, CodeBadAmount) {
+		t.Fatalf("amount with a trailing LF: %v", err)
+	}
+	api := newFakeAPI(t)
+	client := api.client()
+	ctx := context.Background()
+	lookup := &LookupRequest{UUID: Ptr("p1")}
+	if _, err := client.Payments.GetInfo(ctx, lookup, WithRequestID("req-1\n")); !IsCode(err, CodeBadHeader) {
+		t.Fatalf("request id with a trailing LF: %v", err)
+	}
+	if _, err := client.Payments.Create(ctx, &PaymentRequest{Amount: "1", Currency: "USDT"}, WithIdempotencyKey("key-1\n")); !IsCode(err, CodeBadIdempotencyKey) {
+		t.Fatalf("idempotency key with a trailing LF: %v", err)
+	}
+	if _, err := client.Payments.GetInfo(ctx, lookup, WithRequestHeader("X-Trace", "a\n")); !IsCode(err, CodeBadHeader) {
+		t.Fatalf("header with a trailing LF: %v", err)
+	}
+	if api.count() != 0 {
+		t.Fatalf("%d requests went out", api.count())
+	}
+}

@@ -6,6 +6,43 @@ Notable changes to this package. The format follows
 
 ## Unreleased
 
+### Security
+
+- **Webhooks (breaking, deliberately):** only the timestamp and the body of a delivery are signed.
+  `Delivery.ID`, `EventID`, `EventType` and `EventTime` were read from unsigned headers and the
+  docs told receivers to deduplicate on `EventID`, so a captured delivery replayed with a fresh
+  `X-Webhook-Event-Id` passed as a new event, and an added `X-Webhook-Test: true` made a live
+  payment look like a rehearsal. Deduplicate on the new `Delivery.EventKey` / `Event.Key()`
+  (`type:id:sequence`, from the signed body); `Delivery.IsTest` now follows the body's `test` flag
+  only. The header values moved to `Delivery.Unverified` (`ID`, `EventID`, `EventType`,
+  `EventTime`, `Test`), for logs. Migration: replace `delivery.EventID` with `delivery.EventKey`
+  and keep ignoring `delivery.IsTest` deliveries.
+- The admin token is never sent. `WithAdminToken` and `OBLODAI_ADMIN_TOKEN` are deprecated and
+  ignored (a one-time warning goes to the installed logger); merchant provisioning
+  (`Sandbox.OnboardStore`, any `AuthOnboard` route) fails with `sdk.bad_config` "operator channel
+  is not supported by the SDK; use the dashboard" before any request is made.
+- The clock offset learned from a `Date` header is bounded to ±900 s (was ±24 h) and adopted only
+  after the re-signed attempt succeeds; a 404, 5xx or transport error discards it.
+- Claim tokens (`/v1/claim/{token}`, `/v1/aml/{token}`), any token/code/passcode path parameter
+  and signed-link `sig`/`exp`/`token` query values are redacted from error messages, the
+  unwrapped `*url.Error`, `RequestInfo.URL` and bad-path-param errors. Hooks see `Authorization`,
+  `X-Api-Key`, cookies and passcode headers redacted, request and response. Model `String`
+  redacts `device_code` and signed-link parameters; redirect errors name only the origin.
+- A base URL with userinfo (`user:pass@`) is refused, config errors never echo the base URL, and
+  plain `http://` needs `WithInsecureBaseURL(true)` / `OBLODAI_ALLOW_INSECURE=1` for every host,
+  loopback included.
+- `FileResult.Filename` is a safe basename: no directory part, no control characters, never `.`
+  or `..`.
+- A request body over the contract's `max_body` (1 MiB) is refused with `sdk.bad_config` before
+  it is signed or sent.
+- Lists end only on an empty page or when the offset reaches `paginate.total` (`has_pages` is
+  used only when no total is reported).
+- The recorded webhook deliveries in `webhooks/testdata` are re-signed with a fake secret instead
+  of the captured one.
+- CI pins GitHub Actions by commit SHA, runs the shared conformance suite against a vendored
+  contract snapshot (`contract/`, refreshed by `scripts/sync-contract.sh`, checked by
+  `make drift`), creates releases in a job that runs no project code, and `.env*` is git-ignored.
+
 ### Added
 
 - `Client.CLILogin` — `Start`, `Poll`, `Logout`: the browser login of the `oblodai` CLI (OAuth
