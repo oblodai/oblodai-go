@@ -25,3 +25,8 @@ const (
 	// (x-oblodai-signing.webhook.test_header).
 	HeaderTest = "X-Webhook-Test"
 )
+
+// EventIDField is the signed body field carrying the id of the object state
+// (x-oblodai-signing.webhook.event_id_field): deduplicate on it. Headers are not signed. A delivery
+// from an older core may lack the field; then deduplicate on type:id:sequence from the body.
+const EventIDField = "event_id"

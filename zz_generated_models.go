@@ -1624,6 +1624,13 @@ type ConversionWebhook struct {
 	DocumentURL string `json:"document_url"`
 	// When the event happened, UTC with milliseconds (ISO 8601).
 	EventAt string `json:"event_at"`
+	// The id of the object state this body carries — signed, and the key to deduplicate on: the same
+	// for every retry and every resend (/v1/payment/resend) of the same state, different as soon as
+	// the state changes (sequence, by contrast, grows on a resend). Always equal to the
+	// X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by current
+	// cores; a delivery from an older core may lack it — then deduplicate on type:id:sequence from the
+	// body.
+	EventID *string `json:"event_id,omitempty"`
 	// Conversion fee, in percent.
 	FeePercent Decimal `json:"fee_percent"`
 	// Source currency.
@@ -1648,7 +1655,8 @@ type ConversionWebhook struct {
 	Status ConversionWebhookStatus `json:"status"`
 	// Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true —
 	// inside the signature. A live event never carries this field: your handler must ignore a body
-	// with test: true even if the signature is valid.
+	// with test: true even if the signature is valid. This field, not the unsigned X-Webhook-Test
+	// header, is what marks a rehearsal.
 	Test *bool `json:"test,omitempty"`
 	// Target currency.
 	To string `json:"to"`
@@ -1664,7 +1672,7 @@ func (m *ConversionWebhook) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
 		return err
 	}
-	m.Extra = genExtra(data, "completed_at", "created_at", "document_url", "event_at", "fee_percent", "from", "id", "is_final", "mode", "reason", "received", "sent", "sequence", "status", "test", "to", "type")
+	m.Extra = genExtra(data, "completed_at", "created_at", "document_url", "event_at", "event_id", "fee_percent", "from", "id", "is_final", "mode", "reason", "received", "sent", "sequence", "status", "test", "to", "type")
 	return nil
 }
 
@@ -4251,6 +4259,13 @@ type PaymentWebhook struct {
 	Currency string `json:"currency"`
 	// When the event happened, UTC with milliseconds (ISO 8601).
 	EventAt string `json:"event_at"`
+	// The id of the object state this body carries — signed, and the key to deduplicate on: the same
+	// for every retry and every resend (/v1/payment/resend) of the same state, different as soon as
+	// the state changes (sequence, by contrast, grows on a resend). Always equal to the
+	// X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by current
+	// cores; a delivery from an older core may lack it — then deduplicate on type:id:sequence from the
+	// body.
+	EventID *string `json:"event_id,omitempty"`
 	// true — the status is final, the payment will not change any further.
 	IsFinal bool `json:"is_final"`
 	// The network the money arrived on.
@@ -4276,7 +4291,8 @@ type PaymentWebhook struct {
 	Status PaymentStatus `json:"status"`
 	// Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true —
 	// inside the signature. A live event never carries this field: your handler must ignore a body
-	// with test: true even if the signature is valid.
+	// with test: true even if the signature is valid. This field, not the unsigned X-Webhook-Test
+	// header, is what marks a rehearsal.
 	Test *bool `json:"test,omitempty"`
 	// The hash of the transaction the payment arrived with (empty until there is a payment).
 	Txid string `json:"txid"`
@@ -4294,7 +4310,7 @@ func (m *PaymentWebhook) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
 		return err
 	}
-	m.Extra = genExtra(data, "additional_data", "amount", "currency", "event_at", "is_final", "network", "order_id", "payer_address", "payer_address_is_refundable", "payer_amount", "payer_currency", "payment_amount", "sequence", "status", "test", "txid", "type", "uuid")
+	m.Extra = genExtra(data, "additional_data", "amount", "currency", "event_at", "event_id", "is_final", "network", "order_id", "payer_address", "payer_address_is_refundable", "payer_amount", "payer_currency", "payment_amount", "sequence", "status", "test", "txid", "type", "uuid")
 	return nil
 }
 
@@ -5516,6 +5532,13 @@ type PayoutWebhook struct {
 	DocumentURL string `json:"document_url"`
 	// When the event happened, UTC with milliseconds (ISO 8601).
 	EventAt string `json:"event_at"`
+	// The id of the object state this body carries — signed, and the key to deduplicate on: the same
+	// for every retry and every resend (/v1/payment/resend) of the same state, different as soon as
+	// the state changes (sequence, by contrast, grows on a resend). Always equal to the
+	// X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by current
+	// cores; a delivery from an older core may lack it — then deduplicate on type:id:sequence from the
+	// body.
+	EventID *string `json:"event_id,omitempty"`
 	// Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the
 	// debit amount was increased by the fee, the recipient gets the full requested amount
 	// (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld
@@ -5551,7 +5574,8 @@ type PayoutWebhook struct {
 	Status PayoutStatus `json:"status"`
 	// Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true —
 	// inside the signature. A live event never carries this field: your handler must ignore a body
-	// with test: true even if the signature is valid.
+	// with test: true even if the signature is valid. This field, not the unsigned X-Webhook-Test
+	// header, is what marks a rehearsal.
 	Test *bool `json:"test,omitempty"`
 	// The blockchain transaction hash (appears after sending).
 	Txid string `json:"txid"`
@@ -5571,7 +5595,7 @@ func (m *PayoutWebhook) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
 		return err
 	}
-	m.Extra = genExtra(data, "address", "amount", "approval_required", "commission", "created_at", "currency", "document_url", "event_at", "fee_bearer", "is_final", "is_refund", "memo", "network", "order_id", "payer_amount", "payment_order_id", "refund_for", "sequence", "source", "status", "test", "txid", "type", "updated_at", "uuid")
+	m.Extra = genExtra(data, "address", "amount", "approval_required", "commission", "created_at", "currency", "document_url", "event_at", "event_id", "fee_bearer", "is_final", "is_refund", "memo", "network", "order_id", "payer_amount", "payment_order_id", "refund_for", "sequence", "source", "status", "test", "txid", "type", "updated_at", "uuid")
 	return nil
 }
 
@@ -8254,6 +8278,13 @@ type WalletWebhook struct {
 	Currency string `json:"currency"`
 	// When the event happened, UTC with milliseconds (ISO 8601).
 	EventAt string `json:"event_at"`
+	// The id of the object state this body carries — signed, and the key to deduplicate on: the same
+	// for every retry and every resend (/v1/payment/resend) of the same state, different as soon as
+	// the state changes (sequence, by contrast, grows on a resend). Always equal to the
+	// X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by current
+	// cores; a delivery from an older core may lack it — then deduplicate on type:id:sequence from the
+	// body.
+	EventID *string `json:"event_id,omitempty"`
 	// true — the status is final.
 	IsFinal bool `json:"is_final"`
 	// Blockchain network.
@@ -8271,7 +8302,8 @@ type WalletWebhook struct {
 	Status string `json:"status"`
 	// Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true —
 	// inside the signature. A live event never carries this field: your handler must ignore a body
-	// with test: true even if the signature is valid.
+	// with test: true even if the signature is valid. This field, not the unsigned X-Webhook-Test
+	// header, is what marks a rehearsal.
 	Test *bool `json:"test,omitempty"`
 	// The deposit transaction hash.
 	Txid string `json:"txid"`
@@ -8289,7 +8321,7 @@ func (m *WalletWebhook) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, (*plain)(m)); err != nil {
 		return err
 	}
-	m.Extra = genExtra(data, "address", "currency", "event_at", "is_final", "network", "order_id", "payer_currency", "payment_amount", "sequence", "status", "test", "txid", "type", "uuid")
+	m.Extra = genExtra(data, "address", "currency", "event_at", "event_id", "is_final", "network", "order_id", "payer_currency", "payment_amount", "sequence", "status", "test", "txid", "type", "uuid")
 	return nil
 }
 
