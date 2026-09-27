@@ -114,7 +114,7 @@ func TestListRequestsNothingUntilConsumedAndNeverCarriesACallerKey(t *testing.T)
 }
 
 func TestClockCorrectionIsOnlyAppliedToSignatureFailures(t *testing.T) {
-	far := map[string]string{"Date": time.Now().Add(4000 * time.Second).UTC().Format(http.TimeFormat)}
+	far := map[string]string{"Date": time.Now().Add(600 * time.Second).UTC().Format(http.TimeFormat)}
 	api := newFakeAPI(t, apiError(401, map[string]any{"code": "auth.ip_not_allowed", "retryable": false}, far))
 	client := api.client(WithRetry(RetryOptions{MaxRetries: 0}))
 	if _, err := client.Account.GetBalance(context.Background()); !IsCode(err, "auth.ip_not_allowed") {
@@ -128,9 +128,38 @@ func TestClockCorrectionIsOnlyAppliedToSignatureFailures(t *testing.T) {
 	}
 }
 
+// R2: a fake server answers 401 bad_signature with a far Date, then 404 to the re-signed attempt.
+// The measured offset was never confirmed by a success, so it must not stick; a Date beyond the
+// ±900 s bound is not even tried.
+func TestClockOffsetIsAdoptedOnlyAfterASuccess(t *testing.T) {
+	badSignature := map[string]any{"code": "merchant.bad_signature", "retryable": false}
+	notFound := map[string]any{"code": "payment.not_found", "retryable": false}
+	ctx := context.Background()
+
+	near := map[string]string{"Date": time.Now().Add(600 * time.Second).UTC().Format(http.TimeFormat)}
+	api := newFakeAPI(t, apiError(401, badSignature, near), apiError(404, notFound))
+	client := api.client(WithRetry(RetryOptions{MaxRetries: 0}))
+	if _, err := client.Payments.GetInfo(ctx, &LookupRequest{UUID: Ptr("p1")}); !IsNotFound(err) {
+		t.Fatalf("expected the 404 of the re-signed attempt, got %v", err)
+	}
+	if api.count() != 2 || client.ClockOffset() != 0 {
+		t.Fatalf("%d attempts, offset %s: the re-signed attempt must run and its offset be discarded", api.count(), client.ClockOffset())
+	}
+
+	far := map[string]string{"Date": time.Now().Add(23 * time.Hour).UTC().Format(http.TimeFormat)}
+	api = newFakeAPI(t, apiError(401, badSignature, far), apiError(404, notFound))
+	client = api.client(WithRetry(RetryOptions{MaxRetries: 0}))
+	if _, err := client.Payments.GetInfo(ctx, &LookupRequest{UUID: Ptr("p1")}); !IsCode(err, CodeBadSignature) {
+		t.Fatalf("a Date 23 h away must not trigger a re-sign, got %v", err)
+	}
+	if api.count() != 1 || client.ClockOffset() != 0 {
+		t.Fatalf("%d attempts, offset %s", api.count(), client.ClockOffset())
+	}
+}
+
 func TestClockCorrectionIsRevertedWhenItDoesNotHelp(t *testing.T) {
 	// One broken Date header from a proxy must not wedge every later call.
-	far := map[string]string{"Date": time.Now().Add(4000 * time.Second).UTC().Format(http.TimeFormat)}
+	far := map[string]string{"Date": time.Now().Add(600 * time.Second).UTC().Format(http.TimeFormat)}
 	badSignature := map[string]any{"code": "merchant.bad_signature", "retryable": false}
 	api := newFakeAPI(t,
 		apiError(401, badSignature, far),

@@ -7,12 +7,15 @@ import (
 
 // Injectable clock for signing. The core rejects timestamps more than +/-SkewSeconds from its own time,
 // so a host with a drifting clock would get merchant.bad_signature on every call. The transport
-// learns the server's time from the Date header of a signature-failure response, re-signs once,
-// and keeps the offset only if that re-signed attempt got past authentication.
+// learns the server's time from the Date header of a signature-failure response and re-signs that
+// one call with it; the offset is adopted for later calls only when the re-signed attempt
+// succeeded (2xx), and discarded otherwise.
 
-// maxPlausibleOffset bounds what the client accepts as clock drift; beyond it the Date header is
-// more likely broken (a misconfigured proxy) than the local clock.
-const maxPlausibleOffset = 24 * time.Hour
+// maxPlausibleOffset bounds what the client accepts as clock drift: a single response can never
+// move the signing clock further than this. A Date header beyond it is treated as broken (a
+// misconfigured proxy) or hostile — whoever could shift the clock by hours could make captured
+// signed requests replayable long after they were made.
+const maxPlausibleOffset = 900 * time.Second
 
 // skewClock is a clock with a learned server offset. It is safe for concurrent use: one client
 // serves many goroutines and any of them may discover the offset.
@@ -27,6 +30,14 @@ func newSkewClock(base func() time.Time) *skewClock {
 		base = time.Now
 	}
 	return &skewClock{base: base}
+}
+
+// stampWith is the current unix time in seconds with offset applied instead of the learned one: a
+// trial offset for the single re-signed attempt, not yet adopted.
+func (c *skewClock) stampWith(offset time.Duration) int64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.base().Add(offset).Unix()
 }
 
 // stamp is the current unix time in seconds with the learned offset applied, plus the offset it
@@ -66,21 +77,10 @@ func (c *skewClock) observeServerDate(dateHeader string) (time.Duration, bool) {
 	return offset, true
 }
 
-// correct applies an offset to every subsequent signature.
+// correct adopts an offset for every subsequent signature. The transport calls it only after a
+// request signed with that offset succeeded.
 func (c *skewClock) correct(offset time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.offset = offset
-}
-
-// revert undoes a correction this call installed, and only that: if another goroutine has since
-// measured its own offset, that one stays. The second result reports whether the revert happened.
-func (c *skewClock) revert(installed, previous time.Duration) bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.offset != installed {
-		return false
-	}
-	c.offset = previous
-	return true
 }

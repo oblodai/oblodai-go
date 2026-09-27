@@ -185,9 +185,14 @@ func (t *transport) execute(ctx context.Context, call Call, o callOptions, reque
 
 	attempt := 0
 	skewTried := false
-	var skewBefore, skewInstalled time.Duration
+	// trialOffset is the server offset measured from a signature failure's Date header. It signs
+	// the one re-signed attempt and is adopted by the shared clock only if that attempt succeeds.
+	var trialOffset *time.Duration
 	for {
 		ts, signedOffset := t.clock.stamp()
+		if trialOffset != nil {
+			ts, signedOffset = t.clock.stampWith(*trialOffset), *trialOffset
+		}
 		req, err := buildRequest(buildInput{
 			baseURL:        t.baseURL,
 			route:          r,
@@ -216,6 +221,7 @@ func (t *transport) execute(ctx context.Context, call Call, o callOptions, reque
 		started := time.Now()
 		raw, sendErr := t.send(ctx, req, o, deadline, limit)
 		if sendErr != nil {
+			trialOffset = nil // the corrected timestamp was not confirmed: discard it
 			t.report(info, nil, started, sendErr)
 			if shouldRetry(sendErr, attempt, safeToRepeat, retry) {
 				if pauseErr := t.pause(ctx, sendErr, attempt, deadline, retry); pauseErr != nil {
@@ -227,6 +233,10 @@ func (t *transport) execute(ctx context.Context, call Call, o callOptions, reque
 			return nil, sendErr
 		}
 		if raw.status >= 200 && raw.status < 300 {
+			if trialOffset != nil {
+				// The core accepted a request signed with the measured offset: adopt it.
+				t.clock.correct(*trialOffset)
+			}
 			t.report(info, raw, started, nil)
 			return raw, nil
 		}
@@ -237,30 +247,27 @@ func (t *transport) execute(ctx context.Context, call Call, o callOptions, reque
 			"route": label, "status": raw.status, "code": failure.Code, "requestId": failure.RequestID,
 		})
 
+		// Any non-2xx answer to the re-signed attempt means the measured offset was not confirmed
+		// (a 404 or a 5xx proves nothing about the clock): discard it.
+		trialOffset = nil
+
 		// Clock skew: the core rejected the timestamp or the MAC. Learn its time from the Date
-		// header, re-sign once, and keep the offset only if that attempt got past authentication.
-		// The comparison is against the offset THIS request was signed with, not against whatever
-		// the shared clock holds now: another goroutine may have corrected it in between.
-		if raw.status == 401 && signatureFailureCodes[failure.Code] {
-			if !skewTried {
-				if offset, ok := t.clock.observeServerDate(raw.header.Get("Date")); ok &&
-					abs(offset-signedOffset) > skewCorrectionThreshold {
-					if time.Now().After(deadline) {
-						return raw, newDeadlineError(
-							"the call budget ran out before the clock-corrected retry; last error: "+failure.Message, failure)
-					}
-					t.logger.Warn("clock skew detected; re-signing with server time",
-						LogFields{"route": label, "offsetSec": int(offset.Seconds())})
-					skewTried = true
-					skewBefore, skewInstalled = signedOffset, offset
-					t.clock.correct(offset)
-					continue
+		// header (at most maxPlausibleOffset away) and re-sign this call once with it; the shared
+		// clock adopts the offset only if that attempt succeeds. The comparison is against the
+		// offset THIS request was signed with, not against whatever the shared clock holds now:
+		// another goroutine may have corrected it in between.
+		if raw.status == 401 && signatureFailureCodes[failure.Code] && !skewTried {
+			if offset, ok := t.clock.observeServerDate(raw.header.Get("Date")); ok &&
+				abs(offset-signedOffset) > skewCorrectionThreshold {
+				if time.Now().After(deadline) {
+					return raw, newDeadlineError(
+						"the call budget ran out before the clock-corrected retry; last error: "+failure.Message, failure)
 				}
-			} else {
-				// The corrected timestamp did not help: it was not skew. Put the old offset back,
-				// but only if this call's correction is still the one in force — a concurrent call
-				// that measured its own offset must keep it.
-				t.clock.revert(skewInstalled, skewBefore)
+				t.logger.Warn("clock skew detected; re-signing with server time",
+					LogFields{"route": label, "offsetSec": int(offset.Seconds())})
+				skewTried = true
+				trialOffset = &offset
+				continue
 			}
 		}
 		if shouldRetry(failure, attempt, safeToRepeat, retry) {

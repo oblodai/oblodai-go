@@ -110,10 +110,10 @@ func (s *skewedAPI) handler(t *testing.T) http.HandlerFunc {
 	}
 }
 
-// Many calls in flight against a core an hour ahead: every one must succeed, and the correction
+// Many calls in flight against a core ten minutes ahead: every one must succeed, and the correction
 // must be learned once rather than fought over.
 func TestClockSkewCorrectionUnderConcurrency(t *testing.T) {
-	api := &skewedAPI{serverTime: time.Now().Add(time.Hour)}
+	api := &skewedAPI{serverTime: time.Now().Add(10 * time.Minute)}
 	server := newRawServer(t, api.handler(t))
 	client, err := New(WithBaseURL(server), WithInsecureBaseURL(true), WithCredentials("pk_test_1", "secret-1"),
 		WithRetry(RetryOptions{MaxRetries: 2, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond}))
@@ -141,8 +141,8 @@ func TestClockSkewCorrectionUnderConcurrency(t *testing.T) {
 			t.Errorf("caller %d: %v", i, err)
 		}
 	}
-	if offset := client.ClockOffset(); offset < 55*time.Minute || offset > 65*time.Minute {
-		t.Fatalf("learned offset = %s, want about an hour", offset)
+	if offset := client.ClockOffset(); offset < 9*time.Minute || offset > 11*time.Minute {
+		t.Fatalf("learned offset = %s, want about ten minutes", offset)
 	}
 	api.mu.Lock()
 	defer api.mu.Unlock()
@@ -151,22 +151,17 @@ func TestClockSkewCorrectionUnderConcurrency(t *testing.T) {
 	}
 }
 
-// A correction is reverted only by the call that installed it: a concurrent call that measured its
-// own offset must keep it.
-func TestClockCorrectionRevertsOnlyItsOwnOffset(t *testing.T) {
-	clock := newSkewClock(time.Now)
-	clock.correct(time.Hour)
-	if clock.revert(30*time.Minute, 0) {
-		t.Fatal("a revert must not undo an offset another call installed")
+// R2: a Date header can never move the signing clock more than maxPlausibleOffset.
+func TestClockRefusesAnImplausibleServerDate(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	clock := newSkewClock(func() time.Time { return now })
+	for _, shift := range []time.Duration{901 * time.Second, -901 * time.Second, 23 * time.Hour} {
+		if offset, ok := clock.observeServerDate(now.Add(shift).UTC().Format(http.TimeFormat)); ok {
+			t.Fatalf("a Date %s away was accepted as offset %s", shift, offset)
+		}
 	}
-	if clock.currentOffset() != time.Hour {
-		t.Fatalf("offset = %s, want an hour", clock.currentOffset())
-	}
-	if !clock.revert(time.Hour, 0) {
-		t.Fatal("a call must be able to revert its own correction")
-	}
-	if clock.currentOffset() != 0 {
-		t.Fatalf("offset = %s, want zero", clock.currentOffset())
+	if offset, ok := clock.observeServerDate(now.Add(900 * time.Second).UTC().Format(http.TimeFormat)); !ok || offset != 900*time.Second {
+		t.Fatalf("a Date at the bound: %s %v", offset, ok)
 	}
 }
 

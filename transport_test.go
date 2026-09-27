@@ -192,7 +192,7 @@ func TestErrorEnvelopeIsClassified(t *testing.T) {
 }
 
 func TestClockSkewIsCorrectedOnceFromTheServerDate(t *testing.T) {
-	serverNow := time.Now().Add(time.Hour)
+	serverNow := time.Now().Add(10 * time.Minute)
 	api := newFakeAPI(t,
 		apiError(401, map[string]any{"code": "merchant.bad_signature", "retryable": false},
 			map[string]string{"Date": serverNow.UTC().Format(http.TimeFormat)}),
@@ -212,7 +212,7 @@ func TestClockSkewIsCorrectedOnceFromTheServerDate(t *testing.T) {
 	if drift := ts - serverNow.Unix(); drift > 5 || drift < -5 {
 		t.Fatalf("the re-signed timestamp is %d s from the server clock", drift)
 	}
-	if client.ClockOffset() < 55*time.Minute {
+	if client.ClockOffset() < 9*time.Minute {
 		t.Fatalf("the offset should have been kept, got %s", client.ClockOffset())
 	}
 }
