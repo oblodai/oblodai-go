@@ -91,11 +91,11 @@ func TestVerifyRealDeliveries(t *testing.T) {
 			if err != nil {
 				t.Fatalf("a real delivery failed verification: %v", err)
 			}
-			if delivery.ID != sample.Headers[webhooks.HeaderID] {
-				t.Errorf("delivery id = %q", delivery.ID)
+			if delivery.Unverified.ID != sample.Headers[webhooks.HeaderID] {
+				t.Errorf("delivery id = %q", delivery.Unverified.ID)
 			}
-			if string(delivery.EventType) != eventName {
-				t.Errorf("event type = %q, want %q", delivery.EventType, eventName)
+			if string(delivery.Unverified.EventType) != eventName {
+				t.Errorf("event type = %q, want %q", delivery.Unverified.EventType, eventName)
 			}
 			var body struct {
 				UUID string `json:"uuid"`
@@ -248,11 +248,12 @@ func TestVerifyRules(t *testing.T) {
 		if err != nil {
 			t.Fatalf("VerifyRequest: %v", err)
 		}
-		if delivery.ID != "d-1" || delivery.EventID != "e-1" || delivery.EventType != oblodai.WebhookEventNameInvoicePaid {
+		u := delivery.Unverified
+		if u.ID != "d-1" || u.EventID != "e-1" || u.EventType != oblodai.WebhookEventNameInvoicePaid {
 			t.Fatalf("unexpected delivery: %+v", delivery)
 		}
-		if !delivery.EventTime.Equal(time.Unix(ts, 0).UTC()) || !delivery.SentAt.Equal(time.Unix(ts, 0).UTC()) {
-			t.Fatalf("times = %s / %s", delivery.EventTime, delivery.SentAt)
+		if !u.EventTime.Equal(time.Unix(ts, 0).UTC()) || !delivery.SentAt.Equal(time.Unix(ts, 0).UTC()) {
+			t.Fatalf("times = %s / %s", u.EventTime, delivery.SentAt)
 		}
 		if string(delivery.Raw) != sampleBody {
 			t.Fatal("Raw must be the exact bytes that were verified")
@@ -470,5 +471,46 @@ func TestEveryEventOfTheContractIsAKnownKind(t *testing.T) {
 		if !slices.Contains(webhooks.KnownKinds, kind) {
 			t.Errorf("KnownKinds %v lacks %s", webhooks.KnownKinds, kind)
 		}
+	}
+}
+
+// R1: the dedupe key and the test flag come from the signed body only. A captured delivery
+// replayed with every unsigned header rewritten keeps its key and its (live) flag; a rehearsal body
+// is a test whatever the headers say.
+func TestUnsignedHeadersDecideNothing(t *testing.T) {
+	ts := time.Now().Unix()
+	at := func() time.Time { return time.Unix(ts, 0) }
+	live := `{"type":"payment","uuid":"u1","order_id":"o1","status":"paid","sequence":7}`
+	original := signed(t, "whsec", ts, live, map[string]string{
+		webhooks.HeaderEventID: "evt-1", webhooks.HeaderID: "d-1", webhooks.HeaderEvent: "invoice.paid",
+	})
+	first, err := webhooks.VerifyDelivery([]byte(live), original, webhooks.Options{Secret: "whsec", Now: at})
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay := original.Clone()
+	replay.Set(webhooks.HeaderEventID, "evt-attacker-fresh")
+	replay.Set(webhooks.HeaderID, "d-attacker")
+	replay.Set(webhooks.HeaderEvent, "payout.failed")
+	replay.Set(webhooks.HeaderTest, "true")
+	second, err := webhooks.VerifyDelivery([]byte(live), replay, webhooks.Options{Secret: "whsec", Now: at})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.EventKey != "payment:u1:7" || second.EventKey != first.EventKey {
+		t.Fatalf("keys %q / %q, want both payment:u1:7", first.EventKey, second.EventKey)
+	}
+	if second.IsTest || !second.Unverified.Test || second.Unverified.EventID != "evt-attacker-fresh" {
+		t.Fatalf("the header must not make a live body a test: %+v", second)
+	}
+
+	rehearsal := `{"type":"payment","uuid":"u1","status":"paid","sequence":0,"test":true}`
+	headers := signed(t, "whsec", ts, rehearsal, nil)
+	delivery, err := webhooks.VerifyDelivery([]byte(rehearsal), headers, webhooks.Options{Secret: "whsec", Now: at})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !delivery.IsTest || delivery.Unverified.Test {
+		t.Fatalf("a test: true body without the header must be a test: %+v", delivery)
 	}
 }

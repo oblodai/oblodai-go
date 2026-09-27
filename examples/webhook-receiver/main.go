@@ -1,5 +1,7 @@
-// A webhook receiver: verify every delivery over the raw bytes, deduplicate by event id, ignore
-// events that arrive out of order, and never act on a rehearsal (test) delivery as if money moved.
+// A webhook receiver: verify every delivery over the raw bytes, deduplicate on the key the signed
+// body gives (Delivery.EventKey — never on a delivery header, which the signature does not cover),
+// ignore events that arrive out of order, and never act on a rehearsal (test: true) delivery as if
+// money moved.
 package main
 
 import (
@@ -51,9 +53,10 @@ func handler(options webhooks.Options, store *seen) http.HandlerFunc {
 			return
 		}
 		if delivery.IsTest {
-			// A rehearsal delivery (webhook tests, sandbox): signed like a live one, but no money
-			// moved. Acknowledge it and let it touch no order and no balance.
-			log.Printf("test delivery %s (%s): acknowledged, not acted on", delivery.ID, delivery.EventType)
+			// A rehearsal delivery (webhook tests, sandbox): test: true inside the signed body. Signed
+			// like a live one, but no money moved. Acknowledge it and let it touch no order and no
+			// balance.
+			log.Printf("test delivery %s: acknowledged, not acted on", delivery.EventKey)
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -81,16 +84,15 @@ func handler(options webhooks.Options, store *seen) http.HandlerFunc {
 	}
 }
 
-// alreadyHandled reports whether this delivery's state was handled before (by webhooks.HeaderEventID,
-// else the delivery id), or carries an event older than the last one processed for its object.
+// alreadyHandled reports whether this delivery was handled before (by Delivery.EventKey, which
+// comes from the signed body: a replay with rewritten headers has the same key), or carries an
+// event older than the last one processed for its object. A resend of a state carries a new
+// sequence and so passes: the fulfilment behind it must itself be idempotent per order and status.
 func (s *seen) alreadyHandled(delivery *webhooks.Delivery) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	key := delivery.EventID
-	if key == "" {
-		key = delivery.ID
-	}
-	if key != "" && s.handled[key] {
+	key := delivery.EventKey
+	if s.handled[key] {
 		return true
 	}
 	event := delivery.Event

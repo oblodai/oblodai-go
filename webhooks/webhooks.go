@@ -7,8 +7,12 @@
 //			http.Error(w, "bad signature", http.StatusBadRequest)
 //			return
 //		}
-//		if delivery.IsTest {
+//		if delivery.IsTest { // test: true inside the signed body
 //			w.WriteHeader(http.StatusOK) // a rehearsal: no money moved
+//			return
+//		}
+//		if alreadyHandled(delivery.EventKey) { // derived from the signed body only
+//			w.WriteHeader(http.StatusOK)
 //			return
 //		}
 //		if payment := delivery.Event.Payment; payment != nil {
@@ -22,12 +26,13 @@
 //	HeaderTimestamp:      unix seconds
 //	HeaderSignature:      hex(HMAC-SHA256(secret, "<ts>." + rawBody))
 //	HeaderSignaturePrev:  the same with the previous secret — only during a rotation overlap
-//	HeaderEvent:          the event name, a key of EventKinds: invoice.paid, payout.sent, …
-//	HeaderID:             stable per delivery (identical across retries of THAT delivery)
-//	HeaderEventID:        stable per STATE — the same for a resend of a state you handled,
-//	                      different as soon as the state differs: the key to deduplicate on
-//	HeaderEventTime:      unix seconds when the state change committed (order events by it)
-//	HeaderTest:           "true" on a rehearsal delivery (Webhooks.Test, sandbox)
+//
+// Only the timestamp and the body are covered by the signature. The other delivery headers —
+// HeaderEvent, HeaderID, HeaderEventID, HeaderEventTime, HeaderTest — are NOT: anyone who captured
+// a delivery can resend it within the tolerance window with those headers rewritten. They are
+// exposed only as Delivery.Unverified, for logging; never decide anything on them. Deduplicate on
+// Delivery.EventKey (type, object id and sequence, all from the signed body), drop out-of-order
+// events with IsStale, and take the rehearsal flag from the body (Delivery.IsTest).
 //
 // Always verify over the RAW request bytes: a re-serialized parse will not match the signature.
 //
@@ -41,9 +46,8 @@
 // (oblodai.PaymentWebhook, …): which kinds exist and which model each carries is generated from
 // the contract (zz_generated_events.go), never listed by hand.
 //
-// Rehearsal deliveries are signed exactly like live ones and carry test: true in the body (and the
-// HeaderTest header). Check Delivery.IsTest — or Event.IsTest — and never act on one as if
-// money moved.
+// Rehearsal deliveries are signed exactly like live ones and carry test: true in the signed body.
+// Check Delivery.IsTest — or Event.IsTest — and never act on one as if money moved.
 package webhooks
 
 import (
@@ -94,28 +98,40 @@ type Options struct {
 	Now func() time.Time
 }
 
-// Delivery is a verified delivery: the event plus the advisory headers worth keeping.
+// Delivery is a verified delivery. Everything outside Unverified comes from the signed bytes.
 type Delivery struct {
 	// Event is the parsed body.
 	Event *Event
-	// ID is HeaderID: stable across retries of the same DELIVERY. It is not enough to
-	// deduplicate on — a resend of a state you already handled is a new delivery with a new id.
+	// EventKey is Event.Key(): "type:id:sequence", read from the signed body only — the key to
+	// deduplicate deliveries on. Retries of a delivery and replays of a captured one carry the same
+	// key. A resend of a state (/v1/payment/resend) carries a higher sequence and so a new key: keep
+	// the fulfilment itself idempotent per object and status.
+	EventKey string
+	// SentAt is HeaderTimestamp: when this attempt was signed and sent (covered by the signature).
+	SentAt time.Time
+	// IsTest marks a rehearsal delivery: test: true in the signed body. Signed like a live one,
+	// but no money moved. The HeaderTest header is not consulted (see Unverified.Test).
+	IsTest bool
+	// Raw is the exact body that was verified.
+	Raw []byte
+	// Unverified are the advisory delivery headers. They are NOT covered by the signature: whoever
+	// relays a delivery can rewrite them. Use them for logs and tracing only — never to deduplicate,
+	// to decide whether a delivery is a test, or to pick what to do with it.
+	Unverified UnverifiedHeaders
+}
+
+// UnverifiedHeaders are the delivery headers the signature does not cover, as received.
+type UnverifiedHeaders struct {
+	// ID is HeaderID: meant to be stable across retries of one delivery.
 	ID string
-	// EventID is HeaderEventID: the id of the STATE this delivery carries — the same for the
-	// original, its retries and every resend of that state, different as soon as the state differs.
-	// Keep the ids you have handled and skip repeats. Empty from a core that predates it.
+	// EventID is HeaderEventID: meant to be stable per state of an object.
 	EventID string
 	// EventType is HeaderEvent: the event name (invoice.paid, payout.sent, …; see EventKinds).
 	EventType oblodai.WebhookEventName
 	// EventTime is HeaderEventTime: when the state change committed. Zero when absent.
 	EventTime time.Time
-	// SentAt is HeaderTimestamp: when this attempt was signed and sent.
-	SentAt time.Time
-	// IsTest marks a rehearsal delivery (HeaderTest or test: true in the body): signed like a
-	// live one, but no money moved.
-	IsTest bool
-	// Raw is the exact body that was verified.
-	Raw []byte
+	// Test is HeaderTest == "true". Delivery.IsTest, from the signed body, is what counts.
+	Test bool
 }
 
 // Verify checks the signature and freshness of a delivery and returns the parsed event. It never
@@ -223,16 +239,20 @@ func VerifyDelivery(rawBody []byte, headers http.Header, opts Options) (*Deliver
 		return nil, err
 	}
 	delivery := &Delivery{
-		Event:     event,
-		ID:        headers.Get(HeaderID),
-		EventID:   headers.Get(HeaderEventID),
-		EventType: oblodai.WebhookEventName(headers.Get(HeaderEvent)),
-		SentAt:    time.Unix(ts, 0).UTC(),
-		IsTest:    strings.EqualFold(strings.TrimSpace(headers.Get(HeaderTest)), "true") || event.IsTest(),
-		Raw:       rawBody,
+		Event:    event,
+		EventKey: event.Key(),
+		SentAt:   time.Unix(ts, 0).UTC(),
+		IsTest:   event.IsTest(),
+		Raw:      rawBody,
+		Unverified: UnverifiedHeaders{
+			ID:        headers.Get(HeaderID),
+			EventID:   headers.Get(HeaderEventID),
+			EventType: oblodai.WebhookEventName(headers.Get(HeaderEvent)),
+			Test:      strings.EqualFold(strings.TrimSpace(headers.Get(HeaderTest)), "true"),
+		},
 	}
 	if eventTime, err := strconv.ParseInt(strings.TrimSpace(headers.Get(HeaderEventTime)), 10, 64); err == nil {
-		delivery.EventTime = time.Unix(eventTime, 0).UTC()
+		delivery.Unverified.EventTime = time.Unix(eventTime, 0).UTC()
 	}
 	return delivery, nil
 }
@@ -282,13 +302,21 @@ type eventHead struct {
 // "" for a kind this release does not know: which field identifies that object is not guessed.
 func (e *Event) ID() string { return e.id }
 
+// Key is the event's deduplication key, "type:id:sequence", built from the signed body only (the
+// same concept as event_key / eventKey in the other Oblodai SDKs). Retries and replays of one
+// delivery share it.
+func (e *Event) Key() string {
+	return e.Type + ":" + e.id + ":" + strconv.FormatInt(e.head.Sequence, 10)
+}
+
 // Sequence orders the events of one object; 0 when the body carries none (a rehearsal).
 func (e *Event) Sequence() int64 { return e.head.Sequence }
 
 // IsFinal reports a state after which nothing else happens to the object.
 func (e *Event) IsFinal() bool { return e.head.IsFinal }
 
-// IsTest reports a rehearsal event (test: true): never act on one as if money moved.
+// IsTest reports a rehearsal event (test: true in the signed body): never act on one as if money
+// moved.
 func (e *Event) IsTest() bool { return e.head.Test }
 
 // IsKnown reports whether the event's kind is one this release models with a typed body.

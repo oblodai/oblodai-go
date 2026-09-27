@@ -62,12 +62,12 @@ if err != nil {
 	http.Error(w, "bad signature", http.StatusBadRequest) // 4xx only for a failed verification
 	return
 }
-if delivery.IsTest { // a rehearsal delivery: signed like a live one, but no money moved
+if delivery.IsTest { // test: true in the signed body — a rehearsal, no money moved
 	w.WriteHeader(http.StatusOK)
 	return
 }
 if payment := delivery.Event.Payment; payment != nil && oblodai.IsPaymentPaid(payment.Status) {
-	markOrderPaid(payment.OrderID, delivery.EventID) // EventID is stable for one state
+	markOrderPaid(payment.OrderID, delivery.EventKey) // EventKey comes from the signed body
 }
 w.WriteHeader(http.StatusOK)
 ```
@@ -76,7 +76,9 @@ Order of checks: headers → HMAC (current secret, then `PreviousSecret`) → fr
 4xx to `IsSignature`, 5xx to `IsWebhookPayload`. `delivery.Event` has one typed body (`Payment`,
 `Payout`, `Wallet`, `Conversion` — the generated `webhooks.Bodies`, one per kind of `KnownKinds`), or
 none for a kind this release does not model (`IsKnown()`).
-Deduplicate on `delivery.EventID`; `webhooks.IsStale(event, lastSequence)` drops out-of-order events.
+Deduplicate on `delivery.EventKey` (from the signed body); `webhooks.IsStale(event, lastSequence)`
+drops out-of-order events; always ignore `delivery.IsTest`. Delivery headers other than the
+timestamp and signature are unsigned and live only in `delivery.Unverified`.
 
 ## Working in this repository
 

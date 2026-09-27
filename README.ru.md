@@ -261,12 +261,12 @@ if err != nil {
 	http.Error(w, "bad signature", http.StatusBadRequest) // 4xx only for a failed verification
 	return
 }
-if delivery.IsTest { // a rehearsal delivery: signed like a live one, but no money moved
+if delivery.IsTest { // test: true in the signed body — a rehearsal, no money moved
 	w.WriteHeader(http.StatusOK)
 	return
 }
 if payment := delivery.Event.Payment; payment != nil && oblodai.IsPaymentPaid(payment.Status) {
-	markOrderPaid(payment.OrderID, delivery.EventID) // EventID is stable for one state
+	markOrderPaid(payment.OrderID, delivery.EventKey) // EventKey comes from the signed body
 }
 w.WriteHeader(http.StatusOK)
 ```
@@ -277,8 +277,14 @@ HMAC (текущий секрет, затем `Options.PreviousSecret`), све�
 отвечайте 5xx, событие настоящее, и ядро его повторит. `delivery.Event` несёт типизированное тело
 своего вида (`Payment`, `Payout`, `Wallet`, `Conversion` — сгенерированные модели вебхуков); вид,
 который добавило более новое ядро, приходит с `Type` и сырым телом `Raw` и `IsKnown() == false`.
-`delivery.EventID` (`X-Webhook-Event-Id`) постоянен для одного состояния — по нему и дедуплицируйте;
-`webhooks.IsStale(event, lastSequence)` отбрасывает событие не по порядку. После
+Подписаны только метка времени и тело: дедуплицируйте по `delivery.EventKey` (`type:id:sequence` из
+подписанного тела), событие не по порядку отбрасывайте через `webhooks.IsStale(event, lastSequence)`,
+а доставку с `delivery.IsTest` (`test: true` в подписанном теле) **всегда** подтверждайте и
+игнорируйте. Остальные заголовки доставки (`X-Webhook-Event-Id`, `X-Webhook-Id`, `X-Webhook-Event`,
+`X-Webhook-Test`, …) не подписаны — перехваченную доставку можно повторить с изменёнными
+заголовками, — поэтому они есть только в `delivery.Unverified`, для журналов. Повторная отправка
+состояния несёт новый sequence (и ключ): сама выдача заказа должна быть идемпотентной по заказу и
+статусу. После
 `Webhooks.RotateSecret` держите старый секрет в `Options.PreviousSecret` не меньше 26 часов.
 
 ## Ошибки
@@ -323,7 +329,8 @@ API сказал последним). Предикаты: `IsValidation`, `IsAut
 - **Ключи идемпотентности** создаются на дедуплицируемых маршрутах — один на вызов, тот же на всех
   повторах. `WithIdempotencyKey` переживает перезапуск процесса; на маршрутах без дедупликации
   клиент отвергает ключ с `sdk.idempotency_unsupported`, а не делает вид.
-- **Расхождение часов** поправляется по заголовку `Date` после отказа подписи.
+- **Расхождение часов** поправляется по заголовку `Date` после отказа подписи: не больше чем на
+  ±900 с, и поправка принимается, только если переподписанный запрос прошёл успешно.
 - **Редиректы не выполняются**; ответы ограничены 8 МиБ (64 МиБ для документов).
 
 На вызов — `WithIdempotencyKey`, `WithRequestTimeout` (на попытку), `WithRequestBudget`,

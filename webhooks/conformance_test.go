@@ -140,8 +140,17 @@ func TestConformanceWebhookDeliveries(t *testing.T) {
 				if delivery.Event.ID() == "" {
 					t.Fatal("no object id")
 				}
-				if delivery.IsTest != check.Test {
-					t.Fatalf("IsTest = %v, want %v (rehearsal header %s)", delivery.IsTest, check.Test, testHeader)
+				// Ruling R1 of the SDK family overrides the suite's reading here: the rehearsal
+				// header is not signed, so it is reported only as the unverified header. The
+				// verified flag follows the signed body, which in these vectors never says test.
+				if delivery.Unverified.Test != check.Test {
+					t.Fatalf("Unverified.Test = %v, want %v (rehearsal header %s)", delivery.Unverified.Test, check.Test, testHeader)
+				}
+				if delivery.IsTest != delivery.Event.IsTest() {
+					t.Fatalf("IsTest = %v, but the signed body says test = %v", delivery.IsTest, delivery.Event.IsTest())
+				}
+				if delivery.EventKey != delivery.Event.Key() || delivery.EventKey == "" {
+					t.Fatalf("EventKey = %q, want the signed-body key %q", delivery.EventKey, delivery.Event.Key())
 				}
 				for role, field := range suite.Fields {
 					name, ok := names[role]
@@ -153,13 +162,13 @@ func TestConformanceWebhookDeliveries(t *testing.T) {
 					case "":
 						continue
 					case "id":
-						got = delivery.ID
+						got = delivery.Unverified.ID
 					case "event_id":
-						got = delivery.EventID
+						got = delivery.Unverified.EventID
 					case "event_type":
-						got = string(delivery.EventType)
+						got = string(delivery.Unverified.EventType)
 					case "event_time":
-						got = strconv.FormatInt(delivery.EventTime.Unix(), 10)
+						got = strconv.FormatInt(delivery.Unverified.EventTime.Unix(), 10)
 					case "sent_at":
 						got = strconv.FormatInt(delivery.SentAt.Unix(), 10)
 					default:

@@ -16,7 +16,8 @@ import (
 // state too (and not acted on twice), a forged one is refused.
 func TestWebhookReceiver(t *testing.T) {
 	now := time.Now().Unix()
-	serve := handler(webhooks.Options{Secret: "whsec"}, newSeen())
+	store := newSeen()
+	serve := handler(webhooks.Options{Secret: "whsec"}, store)
 	deliver := func(body, secret, eventID string) int {
 		r := httptest.NewRequest(http.MethodPost, "/oblodai/webhook", strings.NewReader(body))
 		r.Header.Set(webhooks.HeaderTimestamp, strconv.FormatInt(now, 10))
@@ -33,6 +34,11 @@ func TestWebhookReceiver(t *testing.T) {
 	if code := deliver(paid, "whsec", "e1"); code != http.StatusOK {
 		t.Fatalf("repeat: %d", code)
 	}
+	// A captured delivery replayed with a fresh event-id header: the signed body is the same, so
+	// the key is too, and it is acknowledged without being acted on twice.
+	if code := deliver(paid, "whsec", "e-attacker-fresh"); code != http.StatusOK || len(store.handled) != 1 {
+		t.Fatalf("replay with a rewritten header: %d, %d keys handled", code, len(store.handled))
+	}
 	if code := deliver(paid, "forged", "e2"); code != http.StatusBadRequest {
 		t.Fatalf("forged delivery: %d", code)
 	}
@@ -46,12 +52,12 @@ func TestWebhookReceiver(t *testing.T) {
 // no known object id and are never ordered against each other.
 func TestWebhookReceiverOrdersPerObject(t *testing.T) {
 	s := newSeen()
-	handled := func(body, eventID string) bool {
+	handled := func(body, _ string) bool {
 		event, err := webhooks.Parse([]byte(body))
 		if err != nil {
 			t.Fatalf("%s: %v", body, err)
 		}
-		return s.alreadyHandled(&webhooks.Delivery{Event: event, EventID: eventID})
+		return s.alreadyHandled(&webhooks.Delivery{Event: event, EventKey: event.Key()})
 	}
 	if handled(`{"type":"conversion","id":"A","status":"completed","sequence":5}`, "e1") {
 		t.Fatal("conversion A is new")

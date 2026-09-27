@@ -157,12 +157,12 @@ func snippetWebhookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad signature", http.StatusBadRequest) // 4xx only for a failed verification
 		return
 	}
-	if delivery.IsTest { // a rehearsal delivery: signed like a live one, but no money moved
+	if delivery.IsTest { // test: true in the signed body — a rehearsal, no money moved
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 	if payment := delivery.Event.Payment; payment != nil && oblodai.IsPaymentPaid(payment.Status) {
-		markOrderPaid(payment.OrderID, delivery.EventID) // EventID is stable for one state
+		markOrderPaid(payment.OrderID, delivery.EventKey) // EventKey comes from the signed body
 	}
 	w.WriteHeader(http.StatusOK)
 	// endsnippet
@@ -276,7 +276,7 @@ func TestReadmeSnippetsRun(t *testing.T) {
 	r.Header.Set(webhooks.HeaderEventID, "ev-1")
 	w := httptest.NewRecorder()
 	snippetWebhookHandler(w, r)
-	if w.Code != http.StatusOK || !slices.Equal(paidOrders, []string{"order-1001/ev-1"}) {
+	if w.Code != http.StatusOK || !slices.Equal(paidOrders, []string{"order-1001/payment:u1:1"}) {
 		t.Fatalf("webhook handler: %d, paid %v", w.Code, paidOrders)
 	}
 }

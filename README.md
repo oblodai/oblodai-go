@@ -261,12 +261,12 @@ if err != nil {
 	http.Error(w, "bad signature", http.StatusBadRequest) // 4xx only for a failed verification
 	return
 }
-if delivery.IsTest { // a rehearsal delivery: signed like a live one, but no money moved
+if delivery.IsTest { // test: true in the signed body — a rehearsal, no money moved
 	w.WriteHeader(http.StatusOK)
 	return
 }
 if payment := delivery.Event.Payment; payment != nil && oblodai.IsPaymentPaid(payment.Status) {
-	markOrderPaid(payment.OrderID, delivery.EventID) // EventID is stable for one state
+	markOrderPaid(payment.OrderID, delivery.EventKey) // EventKey comes from the signed body
 }
 w.WriteHeader(http.StatusOK)
 ```
@@ -277,8 +277,13 @@ order: headers, HMAC (the current secret, then `Options.PreviousSecret`), freshn
 `webhook.bad_payload` — answer 5xx, the event is real and the core will retry it. `delivery.Event`
 carries the typed body of its kind (`Payment`, `Payout`, `Wallet`, `Conversion` — the generated
 webhook models); a kind a newer core added arrives with its `Type` and `Raw` body and
-`IsKnown() == false`. `delivery.EventID` (`X-Webhook-Event-Id`) is stable for one state — the key to
-deduplicate on; `webhooks.IsStale(event, lastSequence)` drops an out-of-order event. After
+`IsKnown() == false`. Only the timestamp and the body are signed: deduplicate on
+`delivery.EventKey` (`type:id:sequence`, read from the signed body), drop an out-of-order event with
+`webhooks.IsStale(event, lastSequence)`, and **always** acknowledge and ignore a delivery with
+`delivery.IsTest` (`test: true` in the signed body). The other delivery headers (`X-Webhook-Event-Id`,
+`X-Webhook-Id`, `X-Webhook-Event`, `X-Webhook-Test`, …) are not signed — a captured delivery can be
+replayed with them rewritten — so they are only in `delivery.Unverified`, for logs. A resend of a
+state carries a new sequence (and key): keep the fulfilment itself idempotent per order and status. After
 `Webhooks.RotateSecret` keep the old secret in `Options.PreviousSecret` for at least 26 hours.
 
 ## Errors
@@ -323,7 +328,8 @@ already retried what it should), `RetryAfter` (seconds), `RequestID` (the core's
 - **Idempotency keys** are generated on deduplicated routes — one per call, reused on every retry.
   Pass `WithIdempotencyKey` to survive a process restart; on routes the core does not deduplicate
   the client refuses a key with `sdk.idempotency_unsupported` rather than pretend.
-- **Clock skew** is corrected from the API's `Date` header after a signature failure.
+- **Clock skew** is corrected from the API's `Date` header after a signature failure: at most
+  ±900 s, and adopted only when the re-signed attempt succeeds.
 - **Redirects are never followed**; responses are capped at 8 MiB (64 MiB for documents).
 
 Per call — `WithIdempotencyKey`, `WithRequestTimeout` (per attempt), `WithRequestBudget`,

@@ -71,8 +71,9 @@ fmt.Println(invoice.URL, invoice.Address, invoice.Status) // "created"
   `Payment`, `Payout`, `Wallet`, `Conversion` (the generated webhook models) — instead of the
   `oblodai.WebhookEvent` interface and `PaymentEvent`/`PayoutEvent`/`WalletEvent`/`UnknownEvent`.
   `event.ID()`, `Sequence()`, `IsFinal()`, `IsTest()`, `IsKnown()` replace `ID()`, `Seq()`,
-  `Final()`, `IsTest()`, `webhooks.IsKnownEvent`, `webhooks.IsTestEvent`; `Delivery.EventID`
-  (`X-Webhook-Event-Id`) is the key to deduplicate on.
+  `Final()`, `IsTest()`, `webhooks.IsKnownEvent`, `webhooks.IsTestEvent`. Deduplicate on
+  `Delivery.EventKey` (from the signed body; since 2.1 the unsigned headers such as
+  `X-Webhook-Event-Id` are only in `Delivery.Unverified`).
 - Secrets still never print through `fmt`, but `json.Marshal` of a model is now faithful: store a
   secret by reading its field, and keep models holding one out of JSON logs.
 
