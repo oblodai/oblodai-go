@@ -31,8 +31,9 @@
 // HeaderEvent, HeaderID, HeaderEventID, HeaderEventTime, HeaderTest — are NOT: anyone who captured
 // a delivery can resend it within the tolerance window with those headers rewritten. They are
 // exposed only as Delivery.Unverified, for logging; never decide anything on them. Deduplicate on
-// Delivery.EventKey (type, object id and sequence, all from the signed body), drop out-of-order
-// events with IsStale, and take the rehearsal flag from the body (Delivery.IsTest).
+// Delivery.EventKey: the signed body's event_id (EventIDField), or, in a delivery from an older core
+// without it, type:id:sequence from the body. Drop out-of-order events with IsStale, and take the
+// rehearsal flag from the body (Delivery.IsTest).
 //
 // Always verify over the RAW request bytes: a re-serialized parse will not match the signature.
 //
@@ -102,10 +103,10 @@ type Options struct {
 type Delivery struct {
 	// Event is the parsed body.
 	Event *Event
-	// EventKey is Event.Key(): "type:id:sequence", read from the signed body only — the key to
-	// deduplicate deliveries on. Retries of a delivery and replays of a captured one carry the same
-	// key. A resend of a state (/v1/payment/resend) carries a higher sequence and so a new key: keep
-	// the fulfilment itself idempotent per object and status.
+	// EventKey is Event.Key(), read from the signed body only — the key to deduplicate deliveries
+	// on: the body's event_id (EventIDField), the same for every retry and every resend of one state
+	// of an object; for a delivery from an older core without event_id, "type:id:sequence" (a resend
+	// there carries a higher sequence and so a new key).
 	EventKey string
 	// SentAt is HeaderTimestamp: when this attempt was signed and sent (covered by the signature).
 	SentAt time.Time
@@ -284,8 +285,9 @@ type Event struct {
 	// Raw is the body as delivered.
 	Raw json.RawMessage
 
-	head eventHead
-	id   string
+	head    eventHead
+	id      string
+	eventID string
 }
 
 // eventHead is what the runtime reads of an event of any kind, without its model. The generator
@@ -302,10 +304,18 @@ type eventHead struct {
 // "" for a kind this release does not know: which field identifies that object is not guessed.
 func (e *Event) ID() string { return e.id }
 
-// Key is the event's deduplication key, "type:id:sequence", built from the signed body only (the
-// same concept as event_key / eventKey in the other Oblodai SDKs). Retries and replays of one
-// delivery share it.
+// EventID is the body's event_id (EventIDField): the signed id of the object state this event
+// carries, the same across retries and resends of that state. It is "" in a delivery from an older
+// core that does not send it.
+func (e *Event) EventID() string { return e.eventID }
+
+// Key is the event's deduplication key, built from the signed body only (the same concept as
+// event_key / eventKey in the other Oblodai SDKs): the body's event_id when present, otherwise
+// "type:id:sequence". Retries, replays and resends of one state share it.
 func (e *Event) Key() string {
+	if e.eventID != "" {
+		return e.eventID
+	}
 	return e.Type + ":" + e.id + ":" + strconv.FormatInt(e.head.Sequence, 10)
 }
 
@@ -334,11 +344,16 @@ func Parse(rawBody []byte) (*Event, error) {
 	if event.Type == "" {
 		return nil, payloadError("the body lacks the type field every event carries")
 	}
+	var fields map[string]json.RawMessage
+	_ = json.Unmarshal(rawBody, &fields) // the head above decoded, so this is a JSON object
 	if field := IDFields[event.Type]; field != "" {
-		var fields map[string]json.RawMessage
-		_ = json.Unmarshal(rawBody, &fields) // the head above decoded, so this is a JSON object
 		if json.Unmarshal(fields[field], &event.id) != nil || event.id == "" {
 			return nil, payloadError("the " + event.Type + " body lacks the string " + field + " field")
+		}
+	}
+	if raw, ok := fields[EventIDField]; ok {
+		if json.Unmarshal(raw, &event.eventID) != nil || event.eventID == "" {
+			return nil, payloadError("the body's " + EventIDField + " is not a non-empty string")
 		}
 	}
 	target := event.target(event.Type)

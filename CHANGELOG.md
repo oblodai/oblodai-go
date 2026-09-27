@@ -12,8 +12,11 @@ Notable changes to this package. The format follows
   `Delivery.ID`, `EventID`, `EventType` and `EventTime` were read from unsigned headers and the
   docs told receivers to deduplicate on `EventID`, so a captured delivery replayed with a fresh
   `X-Webhook-Event-Id` passed as a new event, and an added `X-Webhook-Test: true` made a live
-  payment look like a rehearsal. Deduplicate on the new `Delivery.EventKey` / `Event.Key()`
-  (`type:id:sequence`, from the signed body); `Delivery.IsTest` now follows the body's `test` flag
+  payment look like a rehearsal. Deduplicate on the new `Delivery.EventKey` / `Event.Key()`:
+  dedupe on `event_id` (fallback `type:id:sequence`), both from the signed body — the body's
+  `event_id` (`webhooks.EventIDField`, new `Event.EventID()`) is the same across retries and resends
+  of one state; a delivery from an older core without it falls back to the tuple. The webhook models
+  gain an optional `EventID`. `Delivery.IsTest` now follows the body's `test` flag
   only. The header values moved to `Delivery.Unverified` (`ID`, `EventID`, `EventType`,
   `EventTime`, `Test`), for logs. Migration: replace `delivery.EventID` with `delivery.EventKey`
   and keep ignoring `delivery.IsTest` deliveries.

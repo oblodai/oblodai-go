@@ -278,12 +278,14 @@ order: headers, HMAC (the current secret, then `Options.PreviousSecret`), freshn
 carries the typed body of its kind (`Payment`, `Payout`, `Wallet`, `Conversion` — the generated
 webhook models); a kind a newer core added arrives with its `Type` and `Raw` body and
 `IsKnown() == false`. Only the timestamp and the body are signed: deduplicate on
-`delivery.EventKey` (`type:id:sequence`, read from the signed body), drop an out-of-order event with
+`delivery.EventKey` — dedupe on `event_id` (fallback `type:id:sequence`), both read from the signed
+body (`webhooks.EventIDField`; a delivery from an older core has no `event_id`) — drop an out-of-order event with
 `webhooks.IsStale(event, lastSequence)`, and **always** acknowledge and ignore a delivery with
 `delivery.IsTest` (`test: true` in the signed body). The other delivery headers (`X-Webhook-Event-Id`,
 `X-Webhook-Id`, `X-Webhook-Event`, `X-Webhook-Test`, …) are not signed — a captured delivery can be
 replayed with them rewritten — so they are only in `delivery.Unverified`, for logs. A resend of a
-state carries a new sequence (and key): keep the fulfilment itself idempotent per order and status. After
+state keeps its `event_id` (only `sequence` grows), so it dedupes too; on the fallback key of an older
+core it does not, so keep the fulfilment itself idempotent per order and status. After
 `Webhooks.RotateSecret` keep the old secret in `Options.PreviousSecret` for at least 26 hours.
 
 ## Errors

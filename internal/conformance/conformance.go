@@ -31,6 +31,12 @@ type Suite struct {
 	// Fields (webhook_delivery): header role → the snake_case field of the delivery info that must
 	// carry the value of that role's header; "" — the header is consumed by the signature check.
 	Fields map[string]string `json:"fields"`
+	// FieldsUnverified (webhook_delivery): every value in Fields comes from an unsigned header, so
+	// the SDK exposes it only as unverified information.
+	FieldsUnverified bool `json:"fields_unverified"`
+	// DedupeKey (webhook_delivery): where the spec names the signed body field to deduplicate on,
+	// and the key to use for a body without it.
+	DedupeKey *DedupeKey `json:"dedupe_key"`
 	// Webhooks (forward_compat): delivery bodies the SDK's parse must read — with their raw type,
 	// known or not as expected.
 	Webhooks []WebhookParse `json:"webhooks"`
@@ -44,6 +50,13 @@ type WebhookParse struct {
 		Known bool   `json:"known"`
 		Type  string `json:"type"`
 	} `json:"expect"`
+}
+
+// DedupeKey names the dedupe field of a delivery body by a pointer into the spec, and the fallback
+// key built from the body when that field is absent.
+type DedupeKey struct {
+	FieldPointer string `json:"field_pointer"`
+	Fallback     string `json:"fallback"`
 }
 
 // HeaderNames points at a list of header names in the spec and gives the role of each position.
@@ -235,6 +248,20 @@ func TestHeader(t testing.TB, suite Suite) string {
 	var name string
 	if err := json.Unmarshal(lookup(t, suite, suite.HeaderNames.TestPointer), &name); err != nil || name == "" {
 		t.Fatalf("rehearsal header name at %s: %q %v", suite.HeaderNames.TestPointer, name, err)
+	}
+	return name
+}
+
+// DedupeField is the name of the signed body field the spec says to deduplicate on
+// (dedupe_key.field_pointer) — the spec's name, not the SDK's constant.
+func DedupeField(t testing.TB, suite Suite) string {
+	t.Helper()
+	if suite.DedupeKey == nil || suite.DedupeKey.FieldPointer == "" || suite.Source == nil {
+		t.Fatal("the suite names no dedupe_key.field_pointer")
+	}
+	var name string
+	if err := json.Unmarshal(lookup(t, suite, suite.DedupeKey.FieldPointer), &name); err != nil || name == "" {
+		t.Fatalf("dedupe field name at %s: %q %v", suite.DedupeKey.FieldPointer, name, err)
 	}
 	return name
 }

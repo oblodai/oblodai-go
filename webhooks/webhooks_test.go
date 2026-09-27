@@ -514,3 +514,48 @@ func TestUnsignedHeadersDecideNothing(t *testing.T) {
 		t.Fatalf("a test: true body without the header must be a test: %+v", delivery)
 	}
 }
+
+// The dedupe key is the signed body's event_id: a resend of the same state (same event_id, higher
+// sequence) dedupes, a forged X-Webhook-Event-Id changes nothing, and a delivery from an older core
+// without event_id falls back to type:id:sequence.
+func TestDedupeKeyIsTheSignedEventIDWithFallback(t *testing.T) {
+	ts := time.Now().Unix()
+	at := func() time.Time { return time.Unix(ts, 0) }
+	opts := webhooks.Options{Secret: "whsec", Now: at}
+	const id = "5b1c2a4e-7d1f-5e0a-9c3b-2f4d6e8a0b1c"
+	first := `{"type":"payment","uuid":"u1","status":"paid","sequence":7,"` + webhooks.EventIDField + `":"` + id + `"}`
+	resend := `{"type":"payment","uuid":"u1","status":"paid","sequence":9,"` + webhooks.EventIDField + `":"` + id + `"}`
+	a, err := webhooks.VerifyDelivery([]byte(first), signed(t, "whsec", ts, first, map[string]string{webhooks.HeaderEventID: id}), opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := webhooks.VerifyDelivery([]byte(resend), signed(t, "whsec", ts, resend, map[string]string{webhooks.HeaderEventID: "evt-forged"}), opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.EventKey != id || b.EventKey != id || a.Event.EventID() != id {
+		t.Fatalf("keys %q / %q, want both the body event_id %q", a.EventKey, b.EventKey, id)
+	}
+	if b.Unverified.EventID != "evt-forged" {
+		t.Fatalf("the header stays visible only as unverified: %+v", b.Unverified)
+	}
+	if b.Event.Payment == nil || b.Event.Payment.EventID == nil || *b.Event.Payment.EventID != id {
+		t.Fatal("the model carries the optional event_id")
+	}
+
+	old := `{"type":"payment","uuid":"u1","status":"paid","sequence":7}`
+	c, err := webhooks.VerifyDelivery([]byte(old), signed(t, "whsec", ts, old, map[string]string{webhooks.HeaderEventID: id}), opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.EventKey != "payment:u1:7" || c.Event.EventID() != "" {
+		t.Fatalf("an old-core delivery keys on type:id:sequence, got %q", c.EventKey)
+	}
+
+	for _, bad := range []string{`""`, `7`, `null`} {
+		body := `{"type":"payment","uuid":"u1","sequence":7,"event_id":` + bad + `}`
+		if _, err := webhooks.Parse([]byte(body)); !oblodai.IsWebhookPayload(err) {
+			t.Errorf("event_id %s: %v, want webhook.bad_payload", bad, err)
+		}
+	}
+}

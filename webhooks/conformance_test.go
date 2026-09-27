@@ -1,6 +1,7 @@
 package webhooks_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"testing"
@@ -94,6 +95,13 @@ func TestConformanceWebhookDeliveries(t *testing.T) {
 	vectors, _ := conformance.Vectors[deliveryVector](t, suite)
 	names := conformance.Names(t, suite)
 	testHeader := conformance.TestHeader(t, suite)
+	dedupeField := conformance.DedupeField(t, suite)
+	if dedupeField != webhooks.EventIDField || suite.DedupeKey.Fallback != "type:id:sequence" {
+		t.Fatalf("dedupe_key %s / %q, the SDK keys on %s / type:id:sequence", dedupeField, suite.DedupeKey.Fallback, webhooks.EventIDField)
+	}
+	if !suite.FieldsUnverified {
+		t.Fatal("fields_unverified: the SDK exposes the header fields only as Delivery.Unverified")
+	}
 	if len(suite.Fields) != len(names) {
 		t.Fatalf("fields %v, header roles %v", suite.Fields, names)
 	}
@@ -140,17 +148,28 @@ func TestConformanceWebhookDeliveries(t *testing.T) {
 				if delivery.Event.ID() == "" {
 					t.Fatal("no object id")
 				}
-				// Ruling R1 of the SDK family overrides the suite's reading here: the rehearsal
-				// header is not signed, so it is reported only as the unverified header. The
-				// verified flag follows the signed body, which in these vectors never says test.
+				// The rehearsal header is not signed: it is reported only as the unverified header,
+				// and the verified flag follows the signed body — live in every one of these vectors.
 				if delivery.Unverified.Test != check.Test {
 					t.Fatalf("Unverified.Test = %v, want %v (rehearsal header %s)", delivery.Unverified.Test, check.Test, testHeader)
 				}
-				if delivery.IsTest != delivery.Event.IsTest() {
-					t.Fatalf("IsTest = %v, but the signed body says test = %v", delivery.IsTest, delivery.Event.IsTest())
+				if delivery.IsTest || delivery.IsTest != delivery.Event.IsTest() {
+					t.Fatalf("IsTest = %v on a live body (signed test = %v)", delivery.IsTest, delivery.Event.IsTest())
 				}
-				if delivery.EventKey != delivery.Event.Key() || delivery.EventKey == "" {
-					t.Fatalf("EventKey = %q, want the signed-body key %q", delivery.EventKey, delivery.Event.Key())
+				// dedupe_key: the signed body field the spec names, else the suite's fallback.
+				var body map[string]any
+				if err := json.Unmarshal([]byte(v.Payload), &body); err != nil {
+					t.Fatal(err)
+				}
+				want := delivery.Event.Type + ":" + delivery.Event.ID() + ":" + strconv.FormatInt(delivery.Event.Sequence(), 10)
+				if id, ok := body[dedupeField].(string); ok {
+					want = id
+					if eventIDHeader := v.Headers[names["event_id"]]; id != eventIDHeader {
+						t.Fatalf("body %s %q differs from the header %q", dedupeField, id, eventIDHeader)
+					}
+				}
+				if delivery.EventKey != want || delivery.Event.Key() != want {
+					t.Fatalf("EventKey = %q, want %q (dedupe_key)", delivery.EventKey, want)
 				}
 				for role, field := range suite.Fields {
 					name, ok := names[role]

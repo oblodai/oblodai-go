@@ -76,7 +76,7 @@ Order of checks: headers → HMAC (current secret, then `PreviousSecret`) → fr
 4xx to `IsSignature`, 5xx to `IsWebhookPayload`. `delivery.Event` has one typed body (`Payment`,
 `Payout`, `Wallet`, `Conversion` — the generated `webhooks.Bodies`, one per kind of `KnownKinds`), or
 none for a kind this release does not model (`IsKnown()`).
-Deduplicate on `delivery.EventKey` (from the signed body); `webhooks.IsStale(event, lastSequence)`
+Deduplicate on `delivery.EventKey`: dedupe on `event_id` (fallback `type:id:sequence`), from the signed body; `webhooks.IsStale(event, lastSequence)`
 drops out-of-order events; always ignore `delivery.IsTest`. Delivery headers other than the
 timestamp and signature are unsigned and live only in `delivery.Unverified`.
 

@@ -85,9 +85,10 @@ func handler(options webhooks.Options, store *seen) http.HandlerFunc {
 }
 
 // alreadyHandled reports whether this delivery was handled before (by Delivery.EventKey, which
-// comes from the signed body: a replay with rewritten headers has the same key), or carries an
-// event older than the last one processed for its object. A resend of a state carries a new
-// sequence and so passes: the fulfilment behind it must itself be idempotent per order and status.
+// comes from the signed body: event_id, fallback type:id:sequence — a replay with rewritten headers
+// and a resend of the same state have the same key), or carries an event older than the last one
+// processed for its object. On the fallback key of an older core a resend passes, so the
+// fulfilment behind it must itself be idempotent per order and status.
 func (s *seen) alreadyHandled(delivery *webhooks.Delivery) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
