@@ -1,0 +1,31 @@
+{
+  "description": "Подпись запроса: каноническая строка и HMAC по векторам ядра и заголовки, которые SDK реально отправляет. Векторы читаются из x-oblodai-signing спеки (source), не копируются сюда. Имён заголовков здесь нет: header_names — где они в спеке и роль каждого по позиции; SDK сравнивает перехваченный запрос с именами из спеки, а не со своими константами, поэтому переименование в ядре, не дошедшее до SDK, проваливает request_headers.",
+  "source": {
+    "spec": "../../../services/core/api/openapi.json",
+    "pointer": "/x-oblodai-signing/request_vectors"
+  },
+  "header_names": {
+    "pointer": "/x-oblodai-signing/headers",
+    "roles": [
+      "public_id",
+      "signature",
+      "timestamp",
+      "idempotency_key"
+    ]
+  },
+  "checks": [
+    {
+      "name": "canonical string matches the core",
+      "kind": "request_canonical"
+    },
+    {
+      "name": "signature matches the core",
+      "kind": "request_signature"
+    },
+    {
+      "name": "the signed request carries the spec's headers with the vector's values",
+      "kind": "request_headers",
+      "public_id": "pk_conformance"
+    }
+  ]
+}

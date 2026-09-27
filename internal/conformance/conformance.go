@@ -2,10 +2,12 @@
 // tools/sdkgen/conformance — for this SDK's tests. It is not part of the SDK's API.
 //
 // The suite is found at $SDKGEN_CONFORMANCE, else at tools/sdkgen/conformance of the backend
-// checkout ($OBLODAI_BACKEND, else ../oblodai-backend next to this repository). Without one the
-// tests skip, loudly; when either variable is set a missing suite fails them instead. Signing
-// vectors are not in the scenario files: a suite names the backend's openapi.json and a pointer
-// into its x-oblodai-signing, and the vectors are read from there.
+// checkout ($OBLODAI_BACKEND, else ../oblodai-backend next to this repository), else in the
+// repository's vendored snapshot contract/ (scripts/sync-contract.sh keeps it in step with the
+// backend; `make drift` fails when it is stale), which is what CI runs against. When either
+// variable is set a missing suite fails the tests. Signing vectors are not in the scenario files:
+// a suite names the backend's openapi.json and a pointer into its x-oblodai-signing, and the
+// vectors are read from there.
 package conformance
 
 import (
@@ -107,13 +109,19 @@ type Expect struct {
 	RequestBodyField   map[string]any `json:"request_body_field"`
 }
 
-// backendRoot is the backend checkout: $OBLODAI_BACKEND, else ../oblodai-backend next to this repository.
+// backendRoot is where the contract is read: $OBLODAI_BACKEND, else ../oblodai-backend next to
+// this repository when it has the contract, else the vendored snapshot contract/ of this repository.
 func backendRoot() string {
 	if backend := os.Getenv("OBLODAI_BACKEND"); backend != "" {
 		return backend
 	}
 	_, file, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(file), "..", "..", "..", "oblodai-backend")
+	repo := filepath.Join(filepath.Dir(file), "..", "..")
+	sibling := filepath.Join(repo, "..", "oblodai-backend")
+	if _, err := os.Stat(filepath.Join(sibling, "services", "core", "api", "openapi.json")); err == nil {
+		return sibling
+	}
+	return filepath.Join(repo, "contract")
 }
 
 // Signing is x-oblodai-signing of the backend's openapi.json, decoded; the test is skipped when

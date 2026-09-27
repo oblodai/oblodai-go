@@ -1,0 +1,60 @@
+{
+  "description": "Подпись вебхука и проверка доставки. Векторы — из x-oblodai-signing.webhook.vectors спеки; допуск по времени — x-oblodai-signing.skew_seconds; имена заголовков — из спеки по ролям (header_names). Доставка: тело = payload, заголовок роли timestamp = ts, заголовок роли signature = signature вектора; «сейчас» = ts + now_from_ts (skew — допуск, skew+1 — за ним). payload векторов — не полные события: expect ok значит, что подпись и время приняты; отказ разобрать такое тело после них — не провал.",
+  "source": {
+    "spec": "../../../services/core/api/openapi.json",
+    "pointer": "/x-oblodai-signing/webhook/vectors"
+  },
+  "header_names": {
+    "pointer": "/x-oblodai-signing/webhook/headers",
+    "roles": [
+      "timestamp",
+      "signature",
+      "signature_prev",
+      "event",
+      "id",
+      "event_id",
+      "event_time"
+    ]
+  },
+  "checks": [
+    {
+      "name": "signature matches the core",
+      "kind": "webhook_signature"
+    },
+    {
+      "name": "delivery verifies at its own timestamp",
+      "kind": "webhook_verify",
+      "mutate": "none",
+      "now_from_ts": 0,
+      "expect": "ok"
+    },
+    {
+      "name": "delivery verifies at the edge of the skew window",
+      "kind": "webhook_verify",
+      "mutate": "none",
+      "now_from_ts": "skew",
+      "expect": "ok"
+    },
+    {
+      "name": "a changed payload is rejected",
+      "kind": "webhook_verify",
+      "mutate": "payload",
+      "now_from_ts": 0,
+      "expect": "bad_signature"
+    },
+    {
+      "name": "a changed signature is rejected",
+      "kind": "webhook_verify",
+      "mutate": "signature",
+      "now_from_ts": 0,
+      "expect": "bad_signature"
+    },
+    {
+      "name": "a delivery outside the skew window is rejected",
+      "kind": "webhook_verify",
+      "mutate": "none",
+      "now_from_ts": "skew+1",
+      "expect": "stale_timestamp"
+    }
+  ]
+}

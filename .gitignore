@@ -1,3 +1,7 @@
 /vendor/
 *.log
 .DS_Store
+# Local secrets: never commit a filled-in environment file.
+.env
+.env.*
+!.env.example

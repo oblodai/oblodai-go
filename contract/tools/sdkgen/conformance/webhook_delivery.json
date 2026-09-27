@@ -1,0 +1,50 @@
+{
+  "description": "Боевые доставки вебхуков: по одной на каждое событие контракта, из x-oblodai-signing.webhook.deliveries спеки (тело строит тот же код ядра, что и отправитель). Доставка: тело = payload, заголовки = headers вектора, «сейчас» = ts. Проверка: SDK проверяет её секретом key (current — secret вектора, previous — previous_secret: получатель, ещё не сменивший секрет после ротации, сверяет заголовок роли signature_prev), разбирает тело в модель вида kind (известный вид, не «незнакомое событие») и отдаёт в сведениях о доставке каждое поле из fields ниже равным заголовку своей роли (имя — из спеки по header_names; числа — числом); пустое поле — заголовок потребляет проверка подписи. Репетиция (check с test: true): доставка вдобавок несёт заголовок репетиции — имя из спеки по header_names.test_pointer — со значением \"true\"; SDK отдаёт её как тестовую (is_test), а доставку без него — как боевую. Тела доставок спеки test: true не несут, так что репетицию SDK узнаёт только по заголовку.",
+  "source": {
+    "spec": "../../../services/core/api/openapi.json",
+    "pointer": "/x-oblodai-signing/webhook/deliveries"
+  },
+  "header_names": {
+    "pointer": "/x-oblodai-signing/webhook/headers",
+    "roles": [
+      "timestamp",
+      "signature",
+      "signature_prev",
+      "event",
+      "id",
+      "event_id",
+      "event_time"
+    ],
+    "test_pointer": "/x-oblodai-signing/webhook/test_header"
+  },
+  "fields": {
+    "timestamp": "sent_at",
+    "signature": "",
+    "signature_prev": "",
+    "event": "event_type",
+    "id": "id",
+    "event_id": "event_id",
+    "event_time": "event_time"
+  },
+  "checks": [
+    {
+      "name": "delivery verifies, parses to the model of its kind and exposes its headers",
+      "kind": "webhook_delivery",
+      "key": "current",
+      "expect": "ok"
+    },
+    {
+      "name": "a receiver still on the previous secret verifies the delivery",
+      "kind": "webhook_delivery",
+      "key": "previous",
+      "expect": "ok"
+    },
+    {
+      "name": "a rehearsal delivery (the spec's test header set to \"true\") verifies and is reported as a test",
+      "kind": "webhook_delivery",
+      "key": "current",
+      "test": true,
+      "expect": "ok"
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "description": "Совместимость вперёд: незнакомое поле и незнакомое значение enum в ответе разбираются без ошибки; значение enum сохраняется как строка. webhooks: тело доставки (JSON-объект, сериализованный SDK) отдаётся parse вебхуков SDK без подписи; разбор удаётся, type события равен expect.type, известность вида (is_known_event) — expect.known. Вид, которого нет в контракте, не обязан нести uuid или id: поле id объекта знают только виды контракта.",
+  "scenarios": [
+    {
+      "name": "unknown field and enum value parse",
+      "call": {
+        "operation": "createPayment",
+        "args": {
+          "amount": "25",
+          "currency": "USDT",
+          "order_id": "o1"
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "json": {
+            "state": 0,
+            "result": {
+              "uuid": "x",
+              "order_id": "o1",
+              "status": "teleported",
+              "amount": "25",
+              "currency": "USDT",
+              "merchant_amount": "24.5",
+              "payer_amount": "25",
+              "payer_currency": "USDT",
+              "network": "tron",
+              "address": "TXYZ",
+              "address_muxed": "",
+              "address_qr_code": "",
+              "address_xaddress": "",
+              "memo": "",
+              "destination_tag": "",
+              "amount_paid": "0",
+              "amount_remaining": "25",
+              "commission": "0.5",
+              "fee_percent": "2",
+              "exchange_rate": "1",
+              "method_adjustment": "0",
+              "method_adjustment_bps": 0,
+              "network_surcharge": "0",
+              "network_surcharge_bps": 0,
+              "confirmations": 0,
+              "required_confirmations": 20,
+              "is_final": false,
+              "is_multi": false,
+              "is_test": true,
+              "additional_data": "",
+              "document_url": "",
+              "payer_address": "",
+              "payer_address_is_refundable": false,
+              "payer_email": "",
+              "tx_list": [],
+              "txid": "",
+              "url": "https://pay.example/x",
+              "url_return": "",
+              "url_success": "",
+              "created_at": "2026-09-24T10:00:00Z",
+              "updated_at": "2026-09-24T10:00:00Z",
+              "expired_at": "2026-09-24T11:00:00Z",
+              "rate_expires_at": "2026-09-24T10:15:00Z",
+              "paid_at": null,
+              "brand_new_field": {
+                "nested": true
+              }
+            }
+          }
+        }
+      ],
+      "expect": {
+        "requests": 1,
+        "result_field": {
+          "uuid": "x",
+          "status": "teleported"
+        }
+      }
+    },
+    {
+      "name": "unknown field in a nested object parses",
+      "call": {
+        "operation": "getBalance",
+        "args": {}
+      },
+      "responses": [
+        {
+          "status": 200,
+          "json": {
+            "state": 0,
+            "result": {
+              "balance": {
+                "merchant": [],
+                "brand_new_bucket": []
+              },
+              "brand_new_total": "0"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "requests": 1
+      }
+    }
+  ],
+  "webhooks": [
+    {
+      "name": "unknown kind without uuid or id parses as an unknown event",
+      "body": {
+        "type": "refund",
+        "refund_id": "r1",
+        "sequence": 3,
+        "is_final": false
+      },
+      "expect": {
+        "known": false,
+        "type": "refund"
+      }
+    }
+  ]
+}

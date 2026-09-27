@@ -13,16 +13,25 @@ jobs:
       matrix:
         go-version: ['1.25', 'stable']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: ${{ matrix.go-version }}
       - name: gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l .; echo 'run gofmt -w .'; exit 1)
       - run: go build ./...
       - run: go vet ./...
-      # The drift check and the shared conformance suite need a backend checkout
-      # (OBLODAI_BACKEND); without one the drift check says it skipped and conformance skips.
+      # The drift check needs the backend's generator, which is private: it runs in `make ci`
+      # locally and says here that it skipped. The contract itself is vendored in contract/.
       - run: ./scripts/check-generated.sh
       - run: go test -race ./...
+      # The shared conformance suite (signing vectors, retry, webhooks) against the vendored
+      # contract snapshot; it must run, not skip.
+      - name: conformance
+        run: |
+          out="$(go test -count=1 -v -run Conformance . ./webhooks)"
+          echo "$out" | tail -n 5
+          if echo "$out" | grep -q -- '--- SKIP'; then echo 'a conformance test skipped' >&2; exit 1; fi
       - run: ./scripts/check-package.sh

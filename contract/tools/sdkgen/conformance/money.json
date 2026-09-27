@@ -1,0 +1,95 @@
+{
+  "description": "Деньги: сумма — десятичная строка. Число с плавающей точкой в сумме — ошибка до сети; строка уходит на провод как есть.",
+  "scenarios": [
+    {
+      "name": "float amount fails before the network",
+      "call": {
+        "operation": "createPayment",
+        "args": {
+          "amount": 25.5,
+          "currency": "USDT",
+          "order_id": "o1"
+        }
+      },
+      "responses": [],
+      "expect": {
+        "requests": 0,
+        "error_code": "sdk.float_amount"
+      }
+    },
+    {
+      "name": "decimal string goes to the wire verbatim",
+      "call": {
+        "operation": "createPayment",
+        "args": {
+          "amount": "25.10",
+          "currency": "USDT",
+          "order_id": "o1"
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "json": {
+            "state": 0,
+            "result": {
+              "uuid": "x",
+              "order_id": "o1",
+              "status": "created",
+              "amount": "25.10",
+              "currency": "USDT",
+              "merchant_amount": "24.5",
+              "payer_amount": "25",
+              "payer_currency": "USDT",
+              "network": "tron",
+              "address": "TXYZ",
+              "address_muxed": "",
+              "address_qr_code": "",
+              "address_xaddress": "",
+              "memo": "",
+              "destination_tag": "",
+              "amount_paid": "0",
+              "amount_remaining": "25",
+              "commission": "0.5",
+              "fee_percent": "2",
+              "exchange_rate": "1",
+              "method_adjustment": "0",
+              "method_adjustment_bps": 0,
+              "network_surcharge": "0",
+              "network_surcharge_bps": 0,
+              "confirmations": 0,
+              "required_confirmations": 20,
+              "is_final": false,
+              "is_multi": false,
+              "is_test": true,
+              "additional_data": "",
+              "document_url": "",
+              "payer_address": "",
+              "payer_address_is_refundable": false,
+              "payer_email": "",
+              "tx_list": [],
+              "txid": "",
+              "url": "https://pay.example/x",
+              "url_return": "",
+              "url_success": "",
+              "created_at": "2026-09-24T10:00:00Z",
+              "updated_at": "2026-09-24T10:00:00Z",
+              "expired_at": "2026-09-24T11:00:00Z",
+              "rate_expires_at": "2026-09-24T10:15:00Z",
+              "paid_at": null
+            }
+          }
+        }
+      ],
+      "expect": {
+        "requests": 1,
+        "request_body_field": {
+          "amount": "25.10"
+        },
+        "result_field": {
+          "amount": "25.10"
+        }
+      }
+    }
+  ]
+}

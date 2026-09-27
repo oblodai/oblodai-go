@@ -1,17 +1,20 @@
 # Go modules publish by tag: pushing vX.Y.Z makes the version resolvable via 'go get'.
-# This workflow re-runs the gates, validates the tag and creates a GitHub Release.
+# This workflow re-runs the gates with a read-only token, validates the tag and then, in a
+# separate job that runs no project code, creates a GitHub Release.
 name: Release
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
 permissions:
-  contents: write
+  contents: read
 jobs:
-  release:
+  gates:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: 'stable'
       - name: version matches the tag
@@ -25,13 +28,23 @@ jobs:
         run: test -z "$(gofmt -l .)" || (gofmt -l .; echo 'run gofmt -w .'; exit 1)
       - run: go vet ./...
       - run: go test -race ./...
+      - name: conformance
+        run: |
+          out="$(go test -count=1 -v -run Conformance . ./webhooks)"
+          if echo "$out" | grep -q -- '--- SKIP'; then echo 'a conformance test skipped' >&2; exit 1; fi
       - run: ./scripts/check-package.sh
+  release:
+    needs: gates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
       - name: Create GitHub Release
         run: |
           if [ -z "${GH_TOKEN}" ]; then
             echo 'GITHUB_TOKEN is not available: cannot create the release' >&2
             exit 1
           fi
-          gh release create "${GITHUB_REF_NAME}" --generate-notes
+          gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,7 +1,8 @@
 # Every gate CI runs, in the order that fails fastest: `make ci`.
 #
-# The drift check and the shared conformance suite need the backend checkout: OBLODAI_BACKEND,
-# else ../oblodai-backend next to this repository. The SDK builds with the local Go (≥ 1.25); the
+# The drift check needs the backend checkout: OBLODAI_BACKEND, else ../oblodai-backend next to this
+# repository. The shared conformance suite runs against it too, or, without one (as in GitHub CI),
+# against the vendored snapshot in contract/. The SDK builds with the local Go (≥ 1.25); the
 # linter runs its analysis against LINT_GOTOOLCHAIN, because its staticcheck cannot read a newer
 # standard library yet.
 export GOTOOLCHAIN ?= local
@@ -27,8 +28,9 @@ lint:
 build:
 	$(GO) build ./...
 
-drift:         ## zz_generated_*.go must be what the backend's generator makes of its contract
+drift:         ## zz_generated_*.go must be what the backend's generator makes of its contract, and contract/ its snapshot
 	./scripts/check-generated.sh --require
+	./scripts/sync-contract.sh --check
 
 test:          ## unit, contract, examples, README code — hermetic, with the race detector
 	$(GO) test -race -count=1 ./...

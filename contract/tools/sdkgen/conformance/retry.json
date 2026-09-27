@@ -1,0 +1,363 @@
+{
+  "description": "Повторы: когда SDK повторяет запрос, с каким ключом идемпотентности и с какой паузой. Ответы без конверта (502/503 прокси) — synthetic; ответы с {error} — конверт ядра, его retryable решает.",
+  "scenarios": [
+    {
+      "name": "503 then 502 then 200 keep one idempotency key",
+      "call": {
+        "operation": "createPayment",
+        "args": {
+          "amount": "25",
+          "currency": "USDT",
+          "order_id": "o1"
+        }
+      },
+      "responses": [
+        {
+          "status": 503
+        },
+        {
+          "status": 502
+        },
+        {
+          "status": 200,
+          "json": {
+            "state": 0,
+            "result": {
+              "uuid": "x",
+              "order_id": "o1",
+              "status": "created",
+              "amount": "25",
+              "currency": "USDT",
+              "merchant_amount": "24.5",
+              "payer_amount": "25",
+              "payer_currency": "USDT",
+              "network": "tron",
+              "address": "TXYZ",
+              "address_muxed": "",
+              "address_qr_code": "",
+              "address_xaddress": "",
+              "memo": "",
+              "destination_tag": "",
+              "amount_paid": "0",
+              "amount_remaining": "25",
+              "commission": "0.5",
+              "fee_percent": "2",
+              "exchange_rate": "1",
+              "method_adjustment": "0",
+              "method_adjustment_bps": 0,
+              "network_surcharge": "0",
+              "network_surcharge_bps": 0,
+              "confirmations": 0,
+              "required_confirmations": 20,
+              "is_final": false,
+              "is_multi": false,
+              "is_test": true,
+              "additional_data": "",
+              "document_url": "",
+              "payer_address": "",
+              "payer_address_is_refundable": false,
+              "payer_email": "",
+              "tx_list": [],
+              "txid": "",
+              "url": "https://pay.example/x",
+              "url_return": "",
+              "url_success": "",
+              "created_at": "2026-09-24T10:00:00Z",
+              "updated_at": "2026-09-24T10:00:00Z",
+              "expired_at": "2026-09-24T11:00:00Z",
+              "rate_expires_at": "2026-09-24T10:15:00Z",
+              "paid_at": null
+            }
+          }
+        }
+      ],
+      "expect": {
+        "requests": 3,
+        "same_idempotency_key": true,
+        "idempotency_key": "present",
+        "result_field": {
+          "uuid": "x"
+        }
+      }
+    },
+    {
+      "name": "timeout on a write without a key is not repeated",
+      "call": {
+        "operation": "cancelPayment",
+        "args": {
+          "uuid": "x"
+        }
+      },
+      "responses": [
+        {
+          "transport_error": "timeout"
+        }
+      ],
+      "expect": {
+        "requests": 1,
+        "idempotency_key": "absent",
+        "error_code": "transport.timeout"
+      }
+    },
+    {
+      "name": "retry-safe POST is repeated without a key",
+      "call": {
+        "operation": "getBalance",
+        "args": {}
+      },
+      "responses": [
+        {
+          "status": 503
+        },
+        {
+          "status": 200,
+          "json": {
+            "state": 0,
+            "result": {
+              "balance": {
+                "merchant": []
+              }
+            }
+          }
+        }
+      ],
+      "expect": {
+        "requests": 2,
+        "idempotency_key": "absent"
+      }
+    },
+    {
+      "name": "retry-safe POST is repeated after a timeout",
+      "call": {
+        "operation": "getBalance",
+        "args": {}
+      },
+      "responses": [
+        {
+          "transport_error": "timeout"
+        },
+        {
+          "status": 200,
+          "json": {
+            "state": 0,
+            "result": {
+              "balance": {
+                "merchant": []
+              }
+            }
+          }
+        }
+      ],
+      "expect": {
+        "requests": 2,
+        "idempotency_key": "absent"
+      }
+    },
+    {
+      "name": "Retry-After 1 is honoured",
+      "call": {
+        "operation": "getBalance",
+        "args": {}
+      },
+      "responses": [
+        {
+          "status": 429,
+          "headers": {
+            "Retry-After": "1"
+          },
+          "json": {
+            "error": {
+              "code": "request.rate_limited",
+              "message": "slow down",
+              "retryable": true
+            }
+          }
+        },
+        {
+          "status": 200,
+          "json": {
+            "state": 0,
+            "result": {
+              "balance": {
+                "merchant": []
+              }
+            }
+          }
+        }
+      ],
+      "expect": {
+        "requests": 2,
+        "delays_ms": [
+          1000
+        ]
+      }
+    },
+    {
+      "name": "409 idempotency.in_progress is repeated with the same key",
+      "call": {
+        "operation": "createPayment",
+        "args": {
+          "amount": "25",
+          "currency": "USDT",
+          "order_id": "o1"
+        }
+      },
+      "responses": [
+        {
+          "status": 409,
+          "json": {
+            "error": {
+              "code": "idempotency.in_progress",
+              "message": "the first request is still running",
+              "retryable": true,
+              "retry_after": 1
+            }
+          }
+        },
+        {
+          "status": 200,
+          "json": {
+            "state": 0,
+            "result": {
+              "uuid": "x",
+              "order_id": "o1",
+              "status": "created",
+              "amount": "25",
+              "currency": "USDT",
+              "merchant_amount": "24.5",
+              "payer_amount": "25",
+              "payer_currency": "USDT",
+              "network": "tron",
+              "address": "TXYZ",
+              "address_muxed": "",
+              "address_qr_code": "",
+              "address_xaddress": "",
+              "memo": "",
+              "destination_tag": "",
+              "amount_paid": "0",
+              "amount_remaining": "25",
+              "commission": "0.5",
+              "fee_percent": "2",
+              "exchange_rate": "1",
+              "method_adjustment": "0",
+              "method_adjustment_bps": 0,
+              "network_surcharge": "0",
+              "network_surcharge_bps": 0,
+              "confirmations": 0,
+              "required_confirmations": 20,
+              "is_final": false,
+              "is_multi": false,
+              "is_test": true,
+              "additional_data": "",
+              "document_url": "",
+              "payer_address": "",
+              "payer_address_is_refundable": false,
+              "payer_email": "",
+              "tx_list": [],
+              "txid": "",
+              "url": "https://pay.example/x",
+              "url_return": "",
+              "url_success": "",
+              "created_at": "2026-09-24T10:00:00Z",
+              "updated_at": "2026-09-24T10:00:00Z",
+              "expired_at": "2026-09-24T11:00:00Z",
+              "rate_expires_at": "2026-09-24T10:15:00Z",
+              "paid_at": null
+            }
+          }
+        }
+      ],
+      "expect": {
+        "requests": 2,
+        "same_idempotency_key": true,
+        "idempotency_key": "present",
+        "delays_ms": [
+          1000
+        ],
+        "result_field": {
+          "uuid": "x"
+        }
+      }
+    },
+    {
+      "name": "non-retryable envelope error is not repeated",
+      "call": {
+        "operation": "createPayment",
+        "args": {
+          "amount": "25",
+          "currency": "USDT",
+          "order_id": "o1"
+        }
+      },
+      "responses": [
+        {
+          "status": 400,
+          "json": {
+            "error": {
+              "code": "payment.bad_amount",
+              "message": "bad amount",
+              "field": "amount",
+              "retryable": false
+            }
+          }
+        },
+        {
+          "status": 200,
+          "json": {
+            "state": 0,
+            "result": {
+              "uuid": "x",
+              "order_id": "o1",
+              "status": "created",
+              "amount": "25",
+              "currency": "USDT",
+              "merchant_amount": "24.5",
+              "payer_amount": "25",
+              "payer_currency": "USDT",
+              "network": "tron",
+              "address": "TXYZ",
+              "address_muxed": "",
+              "address_qr_code": "",
+              "address_xaddress": "",
+              "memo": "",
+              "destination_tag": "",
+              "amount_paid": "0",
+              "amount_remaining": "25",
+              "commission": "0.5",
+              "fee_percent": "2",
+              "exchange_rate": "1",
+              "method_adjustment": "0",
+              "method_adjustment_bps": 0,
+              "network_surcharge": "0",
+              "network_surcharge_bps": 0,
+              "confirmations": 0,
+              "required_confirmations": 20,
+              "is_final": false,
+              "is_multi": false,
+              "is_test": true,
+              "additional_data": "",
+              "document_url": "",
+              "payer_address": "",
+              "payer_address_is_refundable": false,
+              "payer_email": "",
+              "tx_list": [],
+              "txid": "",
+              "url": "https://pay.example/x",
+              "url_return": "",
+              "url_success": "",
+              "created_at": "2026-09-24T10:00:00Z",
+              "updated_at": "2026-09-24T10:00:00Z",
+              "expired_at": "2026-09-24T11:00:00Z",
+              "rate_expires_at": "2026-09-24T10:15:00Z",
+              "paid_at": null
+            }
+          }
+        }
+      ],
+      "expect": {
+        "requests": 1,
+        "error_code": "payment.bad_amount"
+      }
+    }
+  ]
+}

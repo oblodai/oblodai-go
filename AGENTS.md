@@ -84,8 +84,9 @@ timestamp and signature are unsigned and live only in `delivery.Unverified`.
 
 ```bash
 make ci      # everything below, in the order that fails fastest
-make drift   # generated files, README method tables, names.lock against the backend's generator
-make test    # go test -race ./... (conformance runs when OBLODAI_BACKEND is set)
+make drift   # generated files, README method tables, names.lock against the backend's generator;
+             # contract/ (the vendored contract snapshot) against the backend's contract
+make test    # go test -race ./... (conformance runs against OBLODAI_BACKEND, else contract/)
 ```
 
 - Tests live next to what they test. `conformance_test.go` (and `webhooks/conformance_test.go`)

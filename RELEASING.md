@@ -10,7 +10,7 @@ locally; `-n` only checks. Pushing the tag — the step that publishes — stays
 
 ## Before a release
 
-1. Regenerate from the backend (`make sdk` there) and commit `zz_generated_*.go`, `webhooks/zz_generated_events.go`, the README method tables and `names.lock`.
+1. Regenerate from the backend (`make sdk` there) and commit `zz_generated_*.go`, `webhooks/zz_generated_events.go`, the README method tables and `names.lock`; refresh the vendored contract with `OBLODAI_BACKEND=/path/to/oblodai-backend scripts/sync-contract.sh` and commit `contract/`.
 2. `OBLODAI_BACKEND=/path/to/oblodai-backend make ci` — every gate green, locally.
 3. Bump `Version` in `oblodai.go` and add the `CHANGELOG.md` entry (`make package` checks both).
 
