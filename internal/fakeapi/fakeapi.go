@@ -68,6 +68,7 @@ func New(t testing.TB, results map[string]any) *Server {
 // Env points oblodai.New() at the fake gateway through the environment, with a test key.
 func (s *Server) Env(t testing.TB) {
 	t.Setenv("OBLODAI_BASE_URL", s.URL)
+	t.Setenv("OBLODAI_ALLOW_INSECURE", "1") // the fake gateway is a plain-http httptest server
 	t.Setenv("OBLODAI_PUBLIC_ID", "oblodai_test_pk")
 	t.Setenv("OBLODAI_SECRET", "oblodai_test_sk")
 }
@@ -75,7 +76,7 @@ func (s *Server) Env(t testing.TB) {
 // Client is a client of the fake gateway.
 func (s *Server) Client(t testing.TB, opts ...oblodai.Option) *oblodai.Client {
 	t.Helper()
-	all := append([]oblodai.Option{oblodai.WithBaseURL(s.URL), oblodai.WithCredentials("oblodai_test_pk", "oblodai_test_sk")}, opts...)
+	all := append([]oblodai.Option{oblodai.WithBaseURL(s.URL), oblodai.WithInsecureBaseURL(true), oblodai.WithCredentials("oblodai_test_pk", "oblodai_test_sk")}, opts...)
 	client, err := oblodai.New(all...)
 	if err != nil {
 		t.Fatal(err)

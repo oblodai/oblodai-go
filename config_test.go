@@ -40,13 +40,17 @@ func TestConfigOptionsWinOverTheEnvironment(t *testing.T) {
 	}
 }
 
-func TestConfigRefusesPlainHTTPExceptOnLoopback(t *testing.T) {
+// R8: plain http needs the explicit opt-in, loopback included.
+func TestConfigRefusesPlainHTTPWithoutTheOptIn(t *testing.T) {
 	if _, err := New(WithBaseURL("http://api.oblodai.com")); !IsCode(err, CodeBadConfig) {
 		t.Fatalf("plain http must be refused, got %v", err)
 	}
 	for _, local := range []string{"http://localhost:8095", "http://127.0.0.1:8095", "http://[::1]:8095"} {
-		if _, err := New(WithBaseURL(local)); err != nil {
-			t.Fatalf("loopback %s must be allowed: %v", local, err)
+		if _, err := New(WithBaseURL(local)); !IsCode(err, CodeBadConfig) {
+			t.Fatalf("loopback %s without WithInsecureBaseURL must be refused, got %v", local, err)
+		}
+		if _, err := New(WithBaseURL(local), WithInsecureBaseURL(true)); err != nil {
+			t.Fatalf("loopback %s with the opt-in must be allowed: %v", local, err)
 		}
 	}
 	if _, err := New(WithBaseURL("http://10.0.0.1"), WithInsecureBaseURL(true)); err != nil {
@@ -54,6 +58,19 @@ func TestConfigRefusesPlainHTTPExceptOnLoopback(t *testing.T) {
 	}
 	if _, err := New(WithBaseURL("not a url")); !IsCode(err, CodeBadConfig) {
 		t.Fatalf("a malformed base URL must be refused, got %v", err)
+	}
+}
+
+// R8/R3: a base URL with userinfo is refused, and no config error echoes the password.
+func TestConfigRefusesUserinfoAndNeverEchoesIt(t *testing.T) {
+	for _, base := range []string{"https://user:p4ss@api.example", "https://user:p%zzass@api.example", "https://tok@api.example"} {
+		_, err := New(WithBaseURL(base))
+		if !IsCode(err, CodeBadConfig) {
+			t.Fatalf("%s: got %v, want sdk.bad_config", base, err)
+		}
+		if strings.Contains(err.Error(), "p4ss") || strings.Contains(err.Error(), "zzass") || strings.Contains(err.Error(), "tok@") {
+			t.Fatalf("the config error echoed the credentials: %v", err)
+		}
 	}
 }
 

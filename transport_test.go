@@ -250,7 +250,7 @@ func TestTheOneAPIKeySignsPayoutsAndPaymentsAlike(t *testing.T) {
 
 func TestCredentialsAreOnlyRequiredWhereTheRouteNeedsThem(t *testing.T) {
 	api := newFakeAPI(t, ok(map[string]any{"currencies": []any{}, "pricing_currencies": []any{}}))
-	client, err := New(WithBaseURL(api.server.URL))
+	client, err := New(WithBaseURL(api.server.URL), WithInsecureBaseURL(true))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

@@ -114,8 +114,9 @@ func WithAdminToken(token string) Option {
 	}
 }
 
-// WithInsecureBaseURL permits a plain http:// base URL for a host that is not loopback. Loopback
-// origins are allowed without it; anything else on http would put a signed secret on the wire.
+// WithInsecureBaseURL permits a plain http:// base URL — for a local core in development or tests.
+// Without it only https is accepted, loopback included: on http a signed request travels in
+// clear text.
 func WithInsecureBaseURL(allow bool) Option {
 	return func(c *config) { c.allowInsecure = allow }
 }
@@ -195,28 +196,25 @@ func (c *config) clone() *config {
 	return &out
 }
 
-// checkBaseURL refuses an origin that would carry a signed secret in clear text.
+// checkBaseURL refuses an origin that would carry a signed secret in clear text, and one with
+// credentials in it. The URL itself is never echoed: it may hold a password.
 func checkBaseURL(baseURL string, allowInsecure bool) *Error {
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Host == "" {
-		return newConfigError(CodeBadConfig, "the base URL is not a valid URL: "+baseURL, "baseURL")
+		return newConfigError(CodeBadConfig, "the base URL is not a valid absolute URL", "baseURL")
+	}
+	if parsed.User != nil {
+		return newConfigError(CodeBadConfig,
+			"the base URL must not carry credentials (user:password@); authenticate with WithCredentials", "baseURL")
 	}
 	if parsed.Scheme == "https" {
 		return nil
 	}
-	if parsed.Scheme == "http" && (allowInsecure || isLoopback(parsed.Hostname())) {
+	if parsed.Scheme == "http" && allowInsecure {
 		return nil
 	}
 	return newConfigError(CodeBadConfig,
-		"the base URL must use https (got "+parsed.Scheme+"://"+parsed.Host+"); pass WithInsecureBaseURL(true) for a local core", "baseURL")
-}
-
-func isLoopback(host string) bool {
-	switch host {
-	case "localhost", "127.0.0.1", "::1", "[::1]":
-		return true
-	}
-	return false
+		"the base URL must use https (got "+parsed.Scheme+"://"+parsed.Host+"); pass WithInsecureBaseURL(true) (or OBLODAI_ALLOW_INSECURE=1) for a local core", "baseURL")
 }
 
 func firstNonEmpty(values ...string) string {

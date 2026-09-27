@@ -33,8 +33,9 @@ OpenAPI-контракта шлюза (`zz_generated_*.go`, руками не п
 подписывает, повторяет, листает страницы и проверяет подписи.
 
 > **Базовый URL.** По умолчанию `https://api.oblodai.com`, меняется `WithBaseURL`. Схема —
-> `https://`; обычный `http://` принимается только для loopback (`http://127.0.0.1:8095`) или с
-> `WithInsecureBaseURL(true)` (либо `OBLODAI_ALLOW_INSECURE=1`).
+> `https://`; обычный `http://` (и локальное ядро вроде `http://127.0.0.1:8095`) принимается только
+> с `WithInsecureBaseURL(true)` (либо `OBLODAI_ALLOW_INSECURE=1`). Базовый URL с учётными данными
+> (`user:password@`) отклоняется.
 
 ## Установка
 
@@ -357,7 +358,7 @@ reports, err := client.WithOptions(oblodai.WithTimeout(2*time.Minute), oblodai.W
 | ------------------------------- | -------------------------------------------------------------------------------- |
 | `WithCredentials(id, secret)`   | пара API-ключа мерчанта — подписывает все закрытые маршруты                       |
 | `WithBaseURL(url)`              | адрес API; префикс пути сохраняется                                               |
-| `WithInsecureBaseURL(true)`     | разрешить обычный `http://` не для loopback                                       |
+| `WithInsecureBaseURL(true)`     | разрешить обычный `http://` (локальное ядро)                                      |
 | `WithAdminToken(token)`         | устарел и игнорируется: токен администратора SDK не отправляет                    |
 | `WithHTTPClient(client)`        | свой `*http.Client`: прокси, транспорт, mTLS, записывающая заглушка               |
 | `WithTimeout(d)`                | таймаут попытки (по умолчанию 30 с)                                               |

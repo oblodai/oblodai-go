@@ -141,7 +141,7 @@ func (f *fakeAPI) serve(w http.ResponseWriter, r *http.Request) {
 func (f *fakeAPI) client(opts ...Option) *Client {
 	f.t.Helper()
 	base := []Option{
-		WithBaseURL(f.server.URL),
+		WithBaseURL(f.server.URL), WithInsecureBaseURL(true),
 		WithCredentials("pk_test_1", "secret-1"),
 		WithRetry(RetryOptions{MaxRetries: 2, BaseDelay: time.Millisecond, MaxDelay: 2 * time.Millisecond, MaxRetryAfter: 30 * time.Second}),
 		withRandom(func() float64 { return 0 }),

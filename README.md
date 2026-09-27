@@ -33,8 +33,9 @@ operation the gateway exposes has a method here, named the same way in all eight
 hand-written runtime around it signs, retries, paginates and verifies.
 
 > **Base URL.** Defaults to `https://api.oblodai.com`. Override it with `WithBaseURL`. The scheme
-> must be `https://`; plain `http://` is accepted only for loopback (`http://127.0.0.1:8095`) or
-> with `WithInsecureBaseURL(true)` (or `OBLODAI_ALLOW_INSECURE=1`).
+> must be `https://`; plain `http://` (a local core such as `http://127.0.0.1:8095` included) is
+> accepted only with `WithInsecureBaseURL(true)` (or `OBLODAI_ALLOW_INSECURE=1`). A base URL with
+> credentials in it (`user:password@`) is refused.
 
 ## Installation
 
@@ -358,7 +359,7 @@ reports, err := client.WithOptions(oblodai.WithTimeout(2*time.Minute), oblodai.W
 | ------------------------------- | -------------------------------------------------------------------------------- |
 | `WithCredentials(id, secret)`   | the merchant's API key pair — it signs every gated route                          |
 | `WithBaseURL(url)`              | the API origin; a path prefix is kept                                             |
-| `WithInsecureBaseURL(true)`     | permit plain `http://` for a non-loopback host                                    |
+| `WithInsecureBaseURL(true)`     | permit a plain `http://` base URL (a local core)                                  |
 | `WithAdminToken(token)`         | deprecated and ignored: the SDK never sends an admin token                        |
 | `WithHTTPClient(client)`        | your own `*http.Client`: proxy, custom transport, mutual TLS, a recording stub    |
 | `WithTimeout(d)`                | per-attempt timeout (default 30 s)                                                |

@@ -115,7 +115,7 @@ func (s *skewedAPI) handler(t *testing.T) http.HandlerFunc {
 func TestClockSkewCorrectionUnderConcurrency(t *testing.T) {
 	api := &skewedAPI{serverTime: time.Now().Add(time.Hour)}
 	server := newRawServer(t, api.handler(t))
-	client, err := New(WithBaseURL(server), WithCredentials("pk_test_1", "secret-1"),
+	client, err := New(WithBaseURL(server), WithInsecureBaseURL(true), WithCredentials("pk_test_1", "secret-1"),
 		WithRetry(RetryOptions{MaxRetries: 2, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond}))
 	if err != nil {
 		t.Fatal(err)
