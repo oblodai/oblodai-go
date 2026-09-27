@@ -327,3 +327,26 @@ func TestErrorSerializationKeepsTheMessageAndDropsTheBody(t *testing.T) {
 		t.Fatal("the raw body should still be reachable through Body() for debugging")
 	}
 }
+
+// R6: a server-chosen download name is reduced to a safe basename.
+func TestDownloadFilenameIsABasename(t *testing.T) {
+	for disposition, want := range map[string]string{
+		`attachment; filename*=UTF-8''..%2F..%2F.bashrc`: ".bashrc",
+		`attachment; filename="..\\..\\evil.pdf"`:        "evil.pdf",
+		`attachment; filename="/etc/passwd"`:             "passwd",
+		`attachment; filename=".."`:                      "",
+		`attachment; filename*=UTF-8''a%0Ab%07c.pdf`:     "abc.pdf",
+		`attachment; filename="receipt-42.pdf"`:          "receipt-42.pdf",
+	} {
+		if got := filenameFrom(disposition); got != want {
+			t.Errorf("%s: filename %q, want %q", disposition, got, want)
+		}
+	}
+	api := newFakeAPI(t, step{status: 200, body: "%PDF", headers: map[string]string{
+		"Content-Type": "application/pdf", "Content-Disposition": `attachment; filename*=UTF-8''..%2F..%2F.bashrc`,
+	}})
+	file, err := api.client().Documents.GetSigned(context.Background(), "receipt", "p1", &GetSignedDocumentParams{Exp: 1, Sig: "s"})
+	if err != nil || file.Filename != ".bashrc" {
+		t.Fatalf("GetSigned: %v, filename %q", err, file.Filename)
+	}
+}

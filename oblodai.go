@@ -88,7 +88,9 @@ type FileResult struct {
 	Bytes []byte
 	// ContentType is the response media type ("application/pdf").
 	ContentType string
-	// Filename comes from Content-Disposition when the core sets one.
+	// Filename comes from Content-Disposition when the core sets one, reduced to a basename: no
+	// directory part, no control characters, never "." or "..". Still check it against your own
+	// allow-list, and do not overwrite an existing file with it.
 	Filename string
 }
 

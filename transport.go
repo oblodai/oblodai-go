@@ -446,7 +446,8 @@ func scrubURLError(err error, display string) error {
 }
 
 // filenameFrom reads the download name out of a Content-Disposition header. mime.ParseMediaType
-// already folds the RFC 5987 filename* form into filename.
+// already folds the RFC 5987 filename* form into filename. The name is chosen by whatever
+// answered, so only a safe basename is kept (safeFilename).
 func filenameFrom(disposition string) string {
 	if disposition == "" {
 		return ""
@@ -455,7 +456,26 @@ func filenameFrom(disposition string) string {
 	if err != nil {
 		return ""
 	}
-	return params["filename"]
+	return safeFilename(params["filename"])
+}
+
+// safeFilename reduces a server-supplied name to a basename a caller can join to a directory:
+// the last segment after any / or \, without control characters; "", "." and ".." become "".
+func safeFilename(name string) string {
+	if i := strings.LastIndexAny(name, `/\`); i >= 0 {
+		name = name[i+1:]
+	}
+	name = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f || (r >= 0x80 && r < 0xa0) {
+			return -1
+		}
+		return r
+	}, name)
+	name = strings.TrimSpace(name)
+	if name == "." || name == ".." {
+		return ""
+	}
+	return name
 }
 
 func abs(d time.Duration) time.Duration {
