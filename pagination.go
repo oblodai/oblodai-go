@@ -11,8 +11,9 @@ import (
 	"sync"
 )
 
-// Offset pagination over the core's {items, paginate} lists. paginate.has_pages is the server's
-// own "there is more" flag; iteration stops on it, or on a short page, whichever comes first.
+// Offset pagination over the core's {items, paginate} lists. Iteration advances by the number of
+// items received and stops on an empty page or once the offset reaches paginate.total (has_pages
+// is consulted only when the core reports no total) — never on a page merely shorter than asked.
 //
 // A list method returns a *List, which has requested nothing yet: Items ranges over every item
 // and ByPage over every page, one request per page; Page fetches the first page, Pager walks the
@@ -81,7 +82,7 @@ func (l *List[T]) ByPage() iter.Seq2[*Page[T], error] {
 				yield(nil, err)
 				return
 			}
-			if !yield(page, nil) || len(page.Items) == 0 || !page.Paginate.HasPages {
+			if !yield(page, nil) || lastPage(page, offset+len(page.Items)) {
 				return
 			}
 			offset += len(page.Items)
@@ -101,6 +102,20 @@ func (l *List[T]) Collect(maxItems int) ([]T, error) {
 		out = append(out, p.Item())
 	}
 	return out, p.Err()
+}
+
+// lastPage reports whether nothing follows page, next being the offset the next page would start
+// at. A list ends on an empty page or once next reaches the total — never merely because a page
+// came back shorter than the limit asked for (the core may cap a page) — and has_pages decides
+// only when the core reported no total.
+func lastPage[T any](page *Page[T], next int) bool {
+	if len(page.Items) == 0 {
+		return true
+	}
+	if page.Paginate.Total > 0 {
+		return int64(next) >= page.Paginate.Total
+	}
+	return !page.Paginate.HasPages
 }
 
 // Pager walks every item across pages, fetching at most one page per call to Next:
@@ -149,7 +164,7 @@ func (p *Pager[T]) Next() bool {
 			return true
 		}
 		if p.page != nil {
-			if len(p.page.Items) == 0 || !p.page.Paginate.HasPages {
+			if lastPage(p.page, p.offset+len(p.page.Items)) {
 				p.done = true
 				return false
 			}

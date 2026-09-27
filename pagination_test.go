@@ -250,3 +250,38 @@ func TestSetBodyFieldKeepsBigIntegers(t *testing.T) {
 		t.Fatalf("got %s", out)
 	}
 }
+
+// R11: a page shorter than the limit (the core capped it) is not the end; the list ends on an
+// empty page or when the offset reaches the total — whatever has_pages claims on the way.
+func TestListEndsOnlyOnAnEmptyPageOrTheTotal(t *testing.T) {
+	item := func(uuid string) any { return map[string]any{"uuid": uuid} }
+	short := func(items []any, offset, total int) step {
+		return ok(map[string]any{"items": items, "paginate": map[string]any{
+			"total": total, "per_page": len(items), "offset": offset, "has_pages": false,
+		}})
+	}
+	api := newFakeAPI(t,
+		short([]any{item("a"), item("b")}, 0, 5),
+		short([]any{item("c"), item("d")}, 2, 5),
+		short([]any{item("e")}, 4, 5),
+		// ByPage over a list whose total is unknown stops on the empty page.
+		ok(map[string]any{"items": []any{item("x")}, "paginate": map[string]any{"total": 0, "has_pages": true}}),
+		emptyPage(),
+	)
+	limit := int64(50)
+	got, err := api.client().Payments.ListHistory(context.Background(), &PaymentHistoryRequest{Limit: &limit}).Collect(0)
+	if err != nil || len(got) != 5 || api.count() != 3 {
+		t.Fatalf("collected %d items in %d requests (%v), want 5 in 3", len(got), api.count(), err)
+	}
+	pages := 0
+	for page, err := range api.client().Payments.ListHistory(context.Background(), nil).ByPage() {
+		if err != nil {
+			t.Fatal(err)
+		}
+		pages++
+		_ = page
+	}
+	if pages != 2 || api.count() != 5 {
+		t.Fatalf("%d pages, %d requests", pages, api.count())
+	}
+}
